@@ -12,6 +12,12 @@ python_utils/
 │   ├── config.py          # 配置常量（阈值、白名单）
 │   └── tests/
 │       └── test_validator.py
+├── image_security/        # 图片安全校验（解压缩炸弹、Polyglot、EXIF、隐写术）
+│   ├── __init__.py
+│   ├── validator.py       # 核心校验逻辑
+│   ├── config.py          # 配置常量（阈值、白名单）
+│   └── tests/
+│       └── test_validator.py
 └── ...                    # 更多工具模块
 ```
 
@@ -74,10 +80,71 @@ async def upload_svg(data: SVGUpload):
 
 - defusedxml（使用 lxml 安全配置 + 预处理双重防线替代）
 
+## image_security - 图片安全校验
+
+防护图片相关攻击（解压缩炸弹、Polyglot、EXIF 注入、隐写术等），适用于后端接收图片文件/字节/Base64 的场景。
+
+### 防护层级
+
+| 层级 | 防护手段 | 防护目标 |
+|------|----------|----------|
+| L1 | 文件大小校验 | 防止超大输入 |
+| L2 | 格式签名验证 | 防止 Polyglot 多语言文件 |
+| L3 | Pillow MAX_IMAGE_PIXELS | 防止解压缩炸弹 (Pixel Flood) |
+| L4 | 图片尺寸限制 | 防止巨大像素矩阵 |
+| L5 | EXIF 元数据清洗 | 防止 XSS/SSRF/路径泄露 |
+| L6 | LSB 统计分析 | 检测隐写术 |
+| L7 | Content-Type 一致性验证 | 防止格式混淆攻击 |
+| L8 | 尾部危险内容检测 | 防止嵌入脚本 (PHP/JS) |
+
+### 快速使用
+
+```python
+from image_security import validate_image_file, validate_base64_image, ImageSecurityError
+
+# 校验图片文件
+try:
+    result = validate_image_file("/path/to/image.png")
+    print(f"Valid! Format: {result['format']}, Size: {result['dimensions']}")
+except ImageSecurityError as e:
+    print(f"Blocked: {e}")
+
+# 校验 Base64 图片
+try:
+    result = validate_base64_image(base64_string, claimed_mime="image/png")
+    print(f"Valid! Format: {result['format']}")
+except ImageSecurityError as e:
+    print(f"Blocked: {e}")
+```
+
+### FastAPI 集成
+
+```python
+from fastapi import FastAPI, HTTPException, UploadFile
+from image_security import validate_image_file, ImageSecurityError
+
+app = FastAPI()
+
+@app.post("/api/image/upload")
+async def upload_image(file: UploadFile):
+    try:
+        result = validate_image_file(file.file, claimed_mime=file.content_type)
+        return {"status": "ok", "format": result["format"], "size": result["size"]}
+    except ImageSecurityError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+```
+
+### 依赖
+
+- Pillow (PIL)
+
+### 不依赖
+
+- ImageMagick（使用 Pillow 纯 Python 解析，不执行命令）
+
 ## 运行测试
 
 ```bash
-cd python_utils
-pip install lxml pytest
-pytest svg_security/tests/
+pip install lxml Pillow pytest
+pytest svg_security/tests/ image_security/tests/
 ```
