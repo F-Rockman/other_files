@@ -76,8 +76,16 @@ class TestPromptConstant:
         assert "IP为A的设备的数量及设备A的性能趋势" in SQL_INTENT_SYSTEM_PROMPT
         assert "设备A的告警数量及告警趋势" in SQL_INTENT_SYSTEM_PROMPT
         assert "最近一周每天的订单量及总订单数" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询最近一天的CPU利用率" in SQL_INTENT_SYSTEM_PROMPT
         assert "核心判断方法" in SQL_INTENT_SYSTEM_PROMPT
         assert "标量/明细行/时序行/排名行/对比行" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_ambiguous_intent_rules_present(self):
+        """R3和R5中的模糊意图规则存在"""
+        assert "未指定展示形式" in SQL_INTENT_SYSTEM_PROMPT
+        assert "可解读为标量聚合（平均值）或时序趋势" in SQL_INTENT_SYSTEM_PROMPT
+        assert "指标+时间范围但未指定展示形式" in SQL_INTENT_SYSTEM_PROMPT
+        assert "指标+对象但未指定展示形式" in SQL_INTENT_SYSTEM_PROMPT
 
 
 # ============ 测试：JSON 解析有效响应 ============
