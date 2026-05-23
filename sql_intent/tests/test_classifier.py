@@ -69,6 +69,16 @@ class TestPromptConstant:
         assert "IP为A的设备数量及性能趋势" in SQL_INTENT_SYSTEM_PROMPT
         assert "GROUP BY day vs month" in SQL_INTENT_SYSTEM_PROMPT
 
+    def test_counter_example_interception_zone_present(self):
+        """反例拦截区存在且包含关键反例"""
+        assert "看似单意图，实际是多意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "反例拦截" in SQL_INTENT_SYSTEM_PROMPT
+        assert "IP为A的设备的数量及设备A的性能趋势" in SQL_INTENT_SYSTEM_PROMPT
+        assert "设备A的告警数量及告警趋势" in SQL_INTENT_SYSTEM_PROMPT
+        assert "最近一周每天的订单量及总订单数" in SQL_INTENT_SYSTEM_PROMPT
+        assert "核心判断方法" in SQL_INTENT_SYSTEM_PROMPT
+        assert "标量/明细行/时序行/排名行/对比行" in SQL_INTENT_SYSTEM_PROMPT
+
 
 # ============ 测试：JSON 解析有效响应 ============
 
