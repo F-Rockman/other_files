@@ -18,6 +18,13 @@ python_utils/
 │   ├── config.py          # 配置常量（阈值、白名单）
 │   └── tests/
 │       └── test_validator.py
+├── sql_intent/            # SQL 生成前置意图判断
+│   ├── __init__.py
+│   ├── prompt.py          # 意图判断 Prompt 文本
+│   ├── classifier.py      # 核心判断逻辑（LLM 调用 + JSON 解析）
+│   ├── config.py          # 配置常量（默认值、错误消息）
+│   └── tests/
+│       └── test_classifier.py
 └── ...                    # 更多工具模块
 ```
 
@@ -142,9 +149,69 @@ async def upload_image(file: UploadFile):
 
 - ImageMagick（使用 Pillow 纯 Python 解析，不执行命令）
 
+## sql_intent - SQL 生成前置意图判断
+
+判断用户自然语言输入是否应进入 SQL 生成链路。适用于 NL2SQL 系统的前置过滤场景，防止非问数请求、多意图查询、条件不完整等无效输入进入 SQL 生成流程。
+
+### 判断规则
+
+| 规则 | 说明 | 判定 |
+|------|------|------|
+| R1 | 非问数场景（分析、建议、预测、动作执行等） | reject |
+| R2 | 未来尚未发生的数据指标 | reject |
+| R3 | 条件不完整（缺少字段、值、范围） | reject |
+| R4 | 多意图组合（不同目标、不同维度、混合意图） | reject |
+| R5 | 意图不明确 | reject |
+
+单意图扩展认定（仍为 accept）：同一维度+多个指标、同一条件+多个条件值、排名附带派生指标、趋势隐含聚合、对比隐含分组。
+
+### 快速使用
+
+```python
+from sql_intent import classify_intent, SQL_INTENT_JUDGMENT_PROMPT
+
+# 使用任意 LLM 客户端（Callable[[str], str]）
+def my_llm_client(prompt: str) -> str:
+    # 调用你的 LLM SDK（OpenAI、Anthropic、本地模型等）
+    return llm_sdk_call(prompt)
+
+result = classify_intent("各省份的销售额和订单数", my_llm_client)
+# {"intention": "accept", "reason": ""}
+
+result = classify_intent("帮我分析销量下滑的原因", my_llm_client)
+# {"intention": "reject", "reason": "非问数场景"}
+```
+
+### FastAPI 集成
+
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from sql_intent import classify_intent, SQLIntentError
+
+app = FastAPI()
+
+class QueryRequest(BaseModel):
+    user_input: str
+
+@app.post("/api/sql/intent")
+async def check_intent(data: QueryRequest):
+    try:
+        result = classify_intent(data.user_input, my_llm_client)
+        if result["intention"] == "reject":
+            raise HTTPException(status_code=400, detail=result["reason"])
+        return {"status": "ok", "intention": result["intention"]}
+    except SQLIntentError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+### 依赖
+
+- 无外部依赖（LLM 客户端由使用者自行提供）
+
 ## 运行测试
 
 ```bash
 pip install lxml Pillow pytest
-pytest svg_security/tests/ image_security/tests/
+pytest svg_security/tests/ image_security/tests/ sql_intent/tests/
 ```
