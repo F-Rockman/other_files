@@ -14,6 +14,7 @@ DEFAULT_EMPTY_REASON = ""
 
 LLM_OUTPUT_FORMAT_ERROR_REASON = "LLM输出格式异常"
 LLM_CALL_ERROR_REASON = "LLM调用异常"
+LLM_CHAT_CALL_ERROR_REASON = "LLM Chat调用异常"
 
 # ============ 输出字段 ============
 

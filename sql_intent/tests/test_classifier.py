@@ -15,7 +15,7 @@ import json
 import pytest
 from unittest.mock import MagicMock
 
-from sql_intent import classify_intent, SQLIntentError, SQL_INTENT_JUDGMENT_PROMPT
+from sql_intent import classify_intent, classify_intent_chat, SQLIntentError, SQL_INTENT_JUDGMENT_PROMPT, SQL_INTENT_SYSTEM_PROMPT, SQL_INTENT_USER_TEMPLATE
 from sql_intent.classifier import _parse_llm_response, _validate_result
 from sql_intent.config import (
     DEFAULT_REJECT_INTENTION,
@@ -23,6 +23,7 @@ from sql_intent.config import (
     DEFAULT_EMPTY_REASON,
     LLM_OUTPUT_FORMAT_ERROR_REASON,
     LLM_CALL_ERROR_REASON,
+    LLM_CHAT_CALL_ERROR_REASON,
     INTENTION_FIELD,
     REASON_FIELD,
     VALID_INTENTIONS,
@@ -190,4 +191,99 @@ class TestResultValidation:
         assert DEFAULT_EMPTY_REASON == ""
         assert LLM_OUTPUT_FORMAT_ERROR_REASON == "LLM输出格式异常"
         assert LLM_CALL_ERROR_REASON == "LLM调用异常"
+        assert LLM_CHAT_CALL_ERROR_REASON == "LLM Chat调用异常"
         assert VALID_INTENTIONS == {"accept", "reject"}
+
+
+# ============ 测试：拆分 Prompt 常量 ============
+
+class TestSplitPrompts:
+    def test_system_prompt_exists(self):
+        """SQL_INTENT_SYSTEM_PROMPT 存在且非空"""
+        assert SQL_INTENT_SYSTEM_PROMPT is not None
+        assert len(SQL_INTENT_SYSTEM_PROMPT) > 0
+
+    def test_system_prompt_contains_key_rule_sections(self):
+        """SQL_INTENT_SYSTEM_PROMPT 包含 R1-R5、accept 条件、决策优先级"""
+        assert "SQL 生成前置意图判断器" in SQL_INTENT_SYSTEM_PROMPT
+        assert "R1" in SQL_INTENT_SYSTEM_PROMPT
+        assert "R2" in SQL_INTENT_SYSTEM_PROMPT
+        assert "R3" in SQL_INTENT_SYSTEM_PROMPT
+        assert "R4" in SQL_INTENT_SYSTEM_PROMPT
+        assert "R5" in SQL_INTENT_SYSTEM_PROMPT
+        assert "accept" in SQL_INTENT_SYSTEM_PROMPT
+        assert "reject" in SQL_INTENT_SYSTEM_PROMPT
+        assert "决策优先级" in SQL_INTENT_SYSTEM_PROMPT
+        assert "判断原则" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_user_template_exists(self):
+        """SQL_INTENT_USER_TEMPLATE 存在且包含 {user_input} 占位符"""
+        assert SQL_INTENT_USER_TEMPLATE is not None
+        assert "{user_input}" in SQL_INTENT_USER_TEMPLATE
+
+    def test_user_template_format_produces_expected_string(self):
+        """SQL_INTENT_USER_TEMPLATE 格式化后生成正确字符串"""
+        formatted = SQL_INTENT_USER_TEMPLATE.format(user_input="测试输入")
+        assert formatted == "用户输入：测试输入"
+
+    def test_backward_compat_judgment_prompt_equals_concatenation(self):
+        """SQL_INTENT_JUDGMENT_PROMPT 等于 SYSTEM_PROMPT + 分隔符 + USER_TEMPLATE"""
+        assert SQL_INTENT_JUDGMENT_PROMPT == SQL_INTENT_SYSTEM_PROMPT + "\n\n" + SQL_INTENT_USER_TEMPLATE
+
+    def test_backward_compat_formatted_equals_old_style(self):
+        """格式化后的拼接结果与旧式 f-string 结果一致"""
+        test_input = "各省份的销售额"
+        new_style = SQL_INTENT_SYSTEM_PROMPT + "\n\n" + SQL_INTENT_USER_TEMPLATE.format(user_input=test_input)
+        old_style = f"{SQL_INTENT_SYSTEM_PROMPT}\n\n用户输入：{test_input}"
+        assert new_style == old_style
+
+
+# ============ 测试：classify_intent_chat 函数 ============
+
+class TestClassifyIntentChat:
+    def test_function_signature_accepts_callable(self):
+        """classify_intent_chat 接受字符串和 Callable 参数"""
+        mock_client = MagicMock(return_value=json.dumps({"intention": "accept", "reason": ""}))
+        result = classify_intent_chat("各省份的销售额", mock_client)
+        assert result[INTENTION_FIELD] == DEFAULT_ACCEPT_INTENTION
+        assert mock_client.called
+
+    def test_sends_correct_system_and_user_messages(self):
+        """llm_chat_client 收到正确的 system 和 user 消息列表"""
+        user_input = "查询华东区域的订单数量"
+        mock_client = MagicMock(return_value=json.dumps({"intention": "accept", "reason": ""}))
+        classify_intent_chat(user_input, mock_client)
+        messages = mock_client.call_args[0][0]
+        assert len(messages) == 2
+        assert messages[0]["role"] == "system"
+        assert messages[0]["content"] == SQL_INTENT_SYSTEM_PROMPT
+        assert messages[1]["role"] == "user"
+        assert messages[1]["content"] == user_input
+
+    def test_reject_result_with_reason(self):
+        """拒答时返回原因"""
+        mock_client = MagicMock(return_value=json.dumps({"intention": "reject", "reason": "非问数场景"}))
+        result = classify_intent_chat("帮我分析一下销量下滑的原因", mock_client)
+        assert result[INTENTION_FIELD] == DEFAULT_REJECT_INTENTION
+        assert result[REASON_FIELD] == "非问数场景"
+
+    def test_accept_result_with_empty_reason(self):
+        """通过时 reason 为空字符串"""
+        mock_client = MagicMock(return_value=json.dumps({"intention": "accept", "reason": ""}))
+        result = classify_intent_chat("各省份的销售额", mock_client)
+        assert result[INTENTION_FIELD] == DEFAULT_ACCEPT_INTENTION
+        assert result[REASON_FIELD] == DEFAULT_EMPTY_REASON
+
+    def test_llm_chat_call_exception_raises_sql_intent_error(self):
+        """LLM Chat 调用异常时抛出 SQLIntentError"""
+        mock_client = MagicMock(side_effect=RuntimeError("连接超时"))
+        with pytest.raises(SQLIntentError) as exc_info:
+            classify_intent_chat("测试输入", mock_client)
+        assert LLM_CHAT_CALL_ERROR_REASON in str(exc_info.value)
+
+    def test_llm_format_error_returns_reject(self):
+        """LLM 返回格式异常时返回 reject（不抛异常）"""
+        mock_client = MagicMock(return_value="无法解析的文本")
+        result = classify_intent_chat("测试输入", mock_client)
+        assert result[INTENTION_FIELD] == DEFAULT_REJECT_INTENTION
+        assert result[REASON_FIELD] == LLM_OUTPUT_FORMAT_ERROR_REASON

@@ -153,6 +153,14 @@ async def upload_image(file: UploadFile):
 
 判断用户自然语言输入是否应进入 SQL 生成链路。适用于 NL2SQL 系统的前置过滤场景，防止非问数请求、多意图查询、条件不完整等无效输入进入 SQL 生成流程。
 
+提供两种调用方式：
+- **`classify_intent`** — Completion API 版本，将 system 规则与用户输入拼接为单一 prompt 字符串
+- **`classify_intent_chat`** — Chat API 版本，将规则作为 system 消息、用户输入作为 user 消息分别发送
+
+Chat API 版本的优势：
+- **LLM 缓存**：system 消息不变时可被 LLM 服务端缓存，减少重复 token 计算
+- **更高规则遵循度**：system/user 分离后，LLM 对 system 规则的遵循度通常更高
+
 ### 判断规则
 
 | 规则 | 说明 | 判定 |
@@ -166,6 +174,8 @@ async def upload_image(file: UploadFile):
 单意图扩展认定（仍为 accept）：同一维度+多个指标、同一条件+多个条件值、排名附带派生指标、趋势隐含聚合、对比隐含分组。
 
 ### 快速使用
+
+**Completion API 版本**（`classify_intent`）：
 
 ```python
 from sql_intent import classify_intent, SQL_INTENT_JUDGMENT_PROMPT
@@ -182,7 +192,26 @@ result = classify_intent("帮我分析销量下滑的原因", my_llm_client)
 # {"intention": "reject", "reason": "非问数场景"}
 ```
 
+**Chat API 版本**（`classify_intent_chat`）：
+
+```python
+from sql_intent import classify_intent_chat, SQL_INTENT_SYSTEM_PROMPT
+
+# 使用任意 LLM Chat 客户端（Callable[[list[dict]], str]）
+def my_llm_chat_client(messages: list[dict]) -> str:
+    # 调用你的 LLM Chat SDK，传入消息列表
+    return llm_chat_sdk_call(messages)
+
+result = classify_intent_chat("各省份的销售额和订单数", my_llm_chat_client)
+# {"intention": "accept", "reason": ""}
+
+result = classify_intent_chat("帮我分析销量下滑的原因", my_llm_chat_client)
+# {"intention": "reject", "reason": "非问数场景"}
+```
+
 ### FastAPI 集成
+
+**Completion API 版本**：
 
 ```python
 from fastapi import FastAPI, HTTPException
@@ -198,6 +227,29 @@ class QueryRequest(BaseModel):
 async def check_intent(data: QueryRequest):
     try:
         result = classify_intent(data.user_input, my_llm_client)
+        if result["intention"] == "reject":
+            raise HTTPException(status_code=400, detail=result["reason"])
+        return {"status": "ok", "intention": result["intention"]}
+    except SQLIntentError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+**Chat API 版本**：
+
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from sql_intent import classify_intent_chat, SQLIntentError
+
+app = FastAPI()
+
+class QueryRequest(BaseModel):
+    user_input: str
+
+@app.post("/api/sql/intent/chat")
+async def check_intent_chat(data: QueryRequest):
+    try:
+        result = classify_intent_chat(data.user_input, my_llm_chat_client)
         if result["intention"] == "reject":
             raise HTTPException(status_code=400, detail=result["reason"])
         return {"status": "ok", "intention": result["intention"]}

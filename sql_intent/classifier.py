@@ -2,21 +2,23 @@
 SQL 生成前置意图判断模块
 
 核心功能：
-- classify_intent: 判断用户输入是否应进入 SQL 生成链路
+- classify_intent: 判断用户输入是否应进入 SQL 生成链路（Completion API）
+- classify_intent_chat: 判断用户输入是否应进入 SQL 生成链路（Chat API）
 - 使用 LLM 进行意图判断，返回结构化 JSON 结果
 
-LLM 客户端为通用 Callable[[str], str]，不绑定任何特定 LLM SDK。
+LLM 客户端为通用 Callable，不绑定任何特定 LLM SDK。
 """
 
 import json
 from typing import Callable, Optional
 
-from .prompt import SQL_INTENT_JUDGMENT_PROMPT
+from .prompt import SQL_INTENT_JUDGMENT_PROMPT, SQL_INTENT_SYSTEM_PROMPT, SQL_INTENT_USER_TEMPLATE
 from .config import (
     DEFAULT_REJECT_INTENTION,
     DEFAULT_EMPTY_REASON,
     LLM_OUTPUT_FORMAT_ERROR_REASON,
     LLM_CALL_ERROR_REASON,
+    LLM_CHAT_CALL_ERROR_REASON,
     INTENTION_FIELD,
     REASON_FIELD,
     VALID_INTENTIONS,
@@ -44,8 +46,8 @@ def classify_intent(user_input: str, llm_client: Callable[[str], str]) -> dict:
     异常:
         SQLIntentError: LLM 调用失败时抛出
     """
-    # 组合 prompt 与用户输入
-    full_prompt = f"{SQL_INTENT_JUDGMENT_PROMPT}\n\n用户输入：{user_input}"
+    # 组合 prompt 与用户输入（向后兼容拼接版本）
+    full_prompt = SQL_INTENT_SYSTEM_PROMPT + "\n\n" + SQL_INTENT_USER_TEMPLATE.format(user_input=user_input)
 
     # 调用 LLM
     try:
@@ -54,6 +56,33 @@ def classify_intent(user_input: str, llm_client: Callable[[str], str]) -> dict:
         raise SQLIntentError(f"{LLM_CALL_ERROR_REASON}: {e}")
 
     # 解析 JSON 响应
+    return _parse_llm_response(llm_response)
+
+
+def classify_intent_chat(user_input: str, llm_chat_client: Callable[[list[dict]], str]) -> dict:
+    """
+    判断用户输入是否应进入 SQL 生成链路（Chat API 版本）
+
+    参数:
+        user_input: 用户自然语言查询文本
+        llm_chat_client: LLM Chat 客户端，Callable[[list[dict]], str]，接收消息列表，返回 LLM 响应字符串
+
+    返回:
+        dict: {"intention": "accept" | "reject", "reason": str}
+
+    异常:
+        SQLIntentError: LLM Chat 调用失败时抛出
+    """
+    messages = [
+        {"role": "system", "content": SQL_INTENT_SYSTEM_PROMPT},
+        {"role": "user", "content": user_input},
+    ]
+
+    try:
+        llm_response = llm_chat_client(messages)
+    except Exception as e:
+        raise SQLIntentError(f"{LLM_CHAT_CALL_ERROR_REASON}: {e}")
+
     return _parse_llm_response(llm_response)
 
 

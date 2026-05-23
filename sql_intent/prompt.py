@@ -3,9 +3,14 @@ SQL 生成前置意图判断 Prompt
 
 此模块存储优化后的意图判断 Prompt 文本，
 用于判断用户输入是否应进入 SQL 生成链路。
+
+Prompt 已拆分为 system / user 两部分，支持 Chat API 场景：
+- SQL_INTENT_SYSTEM_PROMPT: 所有规则（system 角色）
+- SQL_INTENT_USER_TEMPLATE: 用户输入模板（user 角色）
+- SQL_INTENT_JUDGMENT_PROMPT: 向后兼容的拼接版本（Completion API）
 """
 
-SQL_INTENT_JUDGMENT_PROMPT = """你是一个"SQL 生成前置意图判断器"。
+SQL_INTENT_SYSTEM_PROMPT = """你是一个"SQL 生成前置意图判断器"。
 
 你的任务不是生成 SQL，而是判断用户输入是否应该进入 SQL 生成链路。
 
@@ -76,3 +81,8 @@ R1 > R4 > R2 > R3 > R5
 1. 以"能否用一条 SQL 完成"作为单意图的核心判据，而非"展示形式数量"。
 2. 对边界情况保持保守，无法确定时 reject。
 3. reason 简短，只说核心原因。"""
+
+SQL_INTENT_USER_TEMPLATE = "用户输入：{user_input}"
+
+# 向后兼容：Completion API 使用的拼接版本
+SQL_INTENT_JUDGMENT_PROMPT = SQL_INTENT_SYSTEM_PROMPT + "\n\n" + SQL_INTENT_USER_TEMPLATE
