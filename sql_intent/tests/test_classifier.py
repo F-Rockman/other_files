@@ -49,6 +49,25 @@ class TestPromptConstant:
         assert "R3" in SQL_INTENT_JUDGMENT_PROMPT
         assert "R4" in SQL_INTENT_JUDGMENT_PROMPT
         assert "R5" in SQL_INTENT_JUDGMENT_PROMPT
+        # SSC qualifying condition
+        assert "限定条件" in SQL_INTENT_SYSTEM_PROMPT
+        # New R4 sub-rule
+        assert "不同SQL结构类型" in SQL_INTENT_SYSTEM_PROMPT
+        # Specific example in R4
+        assert "标量聚合 vs 时序多行" in SQL_INTENT_SYSTEM_PROMPT
+        # Trend clarification
+        assert "不覆盖额外独立请求" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_ssc_qualifying_condition_present(self):
+        assert "限定条件：多个指标必须在同一 GROUP BY 结构下可并列输出为 SELECT 的多列" in SQL_INTENT_SYSTEM_PROMPT
+        assert "结果行粒度一致" in SQL_INTENT_SYSTEM_PROMPT
+        assert "标量 vs 多行时序/明细" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_multi_intent_sql_structure_rule_present(self):
+        assert "同一对象+不同SQL结构类型" in SQL_INTENT_SYSTEM_PROMPT
+        assert "无法在单一 SELECT 中并列输出" in SQL_INTENT_SYSTEM_PROMPT
+        assert "IP为A的设备数量及性能趋势" in SQL_INTENT_SYSTEM_PROMPT
+        assert "GROUP BY day vs month" in SQL_INTENT_SYSTEM_PROMPT
 
 
 # ============ 测试：JSON 解析有效响应 ============
