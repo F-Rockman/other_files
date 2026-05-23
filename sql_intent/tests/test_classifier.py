@@ -81,10 +81,11 @@ class TestPromptConstant:
         assert "标量/明细行/时序行/排名行/对比行" in SQL_INTENT_SYSTEM_PROMPT
 
     def test_ambiguous_intent_rules_present(self):
-        """R3和R5中的模糊意图规则存在"""
-        assert "未指定展示形式" in SQL_INTENT_SYSTEM_PROMPT
-        assert "可解读为标量聚合（平均值）或时序趋势" in SQL_INTENT_SYSTEM_PROMPT
-        assert "指标+时间范围但未指定展示形式" in SQL_INTENT_SYSTEM_PROMPT
+        """R3和R5中的条件不完整和模糊意图规则存在"""
+        # R3: 指标缺少所属对象/实体
+        assert "指标缺少所属对象/实体" in SQL_INTENT_SYSTEM_PROMPT
+        assert "CPU利用率是设备的指标，但未指定哪台设备" in SQL_INTENT_SYSTEM_PROMPT
+        # R5: 指标+对象但未指定展示形式
         assert "指标+对象但未指定展示形式" in SQL_INTENT_SYSTEM_PROMPT
 
 
