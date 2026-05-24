@@ -88,6 +88,14 @@ class TestPromptConstant:
         # R5: 指标+对象但未指定展示形式
         assert "指标+对象但未指定展示形式" in SQL_INTENT_SYSTEM_PROMPT
 
+    def test_display_form_priority_principle_present(self):
+        """展示形式优先原则和排名查询规则存在"""
+        assert "展示形式优先原则" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不应从指标名称额外推断隐含的其他展示形式" in SQL_INTENT_SYSTEM_PROMPT
+        assert "设备A的Top3 CPU利用率" in SQL_INTENT_SYSTEM_PROMPT
+        assert "排名查询" in SQL_INTENT_SYSTEM_PROMPT
+        assert "Top3明确指定了排名展示形式" in SQL_INTENT_SYSTEM_PROMPT
+
 
 # ============ 测试：JSON 解析有效响应 ============
 
