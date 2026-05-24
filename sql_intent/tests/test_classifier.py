@@ -61,6 +61,8 @@ class TestPromptConstant:
         assert "当前系统时间" in SQL_INTENT_SYSTEM_PROMPT
         assert "完整自然年" in SQL_INTENT_SYSTEM_PROMPT
         assert "2026年的销售额" in SQL_INTENT_SYSTEM_PROMPT
+        assert "2026年4月的数据" in SQL_INTENT_SYSTEM_PROMPT
+        assert "2026年5月的数据" in SQL_INTENT_SYSTEM_PROMPT
         assert "2027年的销售额" in SQL_INTENT_SYSTEM_PROMPT
 
     def test_ssc_qualifying_condition_present(self):
@@ -196,6 +198,8 @@ class TestClassifyIntent:
         call_args = mock_client.call_args[0][0]
         assert "当前系统时间：date=2026-05-24" in call_args
         assert "2026年的销售额" in call_args
+        assert "2026年4月的数据" in call_args
+        assert "2026年5月的数据" in call_args
         assert "完整自然年" in call_args
         assert "2027年的销售额" in call_args
 
