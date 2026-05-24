@@ -57,6 +57,11 @@ class TestPromptConstant:
         assert "标量聚合 vs 时序多行" in SQL_INTENT_SYSTEM_PROMPT
         # Trend clarification
         assert "不覆盖额外独立请求" in SQL_INTENT_SYSTEM_PROMPT
+        # Future full-period clarification
+        assert "当前系统时间" in SQL_INTENT_SYSTEM_PROMPT
+        assert "完整自然年" in SQL_INTENT_SYSTEM_PROMPT
+        assert "2026年的销售额" in SQL_INTENT_SYSTEM_PROMPT
+        assert "2027年的销售额" in SQL_INTENT_SYSTEM_PROMPT
 
     def test_ssc_qualifying_condition_present(self):
         assert "限定条件：多个指标必须在同一 GROUP BY 结构下可并列输出为 SELECT 的多列" in SQL_INTENT_SYSTEM_PROMPT
@@ -177,10 +182,22 @@ class TestClassifyIntent:
         """LLM 收到的 prompt 包含用户输入"""
         user_input = "查询华东区域的订单数量"
         mock_client = MagicMock(return_value=json.dumps({"intention": "accept", "reason": ""}))
-        classify_intent(user_input, mock_client)
+        classify_intent(user_input, mock_client, current_time="date=2026-05-24")
         call_args = mock_client.call_args[0][0]
         assert user_input in call_args
         assert "SQL 生成前置意图判断器" in call_args
+        assert "当前系统时间：date=2026-05-24" in call_args
+
+    def test_prompt_includes_current_time_for_future_period_judgment(self):
+        """完整年份销售额判断需要当前系统时间上下文"""
+        user_input = "2026年的销售额"
+        mock_client = MagicMock(return_value=json.dumps({"intention": "reject", "reason": "未来数据"}))
+        classify_intent(user_input, mock_client, current_time="date=2026-05-24")
+        call_args = mock_client.call_args[0][0]
+        assert "当前系统时间：date=2026-05-24" in call_args
+        assert "2026年的销售额" in call_args
+        assert "完整自然年" in call_args
+        assert "2027年的销售额" in call_args
 
     def test_reject_result_with_reason(self):
         """拒答时返回原因"""
@@ -266,11 +283,16 @@ class TestSplitPrompts:
         """SQL_INTENT_USER_TEMPLATE 存在且包含 {user_input} 占位符"""
         assert SQL_INTENT_USER_TEMPLATE is not None
         assert "{user_input}" in SQL_INTENT_USER_TEMPLATE
+        assert "{current_time}" in SQL_INTENT_USER_TEMPLATE
 
     def test_user_template_format_produces_expected_string(self):
         """SQL_INTENT_USER_TEMPLATE 格式化后生成正确字符串"""
-        formatted = SQL_INTENT_USER_TEMPLATE.format(user_input="测试输入")
-        assert formatted == "用户输入：测试输入"
+        formatted = SQL_INTENT_USER_TEMPLATE.format(
+            current_time="date=2026-05-24, datetime=2026-05-24T12:00:00+08:00, timezone=Asia/Shanghai",
+            user_input="测试输入",
+        )
+        assert "当前系统时间：date=2026-05-24" in formatted
+        assert "用户输入：测试输入" in formatted
 
     def test_backward_compat_judgment_prompt_equals_concatenation(self):
         """SQL_INTENT_JUDGMENT_PROMPT 等于 SYSTEM_PROMPT + 分隔符 + USER_TEMPLATE"""
@@ -279,8 +301,12 @@ class TestSplitPrompts:
     def test_backward_compat_formatted_equals_old_style(self):
         """格式化后的拼接结果与旧式 f-string 结果一致"""
         test_input = "各省份的销售额"
-        new_style = SQL_INTENT_SYSTEM_PROMPT + "\n\n" + SQL_INTENT_USER_TEMPLATE.format(user_input=test_input)
-        old_style = f"{SQL_INTENT_SYSTEM_PROMPT}\n\n用户输入：{test_input}"
+        current_time = "date=2026-05-24, datetime=2026-05-24T12:00:00+08:00, timezone=Asia/Shanghai"
+        new_style = SQL_INTENT_SYSTEM_PROMPT + "\n\n" + SQL_INTENT_USER_TEMPLATE.format(
+            current_time=current_time,
+            user_input=test_input,
+        )
+        old_style = f"{SQL_INTENT_SYSTEM_PROMPT}\n\n当前系统时间：{current_time}\n用户输入：{test_input}"
         assert new_style == old_style
 
 
@@ -298,13 +324,14 @@ class TestClassifyIntentChat:
         """llm_chat_client 收到正确的 system 和 user 消息列表"""
         user_input = "查询华东区域的订单数量"
         mock_client = MagicMock(return_value=json.dumps({"intention": "accept", "reason": ""}))
-        classify_intent_chat(user_input, mock_client)
+        classify_intent_chat(user_input, mock_client, current_time="date=2026-05-24")
         messages = mock_client.call_args[0][0]
         assert len(messages) == 2
         assert messages[0]["role"] == "system"
         assert messages[0]["content"] == SQL_INTENT_SYSTEM_PROMPT
         assert messages[1]["role"] == "user"
-        assert messages[1]["content"] == user_input
+        assert "当前系统时间：date=2026-05-24" in messages[1]["content"]
+        assert user_input in messages[1]["content"]
 
     def test_reject_result_with_reason(self):
         """拒答时返回原因"""

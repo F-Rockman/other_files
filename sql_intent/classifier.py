@@ -10,6 +10,7 @@ LLM 客户端为通用 Callable，不绑定任何特定 LLM SDK。
 """
 
 import json
+from datetime import datetime
 from typing import Callable, Optional
 
 from .prompt import SQL_INTENT_JUDGMENT_PROMPT, SQL_INTENT_SYSTEM_PROMPT, SQL_INTENT_USER_TEMPLATE
@@ -30,13 +31,14 @@ class SQLIntentError(Exception):
     pass
 
 
-def classify_intent(user_input: str, llm_client: Callable[[str], str]) -> dict:
+def classify_intent(user_input: str, llm_client: Callable[[str], str], current_time: Optional[str] = None) -> dict:
     """
     判断用户输入是否应进入 SQL 生成链路
 
     参数:
         user_input: 用户自然语言查询文本
         llm_client: LLM 客户端，Callable[[str], str]，接收 prompt 字符串，返回 LLM 响应字符串
+        current_time: 当前系统时间字符串；不传时自动使用本机当前时间
 
     返回:
         dict: {"intention": "accept" | "reject", "reason": str}
@@ -47,7 +49,10 @@ def classify_intent(user_input: str, llm_client: Callable[[str], str]) -> dict:
         SQLIntentError: LLM 调用失败时抛出
     """
     # 组合 prompt 与用户输入（向后兼容拼接版本）
-    full_prompt = SQL_INTENT_SYSTEM_PROMPT + "\n\n" + SQL_INTENT_USER_TEMPLATE.format(user_input=user_input)
+    full_prompt = SQL_INTENT_SYSTEM_PROMPT + "\n\n" + SQL_INTENT_USER_TEMPLATE.format(
+        current_time=current_time or _current_time_context(),
+        user_input=user_input,
+    )
 
     # 调用 LLM
     try:
@@ -59,13 +64,18 @@ def classify_intent(user_input: str, llm_client: Callable[[str], str]) -> dict:
     return _parse_llm_response(llm_response)
 
 
-def classify_intent_chat(user_input: str, llm_chat_client: Callable[[list[dict]], str]) -> dict:
+def classify_intent_chat(
+    user_input: str,
+    llm_chat_client: Callable[[list[dict]], str],
+    current_time: Optional[str] = None,
+) -> dict:
     """
     判断用户输入是否应进入 SQL 生成链路（Chat API 版本）
 
     参数:
         user_input: 用户自然语言查询文本
         llm_chat_client: LLM Chat 客户端，Callable[[list[dict]], str]，接收消息列表，返回 LLM 响应字符串
+        current_time: 当前系统时间字符串；不传时自动使用本机当前时间
 
     返回:
         dict: {"intention": "accept" | "reject", "reason": str}
@@ -75,7 +85,13 @@ def classify_intent_chat(user_input: str, llm_chat_client: Callable[[list[dict]]
     """
     messages = [
         {"role": "system", "content": SQL_INTENT_SYSTEM_PROMPT},
-        {"role": "user", "content": user_input},
+        {
+            "role": "user",
+            "content": SQL_INTENT_USER_TEMPLATE.format(
+                current_time=current_time or _current_time_context(),
+                user_input=user_input,
+            ),
+        },
     ]
 
     try:
@@ -84,6 +100,16 @@ def classify_intent_chat(user_input: str, llm_chat_client: Callable[[list[dict]]
         raise SQLIntentError(f"{LLM_CHAT_CALL_ERROR_REASON}: {e}")
 
     return _parse_llm_response(llm_response)
+
+
+def _current_time_context() -> str:
+    """生成传给 LLM 的当前系统时间上下文。"""
+    now = datetime.now().astimezone()
+    return (
+        f"date={now.date().isoformat()}, "
+        f"datetime={now.isoformat(timespec='seconds')}, "
+        f"timezone={now.tzinfo}"
+    )
 
 
 def _parse_llm_response(llm_response: str) -> dict:
