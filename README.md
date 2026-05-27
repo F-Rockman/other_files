@@ -25,6 +25,13 @@ python_utils/
 │   ├── config.py          # 配置常量（默认值、错误消息）
 │   └── tests/
 │       └── test_classifier.py
+├── slang_normalizer/      # 黑化改写三层管线（LLM + 最长匹配 + 分词）
+│   ├── __init__.py
+│   ├── normalizer.py      # 核心改写逻辑（L1 AC + L2 jieba + L3 LLM）
+│   ├── prompt.py          # LLM 判断 Prompt（slang/literal/substring）
+│   ├── config.py          # 配置常量
+│   └── tests/
+│       └── test_normalizer.py
 └── ...                    # 更多工具模块
 ```
 
@@ -278,9 +285,79 @@ async def check_intent_chat(data: QueryRequest):
 
 - 无外部依赖（LLM 客户端由使用者自行提供）
 
+## slang_normalizer - 黑化改写三层管线
+
+将用户输入中的黑化（网络用语/行业俚语）规范化为标准表达，专为中文子串假阳性场景设计（如"备电"不应匹配"设备电源"中的子串）。
+
+提供两种调用方式：
+- **`normalize`** — Completion API 版本
+- **`normalize_chat`** — Chat API 版本
+
+### 三层管线
+
+| 层级 | 防护手段 | 防护目标 |
+|------|----------|----------|
+| L1 | pyahocorasick `iter_long()` 最长匹配 | 优先匹配最长词（compound 赢过 slang） |
+| L2 | jieba 分词边界校验 | slang 必须对齐 token 边界才接受 |
+| L3 | LLM 兜底判断（slang/literal/substring） | 处理边界情况与歧义场景 |
+
+### 核心机制
+
+**子串假阳性问题**：当黑化词（如"备电"）恰好是某个合法复合词（如"设备电源"）的子串时，简单字符串匹配会将"设备电源"中的"备电"误判为黑化。
+
+**解决方案**：
+- **双注册**：同时向 AC 自动机注册 slang 和 compound，各自带类型标签
+- **最长匹配**：`iter_long()` 只输出最长词，compound "设备电源"（4字）天然赢过 slang "备电"（2字）
+- **边界对齐**：L2 检查 slang 匹配是否对齐 jieba token 边界，不对齐 → 进入 LLM 判断
+
+### 快速使用
+
+**Completion API 版本**（`normalize`）：
+
+```python
+from slang_normalizer import normalize, SlangNormalizerError
+
+slang_dict = {
+    "备电": "备用电源",
+    "yyds": "永远的神",
+}
+# compound_dict: 包含 slang 子串的合法复合词
+compound_dict = {"设备电源", "打电话"}
+
+# 子串假阳性场景：不会误替换"设备电源"中的"备电"
+result = normalize("查询服务器设备电源故障", slang_dict, compound_dict)
+# {"text": "查询服务器设备电源故障", "matches": [], "unresolved": []}
+
+# 混合场景：compound 保留，standalone slang 被替换
+result = normalize("查询服务器设备电源信息，需要备电", slang_dict, compound_dict)
+# {"text": "查询服务器设备电源信息，需要备用电源", "matches": [...], "unresolved": []}
+
+# 带 LLM 兜底（处理边界歧义场景）
+def my_llm_client(prompt: str) -> str:
+    return llm_sdk_call(prompt)
+
+result = normalize("备电系统启动", slang_dict, compound_dict, llm_client=my_llm_client)
+```
+
+**Chat API 版本**（`normalize_chat`）：
+
+```python
+from slang_normalizer import normalize_chat
+
+def my_llm_chat_client(messages: list[dict]) -> str:
+    return llm_chat_sdk_call(messages)
+
+result = normalize_chat("备电系统启动", slang_dict, compound_dict, llm_chat_client=my_llm_chat_client)
+```
+
+### 依赖
+
+- pyahocorasick（AC 自动机最长匹配）
+- jieba（中文分词边界校验）
+
 ## 运行测试
 
 ```bash
-pip install lxml Pillow pytest
-pytest svg_security/tests/ image_security/tests/ sql_intent/tests/
+pip install lxml Pillow pyahocorasick jieba pytest
+pytest svg_security/tests/ image_security/tests/ sql_intent/tests/ slang_normalizer/tests/
 ```
