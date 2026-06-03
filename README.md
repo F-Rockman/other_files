@@ -32,6 +32,9 @@ python_utils/
 │   ├── config.py          # 配置常量
 │   └── tests/
 │       └── test_normalizer.py
+├── question_recommendation/ # 问数推荐问题生成 Prompt
+│   ├── __init__.py
+│   └── prompt.py          # 推荐问题生成 Prompt 文本
 └── ...                    # 更多工具模块
 ```
 

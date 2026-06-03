@@ -1,0 +1,18 @@
+"""
+问数推荐问题 Prompt。
+
+用于根据用户原始问题、推荐场景、失败原因、候选问题、业务支持范围
+以及可用字段信息，生成适合展示给用户的推荐问数问题。
+"""
+
+from .prompt import (
+    QUESTION_RECOMMENDATION_PROMPT,
+    QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
+    QUESTION_RECOMMENDATION_USER_TEMPLATE,
+)
+
+__all__ = [
+    "QUESTION_RECOMMENDATION_SYSTEM_PROMPT",
+    "QUESTION_RECOMMENDATION_USER_TEMPLATE",
+    "QUESTION_RECOMMENDATION_PROMPT",
+]
