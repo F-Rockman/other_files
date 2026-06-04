@@ -175,6 +175,12 @@ def _validate_result(result: dict) -> dict:
 
     确保 intention 字段合法，reason 字段存在
     """
+    if not isinstance(result, dict):
+        return {
+            INTENTION_FIELD: DEFAULT_REJECT_INTENTION,
+            REASON_FIELD: LLM_OUTPUT_FORMAT_ERROR_REASON,
+        }
+
     intention = result.get(INTENTION_FIELD, DEFAULT_REJECT_INTENTION)
     reason = result.get(REASON_FIELD, DEFAULT_EMPTY_REASON)
 

@@ -70,6 +70,13 @@ class TestPromptConstant:
         assert "结果行粒度一致" in SQL_INTENT_SYSTEM_PROMPT
         assert "标量 vs 多行时序/明细" in SQL_INTENT_SYSTEM_PROMPT
 
+    def test_having_threshold_filter_rule_present(self):
+        assert "聚合过滤/次数阈值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询CPU利用率大于5的设备，需要过滤出次数大于等于3次的设备" in SQL_INTENT_SYSTEM_PROMPT
+        assert "HAVING 过滤" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不是另一个独立查询结果" in SQL_INTENT_SYSTEM_PROMPT
+        assert "作为 WHERE/HAVING/LIMIT/ORDER BY 的条件、阈值、过滤、排序不算独立意图" in SQL_INTENT_SYSTEM_PROMPT
+
     def test_multi_intent_sql_structure_rule_present(self):
         assert "同一对象+不同SQL结构类型" in SQL_INTENT_SYSTEM_PROMPT
         assert "无法在单一 SELECT 中并列输出" in SQL_INTENT_SYSTEM_PROMPT
@@ -168,6 +175,18 @@ class TestJSONParsingError:
         response = json.dumps({"reason": "缺少意图字段"})
         result = _parse_llm_response(response)
         assert result[INTENTION_FIELD] == DEFAULT_REJECT_INTENTION
+
+    def test_non_object_json_returns_format_error(self):
+        response = json.dumps([])
+        result = _parse_llm_response(response)
+        assert result[INTENTION_FIELD] == DEFAULT_REJECT_INTENTION
+        assert result[REASON_FIELD] == LLM_OUTPUT_FORMAT_ERROR_REASON
+
+    def test_null_json_returns_format_error(self):
+        response = "null"
+        result = _parse_llm_response(response)
+        assert result[INTENTION_FIELD] == DEFAULT_REJECT_INTENTION
+        assert result[REASON_FIELD] == LLM_OUTPUT_FORMAT_ERROR_REASON
 
 
 # ============ 测试：classify_intent 函数签名与行为 ============
