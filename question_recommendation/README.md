@@ -32,7 +32,7 @@ recommend_questions_chat(
 | `intercept_reason` | error 场景建议 | 对用户可理解的失败原因 | 无法准确判断恢复策略和异常参数 |
 | `intercept_detail` | 否 | 失败补充信息 | 复杂失败场景恢复准确率下降 |
 | `recognized_intent` | 强烈建议 | 前一步结构化意图识别结果 | 更依赖模板文本，业务跑偏风险上升 |
-| `candidate_templates` | 强烈建议 | 外部召回的 Top N 结构化模板 | 只能尝试基于意图做通用兜底；意图也为空时返回空推荐 |
+| `candidate_templates` | 强烈建议 | 外部召回的 Top N 结构化模板 | LLM 缺少可参考的推荐能力边界 |
 | `logical_model_path_provider` | 有 `tables` 时建议 | 返回所有 `.logical.yaml` 文件所在目录的方法 | 不读取表列元数据，仍可依靠意图和模板推荐 |
 | `business_info` | 否 | 额外业务说明或约束 | 不影响核心流程 |
 
@@ -86,7 +86,7 @@ RecognizedIntent(
 | `object_tags` | 必填 | 模板涉及对象，建议父对象在前 | 对象跑偏风险明显上升 |
 | `parent_object` | 子部件模板建议必填 | 父对象 | 父对象失败后的恢复能力下降 |
 | `child_object` | 子部件模板建议必填 | 子对象 | 可能退化成父对象级推荐 |
-| `template_type` | 必填 | 列表、数量、基础信息、指标、趋势、告警、链路等 | 兜底排序和表达生成不稳定 |
+| `template_type` | 必填 | 列表、数量、基础信息、指标、趋势、告警、链路等 | LLM 对模板查询形态的理解下降 |
 | `slots` | 有槽位时必填 | 需要继承或让用户补充的参数 | 定位条件可能无法正确自然化 |
 | `supported_recovery_types` | error 模板建议必填 | 适用失败恢复类型 | 失败场景只能靠业务域和对象排序 |
 | `priority` | 否 | 静态优先级，值越大越优先 | 默认按 0 处理 |
@@ -250,5 +250,9 @@ pip install -r question_recommendation/requirements.txt
 }
 ```
 
-LLM 输出非法 JSON、推荐不足三条、包含异常参数或粗枚举表达时，调用器会优先使用同域、
-同对象的基础模板补足。无法确定业务域或对象时，不会强行生成具体业务问题。
+调用器不对推荐内容做过滤、去重、模板补足或业务校验。只要 LLM 输出能解析为约定 JSON
+结构，就直接返回；无法解析或结构不合法时返回：
+
+```json
+{"recommends": [], "explain": ""}
+```

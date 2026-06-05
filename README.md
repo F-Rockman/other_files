@@ -38,7 +38,7 @@ python_utils/
 │   ├── prompt.py          # 推荐问题生成 Prompt 文本
 │   ├── models.py          # 结构化意图、模板、元数据模型
 │   ├── metadata_loader.py # 根据意图表名读取 .logical.yaml
-│   ├── recommender.py     # LLM 调用、JSON 解析、兜底补足
+│   ├── recommender.py     # Chat LLM 调用与 JSON 结构解析
 │   ├── config.py          # 配置常量
 │   ├── requirements.txt   # 推荐模块依赖
 │   └── tests/
@@ -353,7 +353,7 @@ result = recommend_questions_chat(
 - `candidate_templates` 是外部打分工具召回后的 Top 15 结构化模板；推荐问题必须来自这些模板的能力边界。
 - 推荐器根据 `recognized_intent.tables` 和 `logical_model_path_provider` 自动读取
   `{table_name}.logical.yaml`，只提取表名、表描述、列名和列描述。
-- LLM 输出异常、数量不足或继承异常参数时，调用器会用同域同对象的基础模板兜底补足。
+- 调用器只解析 LLM 返回结构，不过滤或补足推荐内容。
 
 ### 依赖
 

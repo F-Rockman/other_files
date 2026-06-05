@@ -110,7 +110,7 @@ def test_parse_markdown_wrapped_json():
     assert result["explain"] == "ok"
 
 
-def test_parse_old_recommendations_shape():
+def test_parse_old_recommendations_shape_is_rejected():
     response = json.dumps(
         {
             "recommendations": [
@@ -122,7 +122,7 @@ def test_parse_old_recommendations_shape():
         ensure_ascii=False,
     )
     result = _parse_llm_response(response)
-    assert result["recommends"] == ["查询网络设备接口列表", "查询网络设备接口数量"]
+    assert result is None
 
 
 def test_chat_recommend_questions_loads_and_groups_multi_table_metadata(tmp_path, monkeypatch):
@@ -219,7 +219,7 @@ def test_chat_recommend_questions_success():
     assert "candidate_templates" in messages[1]["content"]
 
 
-def test_invalid_json_uses_same_domain_same_object_fallback():
+def test_invalid_json_returns_empty_structure():
     llm_chat_client = MagicMock(return_value="not json")
 
     result = recommend_questions_chat(
@@ -231,18 +231,17 @@ def test_invalid_json_uses_same_domain_same_object_fallback():
         candidate_templates=_network_templates(),
     )
 
-    assert len(result["recommends"]) == 3
-    assert all("网络设备接口" in item for item in result["recommends"])
-    assert all("服务器" not in item for item in result["recommends"])
+    assert result == {"recommends": [], "explain": ""}
 
 
-def test_invalid_slot_is_removed_and_filled_by_fallback():
+def test_structurally_valid_result_is_returned_without_content_filtering():
     llm_chat_client = MagicMock(
         return_value=json.dumps(
             {
                 "recommends": [
                     "查询 IP 为 1.1.1.1 的网络设备接口列表",
-                    "查询网络设备接口列表",
+                    "查询 IP地址/设备名称 的 接口/端口 列表/数量",
+                    "查询 IP 为 1.1.1.1 的网络设备接口列表",
                 ],
                 "explain": "建议先放宽范围定位接口。",
             },
@@ -259,36 +258,51 @@ def test_invalid_slot_is_removed_and_filled_by_fallback():
         candidate_templates=_network_templates(),
     )
 
-    assert len(result["recommends"]) == 3
-    assert all("1.1.1.1" not in item for item in result["recommends"])
+    assert result["recommends"] == [
+        "查询 IP 为 1.1.1.1 的网络设备接口列表",
+        "查询 IP地址/设备名称 的 接口/端口 列表/数量",
+        "查询 IP 为 1.1.1.1 的网络设备接口列表",
+    ]
 
 
-def test_enum_template_is_naturalized_in_fallback():
-    enum_template = StructuredTemplate(
-        template_id="network_interface_enum",
-        template_text="查询 IP地址/设备名称 的 接口/端口/单板/光模块 列表/数量/TOPN",
-        intent_tags=["查信息"],
-        domain_tags=["网络"],
-        object_tags=["网络设备", "接口"],
-        parent_object="网络设备",
-        child_object="接口",
-        template_type="列表",
-        slots=["device_ip_or_name"],
-        priority=100,
+def test_one_recommendation_is_returned_without_filling_to_three():
+    llm_chat_client = MagicMock(
+        return_value=json.dumps(
+            {"recommends": ["查询网络设备接口列表"], "explain": "只找到一条合适推荐"},
+            ensure_ascii=False,
+        )
     )
-    llm_chat_client = MagicMock(return_value="not json")
 
     result = recommend_questions_chat(
         "查询网络设备接口",
         llm_chat_client,
         scene_type="error",
         recognized_intent=_network_interface_intent(),
-        candidate_templates=[enum_template],
+        candidate_templates=_network_templates(),
     )
 
-    assert result["recommends"]
-    assert all("/" not in item for item in result["recommends"])
-    assert any("IP 为“IP地址”" in item for item in result["recommends"])
+    assert result == {
+        "recommends": ["查询网络设备接口列表"],
+        "explain": "只找到一条合适推荐",
+    }
+
+
+def test_invalid_recommendation_item_type_returns_empty_structure():
+    llm_chat_client = MagicMock(
+        return_value=json.dumps(
+            {"recommends": [{"question": "查询网络设备接口列表"}], "explain": "invalid"},
+            ensure_ascii=False,
+        )
+    )
+
+    result = recommend_questions_chat(
+        "查询网络设备接口",
+        llm_chat_client,
+        recognized_intent=_network_interface_intent(),
+        candidate_templates=_network_templates(),
+    )
+
+    assert result == {"recommends": [], "explain": ""}
 
 
 def test_metadata_columns_group_by_table():
