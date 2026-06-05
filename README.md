@@ -32,9 +32,14 @@ python_utils/
 │   ├── config.py          # 配置常量
 │   └── tests/
 │       └── test_normalizer.py
-├── question_recommendation/ # 问数推荐问题生成 Prompt
+├── question_recommendation/ # 结构化模板问数推荐
 │   ├── __init__.py
-│   └── prompt.py          # 推荐问题生成 Prompt 文本
+│   ├── prompt.py          # 推荐问题生成 Prompt 文本
+│   ├── models.py          # 结构化意图、模板、元数据模型
+│   ├── recommender.py     # LLM 调用、JSON 解析、兜底补足
+│   ├── config.py          # 配置常量
+│   └── tests/
+│       └── test_recommender.py
 └── ...                    # 更多工具模块
 ```
 
@@ -288,6 +293,65 @@ async def check_intent_chat(data: QueryRequest):
 
 - 无外部依赖（LLM 客户端由使用者自行提供）
 
+## question_recommendation - 结构化模板问数推荐
+
+用于问数成功或失败后的推荐问题生成。推荐链路采用"结构化模板 + LLM 表达"方案：结构化模板定义业务域、对象、槽位和恢复策略，LLM 只负责在能力边界内排序、失败恢复和自然化表达。
+
+提供两种调用方式：
+- **`recommend_questions`** — Completion API 版本
+- **`recommend_questions_chat`** — Chat API 版本
+
+### 快速使用
+
+```python
+from question_recommendation import RecognizedIntent, StructuredTemplate, recommend_questions
+
+intent = RecognizedIntent(
+    intent_type="查信息",
+    domain_info="网络",
+    device_info={"name": "网络设备"},
+    sub_component_info={"name": "接口"},
+)
+
+templates = [
+    StructuredTemplate(
+        template_id="network_interface_list",
+        template_text="查询网络设备接口列表",
+        intent_tags=["查信息"],
+        domain_tags=["网络"],
+        object_tags=["网络设备", "接口"],
+        parent_object="网络设备",
+        child_object="接口",
+        template_type="列表",
+        priority=80,
+    )
+]
+
+def my_llm_client(prompt: str) -> str:
+    return llm_sdk_call(prompt)
+
+result = recommend_questions(
+    "查询 IP 为 1.1.1.1 的网络设备接口",
+    my_llm_client,
+    scene_type="error",
+    intercept_reason="未找到 IP 为 1.1.1.1 的设备",
+    recognized_intent=intent,
+    candidate_templates=templates,
+)
+# {"recommends": [...], "explain": "..."}
+```
+
+### 输入边界
+
+- `recognized_intent` 是最高优先级输入，用于锁定用户意图、业务域、对象、父子对象、属性、指标、时间、告警和聚合算子。
+- `candidate_templates` 是外部打分工具召回后的 Top 15 结构化模板；推荐问题必须来自这些模板的能力边界。
+- `metadata_columns` 只辅助理解字段、指标和枚举含义，不会突破模板标签约束。
+- LLM 输出异常、数量不足或继承异常参数时，调用器会用同域同对象的基础模板兜底补足。
+
+### 依赖
+
+- 无外部依赖（LLM 客户端由使用者自行提供）
+
 ## slang_normalizer - 黑化改写三层管线
 
 将用户输入中的黑化（网络用语/行业俚语）规范化为标准表达，专为中文子串假阳性场景设计（如"备电"不应匹配"设备电源"中的子串）。
@@ -362,5 +426,5 @@ result = normalize_chat("备电系统启动", slang_dict, compound_dict, llm_cha
 
 ```bash
 pip install lxml Pillow pyahocorasick jieba pytest
-pytest svg_security/tests/ image_security/tests/ sql_intent/tests/ slang_normalizer/tests/
+pytest svg_security/tests/ image_security/tests/ sql_intent/tests/ slang_normalizer/tests/ question_recommendation/tests/
 ```
