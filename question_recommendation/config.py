@@ -37,7 +37,6 @@ LINK_TEMPLATE_TYPES = {"链路", "链路关系", "对端设备"}
 
 # ============ 错误与兜底 ============
 
-LLM_CALL_ERROR_REASON = "LLM调用异常"
 LLM_CHAT_CALL_ERROR_REASON = "LLM Chat调用异常"
 LLM_OUTPUT_FORMAT_ERROR_REASON = "LLM输出格式异常"
 

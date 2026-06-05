@@ -5,15 +5,15 @@
 推荐输入的优先级为：
 
 ```text
-recognized_intent > StructuredTemplate 标签 > 失败原因 > metadata_columns > 模板原文
+recognized_intent > StructuredTemplate 标签 > 失败原因 > metadata_tables > 模板原文
 ```
 
 ## 调用接口
 
 ```python
-recommend_questions(
+recommend_questions_chat(
     user_question,
-    llm_client,
+    llm_chat_client,
     scene_type="error",
     intercept_reason="",
     intercept_detail="",
@@ -27,17 +27,14 @@ recommend_questions(
 | 参数 | 必填 | 含义 | 缺失影响 |
 |---|---|---|---|
 | `user_question` | 是 | 用户原始问题 | 无法保持原问题表达和具体条件 |
-| `llm_client` | 是 | 接收完整 Prompt 并返回字符串的 LLM 调用函数 | 无法生成推荐 |
+| `llm_chat_client` | 是 | 接收 messages 并返回字符串的 Chat LLM 调用函数 | 无法生成推荐 |
 | `scene_type` | 否 | `error` 或 `normal`，默认 `error` | 默认按失败恢复处理 |
 | `intercept_reason` | error 场景建议 | 对用户可理解的失败原因 | 无法准确判断恢复策略和异常参数 |
 | `intercept_detail` | 否 | 失败补充信息 | 复杂失败场景恢复准确率下降 |
 | `recognized_intent` | 强烈建议 | 前一步结构化意图识别结果 | 更依赖模板文本，业务跑偏风险上升 |
 | `candidate_templates` | 强烈建议 | 外部召回的 Top N 结构化模板 | 只能尝试基于意图做通用兜底；意图也为空时返回空推荐 |
-| `metadata_columns` | 否 | 当前查询相关表列元数据 | 仍可推荐，但字段归一化和指标扩展能力下降 |
+| `metadata_columns` | 否 | 调用侧传入的平铺表列元数据，进入 Prompt 前按表聚合 | 仍可推荐，但字段归一化和指标扩展能力下降 |
 | `business_info` | 否 | 额外业务说明或约束 | 不影响核心流程 |
-
-`recommend_questions_chat` 的参数相同，只是第二个参数改为接收 messages 的
-`llm_chat_client`。
 
 ## RecognizedIntent
 
@@ -112,16 +109,56 @@ StructuredTemplate(
 
 ## MetadataColumn
 
-表列元数据只用于辅助字段理解、枚举映射和自然表达，不会突破结构化模板的能力边界。
+表列元数据只用于辅助字段理解和自然表达，不会突破结构化模板的能力边界。
 
 | 字段 | 含义 | 示例 |
 |---|---|---|
-| `table_name` | 字段所属表或对象表标识 | `network_device_metric` |
+| `table_name` | 字段所属表名或对象表标识 | `network_device_metric` |
+| `table_description` | 表的自然语言业务描述 | `网络设备性能指标` |
 | `column_name` | 物理字段名 | `avg_cpu_usage` |
-| `data_type` | 数据类型 | `decimal` |
-| `comment` | 自然语言业务含义 | `平均CPU利用率` |
-| `enum_meanings` | 枚举值及业务含义 | `{"0": "离线", "1": "在线"}` |
-| `extra` | 其它元数据 | `{"unit": "%"}` |
+| `column_description` | 列的自然语言业务描述 | `平均CPU利用率` |
+
+`MetadataColumn` 只保留以上四个字段；传入其它字段时会直接忽略，不会进入 Prompt。
+
+调用侧可以传入多张表的平铺列列表：
+
+```python
+metadata_columns = [
+    MetadataColumn(
+        table_name="network_device",
+        table_description="网络设备",
+        column_name="device_ip",
+        column_description="设备IP地址",
+    ),
+    MetadataColumn(
+        table_name="network_device_metric",
+        table_description="网络设备性能指标",
+        column_name="avg_cpu_usage",
+        column_description="平均CPU利用率",
+    ),
+]
+```
+
+推荐器会在 Prompt 中自动按表组织：
+
+```json
+[
+  {
+    "table_name": "network_device",
+    "table_description": "网络设备",
+    "columns": [
+      {"column_name": "device_ip", "column_description": "设备IP地址"}
+    ]
+  },
+  {
+    "table_name": "network_device_metric",
+    "table_description": "网络设备性能指标",
+    "columns": [
+      {"column_name": "avg_cpu_usage", "column_description": "平均CPU利用率"}
+    ]
+  }
+]
+```
 
 没有表列信息时，只要 `recognized_intent` 和 `candidate_templates` 足够完整，仍然可以正常推荐。
 但模块不会根据未知字段自由扩展问题。

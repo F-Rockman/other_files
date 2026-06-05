@@ -13,7 +13,6 @@ from .config import (
     EMPTY_FALLBACK_EXPLAIN,
     EXPLAIN_FIELD,
     GENERIC_SLOT_LABELS,
-    LLM_CALL_ERROR_REASON,
     LLM_CHAT_CALL_ERROR_REASON,
     MAX_EXPLAIN_LENGTH,
     RECOMMENDS_FIELD,
@@ -24,63 +23,6 @@ from .prompt import QUESTION_RECOMMENDATION_SYSTEM_PROMPT, QUESTION_RECOMMENDATI
 
 class QuestionRecommendationError(Exception):
     """问数推荐异常。"""
-
-
-def recommend_questions(
-    user_question: str,
-    llm_client: Callable[[str], str],
-    scene_type: str = "error",
-    intercept_reason: str = "",
-    intercept_detail: str = "",
-    recognized_intent: Optional[Any] = None,
-    candidate_templates: Optional[Sequence[Any]] = None,
-    metadata_columns: Optional[Sequence[Any]] = None,
-    business_info: Optional[Any] = None,
-) -> Dict[str, Any]:
-    """
-    生成推荐问题（Completion API 风格）。
-
-    参数:
-        user_question:
-            用户原始问题。用于保留原始表达、查询条件和值；必填。
-        llm_client: LLM 客户端，接收完整 prompt 字符串并返回响应字符串
-        scene_type:
-            ``error`` 或 ``normal``。默认按失败恢复场景处理。
-        intercept_reason:
-            失败或拒答原因文本。error 场景建议填写，用于识别恢复类型和异常值。
-        intercept_detail:
-            失败补充信息。可用于表达更具体的失败范围或限制。
-        recognized_intent:
-            ``RecognizedIntent`` 或兼容字典。它是锁定意图、业务域和对象的最高优先级输入。
-        candidate_templates:
-            ``StructuredTemplate`` 或兼容字典列表。通常传入外部召回后的 Top 15 模板。
-        metadata_columns:
-            ``MetadataColumn`` 或兼容字典列表。仅辅助字段理解，允许为空。
-        business_info:
-            额外业务范围或限制信息。允许为空。
-
-    返回:
-        dict: {"recommends": [str, ...], "explain": str}
-    """
-    context = _build_context(
-        user_question=user_question,
-        scene_type=scene_type,
-        intercept_reason=intercept_reason,
-        intercept_detail=intercept_detail,
-        recognized_intent=recognized_intent,
-        candidate_templates=candidate_templates,
-        metadata_columns=metadata_columns,
-        business_info=business_info,
-    )
-    prompt = _build_completion_prompt(context)
-
-    try:
-        llm_response = llm_client(prompt)
-    except Exception as exc:
-        raise QuestionRecommendationError(f"{LLM_CALL_ERROR_REASON}: {exc}")
-
-    parsed = _parse_llm_response(llm_response)
-    return _finalize_result(parsed, context)
 
 
 def recommend_questions_chat(
@@ -97,8 +39,29 @@ def recommend_questions_chat(
     """
     生成推荐问题（Chat API 风格）。
 
-    参数含义与 ``recommend_questions`` 相同；区别是 ``llm_chat_client`` 接收
-    ``[{"role": "system", ...}, {"role": "user", ...}]`` 消息列表并返回响应字符串。
+    参数:
+        user_question:
+            用户原始问题。用于保留原始表达、查询条件和值；必填。
+        llm_chat_client:
+            接收 ``[{"role": "system", ...}, {"role": "user", ...}]`` 消息列表并
+            返回响应字符串的 Chat LLM 客户端。
+        scene_type:
+            ``error`` 或 ``normal``。默认按失败恢复场景处理。
+        intercept_reason:
+            失败或拒答原因文本。error 场景建议填写，用于识别恢复类型和异常值。
+        intercept_detail:
+            失败补充信息。可用于表达更具体的失败范围或限制。
+        recognized_intent:
+            ``RecognizedIntent`` 或兼容字典。它是锁定意图、业务域和对象的最高优先级输入。
+        candidate_templates:
+            ``StructuredTemplate`` 或兼容字典列表。通常传入外部召回后的 Top 15 模板。
+        metadata_columns:
+            ``MetadataColumn`` 或兼容字典列表。调用侧按列传入，构造 Prompt 时按表聚合。
+        business_info:
+            额外业务范围或限制信息。允许为空。
+
+    返回:
+        dict: {"recommends": [str, ...], "explain": str}
     """
     context = _build_context(
         user_question=user_question,
@@ -141,13 +104,9 @@ def _build_context(
         "intercept_detail": intercept_detail or "",
         "recognized_intent": intent,
         "candidate_templates": templates,
-        "metadata_columns": metadata,
+        "metadata_tables": _group_metadata_by_table(metadata),
         "business_info": business_info if business_info is not None else {},
     }
-
-
-def _build_completion_prompt(context: Mapping[str, Any]) -> str:
-    return QUESTION_RECOMMENDATION_SYSTEM_PROMPT + "\n\n" + _build_user_prompt(context)
 
 
 def _build_chat_messages(context: Mapping[str, Any]) -> List[Dict[str, str]]:
@@ -165,7 +124,7 @@ def _build_user_prompt(context: Mapping[str, Any]) -> str:
         intercept_detail=context["intercept_detail"],
         recognized_intent_json=_json_dumps(context["recognized_intent"].to_dict()),
         candidate_templates_json=_json_dumps([item.to_dict() for item in context["candidate_templates"]]),
-        metadata_columns_json=_json_dumps([item.to_dict() for item in context["metadata_columns"]]),
+        metadata_tables_json=_json_dumps(context["metadata_tables"]),
         business_info_json=_json_dumps(context["business_info"]),
     )
 
@@ -619,6 +578,30 @@ def _normalize_metadata(values: Sequence[Any]) -> List[MetadataColumn]:
         elif isinstance(item, Mapping):
             result.append(MetadataColumn.from_dict(item))
     return result
+
+
+def _group_metadata_by_table(values: Sequence[MetadataColumn]) -> List[Dict[str, Any]]:
+    """将平铺列元数据按表名和表描述聚合，避免多张表的列混在一起。"""
+    grouped: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for item in values:
+        key = (item.table_name, item.table_description)
+        if key not in grouped:
+            grouped[key] = {
+                "table_name": item.table_name,
+                "table_description": item.table_description,
+                "columns": [],
+            }
+        column = {
+            "column_name": item.column_name,
+            "column_description": item.column_description,
+        }
+        grouped[key]["columns"].append(
+            {name: value for name, value in column.items() if value not in (None, "", [], {})}
+        )
+    return [
+        {name: value for name, value in table.items() if value not in (None, "", [], {})}
+        for table in grouped.values()
+    ]
 
 
 def _json_dumps(value: Any) -> str:

@@ -301,14 +301,12 @@ async def check_intent_chat(data: QueryRequest):
 完整字段说明、必填性、缺失影响和多设备失败示例见
 [`question_recommendation/README.md`](question_recommendation/README.md)。
 
-提供两种调用方式：
-- **`recommend_questions`** — Completion API 版本
-- **`recommend_questions_chat`** — Chat API 版本
+仅提供 Chat API 调用方式：**`recommend_questions_chat`**。
 
 ### 快速使用
 
 ```python
-from question_recommendation import RecognizedIntent, StructuredTemplate, recommend_questions
+from question_recommendation import RecognizedIntent, StructuredTemplate, recommend_questions_chat
 
 intent = RecognizedIntent(
     intent_type="查信息",
@@ -331,12 +329,12 @@ templates = [
     )
 ]
 
-def my_llm_client(prompt: str) -> str:
-    return llm_sdk_call(prompt)
+def my_llm_chat_client(messages: list[dict]) -> str:
+    return llm_chat_sdk_call(messages)
 
-result = recommend_questions(
+result = recommend_questions_chat(
     "查询 IP 为 1.1.1.1 的网络设备接口",
-    my_llm_client,
+    my_llm_chat_client,
     scene_type="error",
     intercept_reason="未找到 IP 为 1.1.1.1 的设备",
     recognized_intent=intent,

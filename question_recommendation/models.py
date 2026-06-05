@@ -229,32 +229,28 @@ class StructuredTemplate:
 @dataclass
 class MetadataColumn:
     """
-    当前查询可见的原始表列元数据。
+    当前查询可见的表列业务描述。
 
-    元数据是辅助信息，不是推荐能力边界；没有元数据时，推荐仍可依靠结构化意图和
-    模板工作。
+    调用侧按列传入，推荐器在构造 Prompt 时会按 ``table_name`` 和
+    ``table_description`` 聚合为多表结构。元数据是辅助信息，不是推荐能力边界；
+    没有元数据时，推荐仍可依靠结构化意图和模板工作。
 
     Attributes:
         table_name:
-            字段所属表或对象表标识。只传给 LLM 做对象字段绑定，不应展示给用户。
+            字段所属表名或对象表标识。
+        table_description:
+            表的自然语言业务描述，例如网络设备、网络设备性能指标。
         column_name:
-            物理列名或字段标识。建议同时提供 comment，避免 LLM 直接使用技术字段名。
-        data_type:
-            字段数据类型，例如 string、timestamp、decimal。
-        comment:
-            字段自然语言业务含义，例如 CPU 利用率、健康状态。
-        enum_meanings:
-            枚举值及业务含义，可传列表或字典，例如 ``{"0": "离线", "1": "在线"}``。
-        extra:
-            其它元数据的透传容器。未知字典字段会自动进入 extra。
+            物理列名或字段标识。
+        column_description:
+            列的自然语言业务描述，例如 CPU 利用率、健康状态。
+        其它输入字段会被忽略，不会传给 LLM。
     """
 
     table_name: str = ""
+    table_description: str = ""
     column_name: str = ""
-    data_type: str = ""
-    comment: str = ""
-    enum_meanings: Any = None
-    extra: Dict[str, Any] = field(default_factory=dict)
+    column_description: str = ""
 
     @classmethod
     def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "MetadataColumn":
@@ -266,25 +262,22 @@ class MetadataColumn:
         aliases = {
             "table": "table_name",
             "tableName": "table_name",
+            "table_desc": "table_description",
+            "tableDescription": "table_description",
             "column": "column_name",
             "name": "column_name",
             "columnName": "column_name",
-            "type": "data_type",
-            "dataType": "data_type",
-            "description": "comment",
-            "enum": "enum_meanings",
-            "enums": "enum_meanings",
+            "column_desc": "column_description",
+            "columnDescription": "column_description",
+            "comment": "column_description",
+            "description": "column_description",
         }
         known = _known_fields(cls)
         kwargs: Dict[str, Any] = {}
-        extra: Dict[str, Any] = {}
         for key, value in dict(data).items():
             mapped_key = aliases.get(key, key)
-            if mapped_key in known and mapped_key != "extra":
+            if mapped_key in known:
                 kwargs[mapped_key] = value
-            else:
-                extra[key] = value
-        kwargs["extra"] = extra
         return cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:

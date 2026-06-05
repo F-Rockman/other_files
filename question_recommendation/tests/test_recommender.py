@@ -11,10 +11,9 @@ from question_recommendation import (
     MetadataColumn,
     RecognizedIntent,
     StructuredTemplate,
-    recommend_questions,
     recommend_questions_chat,
 )
-from question_recommendation.recommender import _parse_llm_response
+from question_recommendation.recommender import _group_metadata_by_table, _parse_llm_response
 
 
 def _network_interface_intent():
@@ -122,8 +121,8 @@ def test_parse_old_recommendations_shape():
     assert result["recommends"] == ["查询网络设备接口列表", "查询网络设备接口数量"]
 
 
-def test_completion_recommend_questions_success():
-    llm_client = MagicMock(
+def test_chat_recommend_questions_includes_grouped_multi_table_metadata():
+    llm_chat_client = MagicMock(
         return_value=json.dumps(
             {
                 "recommends": ["查询网络设备接口列表", "查询网络设备接口数量", "查询网络设备接口基础信息"],
@@ -133,20 +132,43 @@ def test_completion_recommend_questions_success():
         )
     )
 
-    result = recommend_questions(
+    result = recommend_questions_chat(
         "查询网络设备接口",
-        llm_client,
+        llm_chat_client,
         scene_type="normal",
         recognized_intent=_network_interface_intent(),
         candidate_templates=_network_templates(),
-        metadata_columns=[MetadataColumn(table_name="network_interface", column_name="name", comment="接口名称")],
+        metadata_columns=[
+            MetadataColumn(
+                table_name="network_device",
+                table_description="网络设备",
+                column_name="device_name",
+                column_description="设备名称",
+            ),
+            MetadataColumn(
+                table_name="network_interface",
+                table_description="网络设备接口",
+                column_name="interface_name",
+                column_description="接口名称",
+            ),
+            MetadataColumn(
+                table_name="network_interface",
+                table_description="网络设备接口",
+                column_name="status",
+                column_description="接口状态",
+            ),
+        ],
     )
 
     assert result["recommends"] == ["查询网络设备接口列表", "查询网络设备接口数量", "查询网络设备接口基础信息"]
     assert result["explain"] == "建议先围绕网络设备接口继续查询。"
-    prompt = llm_client.call_args[0][0]
-    assert "network_interface_list" in prompt
-    assert "结构化意图识别结果 recognized_intent" in prompt
+    messages = llm_chat_client.call_args[0][0]
+    user_prompt = messages[1]["content"]
+    assert "network_interface_list" in user_prompt
+    assert "结构化意图识别结果 recognized_intent" in user_prompt
+    assert "按表组织的表列元数据 metadata_tables" in user_prompt
+    assert user_prompt.count('"table_name": "network_interface"') == 1
+    assert '"column_description": "接口状态"' in user_prompt
 
 
 def test_chat_recommend_questions_success():
@@ -175,11 +197,11 @@ def test_chat_recommend_questions_success():
 
 
 def test_invalid_json_uses_same_domain_same_object_fallback():
-    llm_client = MagicMock(return_value="not json")
+    llm_chat_client = MagicMock(return_value="not json")
 
-    result = recommend_questions(
+    result = recommend_questions_chat(
         "查询网络设备接口",
-        llm_client,
+        llm_chat_client,
         scene_type="error",
         intercept_reason="当前问题暂时无法转换为可执行查询",
         recognized_intent=_network_interface_intent(),
@@ -192,7 +214,7 @@ def test_invalid_json_uses_same_domain_same_object_fallback():
 
 
 def test_invalid_slot_is_removed_and_filled_by_fallback():
-    llm_client = MagicMock(
+    llm_chat_client = MagicMock(
         return_value=json.dumps(
             {
                 "recommends": [
@@ -205,9 +227,9 @@ def test_invalid_slot_is_removed_and_filled_by_fallback():
         )
     )
 
-    result = recommend_questions(
+    result = recommend_questions_chat(
         "查询 IP 为 1.1.1.1 的网络设备接口",
-        llm_client,
+        llm_chat_client,
         scene_type="error",
         intercept_reason="未找到 IP 为 1.1.1.1 的设备",
         recognized_intent=_network_interface_intent(),
@@ -231,11 +253,11 @@ def test_enum_template_is_naturalized_in_fallback():
         slots=["device_ip_or_name"],
         priority=100,
     )
-    llm_client = MagicMock(return_value="not json")
+    llm_chat_client = MagicMock(return_value="not json")
 
-    result = recommend_questions(
+    result = recommend_questions_chat(
         "查询网络设备接口",
-        llm_client,
+        llm_chat_client,
         scene_type="error",
         recognized_intent=_network_interface_intent(),
         candidate_templates=[enum_template],
@@ -244,3 +266,40 @@ def test_enum_template_is_naturalized_in_fallback():
     assert result["recommends"]
     assert all("/" not in item for item in result["recommends"])
     assert any("IP 为“IP地址”" in item for item in result["recommends"])
+
+
+def test_metadata_columns_group_by_table():
+    grouped = _group_metadata_by_table(
+        [
+            MetadataColumn("device", "设备", "name", "设备名称"),
+            MetadataColumn("device", "设备", "ip", "设备IP地址"),
+            MetadataColumn("metric", "设备性能指标", "cpu_usage", "CPU利用率"),
+        ]
+    )
+
+    assert len(grouped) == 2
+    assert grouped[0]["table_name"] == "device"
+    assert len(grouped[0]["columns"]) == 2
+    assert grouped[1]["columns"] == [
+        {"column_name": "cpu_usage", "column_description": "CPU利用率"}
+    ]
+
+
+def test_metadata_column_keeps_only_four_supported_fields():
+    metadata = MetadataColumn.from_dict(
+        {
+            "table_name": "device",
+            "table_description": "设备",
+            "column_name": "name",
+            "column_description": "设备名称",
+            "data_type": "string",
+            "enum_meanings": {"a": "A"},
+        }
+    )
+
+    assert metadata.to_dict() == {
+        "table_name": "device",
+        "table_description": "设备",
+        "column_name": "name",
+        "column_description": "设备名称",
+    }

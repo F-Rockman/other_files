@@ -5,10 +5,9 @@
 推荐链路由外部召回 Top 15 结构化模板，本 Prompt 负责约束 LLM 在模板能力边界内
 排序、恢复失败场景并自然化表达。
 
-Prompt 拆分为 system / user 两部分，支持 Chat API 场景：
+Prompt 拆分为 system / user 两部分，仅支持 Chat API 场景：
 - QUESTION_RECOMMENDATION_SYSTEM_PROMPT: 所有推荐规则（system 角色）
 - QUESTION_RECOMMENDATION_USER_TEMPLATE: 输入信息模板（user 角色）
-- QUESTION_RECOMMENDATION_PROMPT: 向后兼容的拼接版本（Completion API）
 """
 
 QUESTION_RECOMMENDATION_SYSTEM_PROMPT = """你是"网络运维问数推荐助手"。
@@ -36,7 +35,7 @@ QUESTION_RECOMMENDATION_SYSTEM_PROMPT = """你是"网络运维问数推荐助手
 - intercept_reason / intercept_detail：失败、拒答或拦截原因文本。
 - recognized_intent：前一步结构化意图识别结果，是最高优先级输入。
 - candidate_templates：外部打分工具召回的 Top 15 结构化模板。
-- metadata_columns：当前查询相关表列元数据，可能只有表名、列名、类型、注释。
+- metadata_tables：按表组织的当前查询相关表列元数据，包含表名、表描述及其列名、列描述。
 - business_info：业务补充信息。
 
 recognized_intent 可能包含：
@@ -89,7 +88,7 @@ candidate_templates 中每个模板可能包含：
 1. 必须匹配原始意图，或属于当前失败类型允许的恢复模板。
 2. 必须匹配同业务域，或属于同业务域父子对象恢复路径。
 3. 必须匹配同对象、父对象、子对象或强相关对象。
-4. 涉及属性、指标、时间、告警、聚合时，必须被 recognized_intent、metadata_columns 或模板标签支持。
+4. 涉及属性、指标、时间、告警、聚合时，必须被 recognized_intent、metadata_tables 或模板标签支持。
 5. 不允许因为模板原文看起来相关，就忽略 domain_tags、object_tags、parent_object、child_object。
 
 ### 第四步：按失败恢复策略排序
@@ -185,14 +184,10 @@ QUESTION_RECOMMENDATION_USER_TEMPLATE = """用户原始问题：
 Top 15 结构化候选模板 candidate_templates：
 {candidate_templates_json}
 
-当前表列元数据 metadata_columns：
-{metadata_columns_json}
+按表组织的表列元数据 metadata_tables：
+{metadata_tables_json}
 
 业务补充信息 business_info：
 {business_info_json}
 
 请严格按 system 规则输出 JSON。"""
-
-QUESTION_RECOMMENDATION_PROMPT = (
-    QUESTION_RECOMMENDATION_SYSTEM_PROMPT + "\n\n" + QUESTION_RECOMMENDATION_USER_TEMPLATE
-)
