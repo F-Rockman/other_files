@@ -10,6 +10,7 @@ from .prompt import (
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
 )
 from .models import MetadataColumn, RecognizedIntent, StructuredTemplate
+from .metadata_loader import LogicalMetadataError, load_logical_metadata
 from .recommender import QuestionRecommendationError, recommend_questions_chat
 
 __all__ = [
@@ -18,6 +19,8 @@ __all__ = [
     "RecognizedIntent",
     "StructuredTemplate",
     "MetadataColumn",
+    "LogicalMetadataError",
+    "load_logical_metadata",
     "QuestionRecommendationError",
     "recommend_questions_chat",
 ]

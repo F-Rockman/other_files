@@ -3,14 +3,18 @@
 """
 
 import json
+import sys
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from question_recommendation import (
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
+    LogicalMetadataError,
     MetadataColumn,
     RecognizedIntent,
     StructuredTemplate,
+    load_logical_metadata,
     recommend_questions_chat,
 )
 from question_recommendation.recommender import _group_metadata_by_table, _parse_llm_response
@@ -121,7 +125,39 @@ def test_parse_old_recommendations_shape():
     assert result["recommends"] == ["查询网络设备接口列表", "查询网络设备接口数量"]
 
 
-def test_chat_recommend_questions_includes_grouped_multi_table_metadata():
+def test_chat_recommend_questions_loads_and_groups_multi_table_metadata(tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, "yaml", SimpleNamespace(safe_load=lambda stream: json.load(stream)))
+    (tmp_path / "network_device.logical.yaml").write_text(
+        json.dumps(
+            {
+                "name": "network_device",
+                "description_cn": "网络设备",
+                "schema": {
+                    "fields": [
+                        {"name": "device_name", "description_cn": "设备名称"},
+                    ]
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "network_interface.logical.yaml").write_text(
+        json.dumps(
+            {
+                "name": "network_interface",
+                "description_cn": "网络设备接口",
+                "schema": {
+                    "fields": [
+                        {"name": "interface_name", "description_cn": "接口名称"},
+                        {"name": "status", "description_cn": "接口状态"},
+                    ]
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
     llm_chat_client = MagicMock(
         return_value=json.dumps(
             {
@@ -136,28 +172,15 @@ def test_chat_recommend_questions_includes_grouped_multi_table_metadata():
         "查询网络设备接口",
         llm_chat_client,
         scene_type="normal",
-        recognized_intent=_network_interface_intent(),
+        recognized_intent=RecognizedIntent(
+            intent_type="查信息",
+            domain_info="网络",
+            device_info={"name": "网络设备"},
+            sub_component_info={"name": "接口"},
+            tables=["network_device", "network_interface"],
+        ),
         candidate_templates=_network_templates(),
-        metadata_columns=[
-            MetadataColumn(
-                table_name="network_device",
-                table_description="网络设备",
-                column_name="device_name",
-                column_description="设备名称",
-            ),
-            MetadataColumn(
-                table_name="network_interface",
-                table_description="网络设备接口",
-                column_name="interface_name",
-                column_description="接口名称",
-            ),
-            MetadataColumn(
-                table_name="network_interface",
-                table_description="网络设备接口",
-                column_name="status",
-                column_description="接口状态",
-            ),
-        ],
+        logical_model_path_provider=lambda: tmp_path,
     )
 
     assert result["recommends"] == ["查询网络设备接口列表", "查询网络设备接口数量", "查询网络设备接口基础信息"]
@@ -303,3 +326,52 @@ def test_metadata_column_keeps_only_four_supported_fields():
         "column_name": "name",
         "column_description": "设备名称",
     }
+
+
+def test_load_logical_metadata_skips_missing_and_unsafe_tables(tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, "yaml", SimpleNamespace(safe_load=lambda stream: json.load(stream)))
+    (tmp_path / "device.logical.yaml").write_text(
+        json.dumps(
+            {
+                "name": "device",
+                "description_cn": "设备",
+                "schema": {
+                    "fields": [
+                        {"name": "ip", "description_cn": "设备IP地址"},
+                        {"name": "", "description_cn": "无效列"},
+                    ]
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    metadata = load_logical_metadata(
+        ["device", "missing", "../unsafe", "device"],
+        lambda: tmp_path,
+    )
+
+    assert [item.to_dict() for item in metadata] == [
+        {
+            "table_name": "device",
+            "table_description": "设备",
+            "column_name": "ip",
+            "column_description": "设备IP地址",
+        }
+    ]
+
+
+def test_load_logical_metadata_rejects_invalid_directory(tmp_path):
+    missing = tmp_path / "missing"
+    try:
+        load_logical_metadata(["device"], lambda: missing)
+    except LogicalMetadataError as exc:
+        assert "不存在或不是目录" in str(exc)
+    else:
+        raise AssertionError("expected LogicalMetadataError")
+
+
+def test_recognized_intent_normalizes_tables():
+    intent = RecognizedIntent.from_dict({"intent": "查信息", "tables": "network_device"})
+    assert intent.tables == ["network_device"]

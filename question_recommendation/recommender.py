@@ -17,6 +17,7 @@ from .config import (
     MAX_EXPLAIN_LENGTH,
     RECOMMENDS_FIELD,
 )
+from .metadata_loader import PathProvider, load_logical_metadata
 from .models import MetadataColumn, RecognizedIntent, StructuredTemplate
 from .prompt import QUESTION_RECOMMENDATION_SYSTEM_PROMPT, QUESTION_RECOMMENDATION_USER_TEMPLATE
 
@@ -33,7 +34,7 @@ def recommend_questions_chat(
     intercept_detail: str = "",
     recognized_intent: Optional[Any] = None,
     candidate_templates: Optional[Sequence[Any]] = None,
-    metadata_columns: Optional[Sequence[Any]] = None,
+    logical_model_path_provider: Optional[PathProvider] = None,
     business_info: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
@@ -55,8 +56,9 @@ def recommend_questions_chat(
             ``RecognizedIntent`` 或兼容字典。它是锁定意图、业务域和对象的最高优先级输入。
         candidate_templates:
             ``StructuredTemplate`` 或兼容字典列表。通常传入外部召回后的 Top 15 模板。
-        metadata_columns:
-            ``MetadataColumn`` 或兼容字典列表。调用侧按列传入，构造 Prompt 时按表聚合。
+        logical_model_path_provider:
+            返回逻辑模型文件目录的可调用方法。推荐器根据 ``recognized_intent.tables``
+            读取 ``{table_name}.logical.yaml`` 并按表组织元数据。
         business_info:
             额外业务范围或限制信息。允许为空。
 
@@ -70,7 +72,7 @@ def recommend_questions_chat(
         intercept_detail=intercept_detail,
         recognized_intent=recognized_intent,
         candidate_templates=candidate_templates,
-        metadata_columns=metadata_columns,
+        logical_model_path_provider=logical_model_path_provider,
         business_info=business_info,
     )
     messages = _build_chat_messages(context)
@@ -91,12 +93,16 @@ def _build_context(
     intercept_detail: str,
     recognized_intent: Optional[Any],
     candidate_templates: Optional[Sequence[Any]],
-    metadata_columns: Optional[Sequence[Any]],
+    logical_model_path_provider: Optional[PathProvider],
     business_info: Optional[Any],
 ) -> Dict[str, Any]:
     intent = _normalize_intent(recognized_intent)
     templates = _normalize_templates(candidate_templates or [])
-    metadata = _normalize_metadata(metadata_columns or [])
+    metadata = (
+        load_logical_metadata(intent.tables, logical_model_path_provider)
+        if intent.tables and logical_model_path_provider
+        else []
+    )
     return {
         "user_question": user_question or "",
         "scene_type": scene_type or "error",
@@ -567,16 +573,6 @@ def _normalize_templates(values: Sequence[Any]) -> List[StructuredTemplate]:
             result.append(item)
         elif isinstance(item, Mapping):
             result.append(StructuredTemplate.from_dict(item))
-    return result
-
-
-def _normalize_metadata(values: Sequence[Any]) -> List[MetadataColumn]:
-    result = []
-    for item in values:
-        if isinstance(item, MetadataColumn):
-            result.append(item)
-        elif isinstance(item, Mapping):
-            result.append(MetadataColumn.from_dict(item))
     return result
 
 

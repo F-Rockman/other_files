@@ -19,7 +19,7 @@ recommend_questions_chat(
     intercept_detail="",
     recognized_intent=None,
     candidate_templates=None,
-    metadata_columns=None,
+    logical_model_path_provider=None,
     business_info=None,
 )
 ```
@@ -33,7 +33,7 @@ recommend_questions_chat(
 | `intercept_detail` | 否 | 失败补充信息 | 复杂失败场景恢复准确率下降 |
 | `recognized_intent` | 强烈建议 | 前一步结构化意图识别结果 | 更依赖模板文本，业务跑偏风险上升 |
 | `candidate_templates` | 强烈建议 | 外部召回的 Top N 结构化模板 | 只能尝试基于意图做通用兜底；意图也为空时返回空推荐 |
-| `metadata_columns` | 否 | 调用侧传入的平铺表列元数据，进入 Prompt 前按表聚合 | 仍可推荐，但字段归一化和指标扩展能力下降 |
+| `logical_model_path_provider` | 有 `tables` 时建议 | 返回所有 `.logical.yaml` 文件所在目录的方法 | 不读取表列元数据，仍可依靠意图和模板推荐 |
 | `business_info` | 否 | 额外业务说明或约束 | 不影响核心流程 |
 
 ## RecognizedIntent
@@ -52,6 +52,7 @@ recommend_questions_chat(
 | `time_info` | 涉及时填写 | 时间范围和时间粒度 | `{"range": "最近24小时", "grain": "小时"}` |
 | `alarm_info` | 查告警建议必填 | 告警名称、级别、状态等 | `{"status": "未恢复"}` |
 | `aggregation_operator` | 涉及时填写 | 聚合或展示算子 | `平均值`、`最大值`、`数量`、`TopN` |
+| `tables` | 有关联表时填写 | 本次意图关联到的全部逻辑表名 | `["network_device", "network_device_metric"]` |
 | `extra` | 否 | 暂未标准化的扩展信息 | `{"matched_device_count": 12}` |
 
 推荐保留匹配语义，而不只传最终值。例如 IP 前缀条件建议传成：
@@ -68,6 +69,7 @@ RecognizedIntent(
     },
     metric_info={"metric": "CPU利用率"},
     aggregation_operator="平均值",
+    tables=["network_device", "network_device_metric"],
 )
 ```
 
@@ -107,37 +109,49 @@ StructuredTemplate(
 )
 ```
 
-## MetadataColumn
+## 逻辑模型元数据
 
-表列元数据只用于辅助字段理解和自然表达，不会突破结构化模板的能力边界。
-
-| 字段 | 含义 | 示例 |
-|---|---|---|
-| `table_name` | 字段所属表名或对象表标识 | `network_device_metric` |
-| `table_description` | 表的自然语言业务描述 | `网络设备性能指标` |
-| `column_name` | 物理字段名 | `avg_cpu_usage` |
-| `column_description` | 列的自然语言业务描述 | `平均CPU利用率` |
-
-`MetadataColumn` 只保留以上四个字段；传入其它字段时会直接忽略，不会进入 Prompt。
-
-调用侧可以传入多张表的平铺列列表：
+调用方不直接传表列信息。推荐器从 `recognized_intent.tables` 获取所有表名，并调用
+`logical_model_path_provider` 获取存放逻辑模型文件的目录。
 
 ```python
-metadata_columns = [
-    MetadataColumn(
-        table_name="network_device",
-        table_description="网络设备",
-        column_name="device_ip",
-        column_description="设备IP地址",
-    ),
-    MetadataColumn(
-        table_name="network_device_metric",
-        table_description="网络设备性能指标",
-        column_name="avg_cpu_usage",
-        column_description="平均CPU利用率",
-    ),
-]
+def logical_model_path_provider() -> str:
+    return "/data/logical-models"
+
+result = recommend_questions_chat(
+    ...,
+    recognized_intent=intent,
+    logical_model_path_provider=logical_model_path_provider,
+)
 ```
+
+对于表名 `network_device`，推荐器读取：
+
+```text
+/data/logical-models/network_device.logical.yaml
+```
+
+逻辑模型文件结构：
+
+```yaml
+name: network_device
+description_cn: 网络设备
+schema:
+  fields:
+    - name: device_ip
+      description_cn: 设备IP地址
+    - name: device_name
+      description_cn: 设备名称
+```
+
+推荐器只提取：
+
+| YAML 路径 | 用途 |
+|---|---|
+| `name` | 表名 |
+| `description_cn` | 表描述 |
+| `schema.fields[].name` | 列名 |
+| `schema.fields[].description_cn` | 列描述 |
 
 推荐器会在 Prompt 中自动按表组织：
 
@@ -162,6 +176,15 @@ metadata_columns = [
 
 没有表列信息时，只要 `recognized_intent` 和 `candidate_templates` 足够完整，仍然可以正常推荐。
 但模块不会根据未知字段自由扩展问题。
+
+单个逻辑模型文件缺失或格式异常时会跳过该表，不阻断推荐。路径提供方法返回无效目录，
+或环境未安装 PyYAML 时，会抛出 `LogicalMetadataError`。
+
+安装依赖：
+
+```bash
+pip install -r question_recommendation/requirements.txt
+```
 
 ## 多设备失败示例
 

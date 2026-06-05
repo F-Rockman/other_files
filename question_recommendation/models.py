@@ -79,6 +79,9 @@ class RecognizedIntent:
         domain_info:
             业务域信息，例如网络、服务器、存储、PON。对于接口、光模块、硬盘等
             多业务域对象建议填写。
+        tables:
+            前一步意图识别关联到的逻辑表名列表。推荐器会为每个表读取
+            ``{table_name}.logical.yaml``，自动构造表列元数据。
         extra:
             暂未标准化但需要透传给 LLM 的扩展信息。未知字典字段会自动进入 extra。
     """
@@ -93,6 +96,7 @@ class RecognizedIntent:
     alarm_info: Any = None
     aggregation_operator: Any = None
     domain_info: Any = None
+    tables: List[str] = field(default_factory=list)
     extra: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -109,6 +113,7 @@ class RecognizedIntent:
             "agg_operator": "aggregation_operator",
             "business_domain": "domain_info",
             "domain": "domain_info",
+            "table_names": "tables",
         }
         known = _known_fields(cls)
         kwargs: Dict[str, Any] = {}
@@ -116,7 +121,7 @@ class RecognizedIntent:
         for key, value in dict(data).items():
             mapped_key = aliases.get(key, key)
             if mapped_key in known and mapped_key != "extra":
-                kwargs[mapped_key] = value
+                kwargs[mapped_key] = _as_list(value) if mapped_key == "tables" else value
             else:
                 extra[key] = value
         kwargs["extra"] = extra

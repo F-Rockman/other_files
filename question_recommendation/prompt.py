@@ -48,6 +48,7 @@ recognized_intent 可能包含：
 - time_info：是否涉及时间。
 - alarm_info：是否涉及告警。
 - aggregation_operator：是否涉及聚合算子。
+- tables：前一步意图识别关联到的逻辑表名列表。系统根据这些表名读取逻辑模型文件。
 
 candidate_templates 中每个模板可能包含：
 - template_id
