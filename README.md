@@ -34,6 +34,7 @@ python_utils/
 │       └── test_normalizer.py
 ├── question_recommendation/ # 结构化模板问数推荐
 │   ├── __init__.py
+│   ├── README.md          # 输入字段、必填性、缺失影响和示例
 │   ├── prompt.py          # 推荐问题生成 Prompt 文本
 │   ├── models.py          # 结构化意图、模板、元数据模型
 │   ├── recommender.py     # LLM 调用、JSON 解析、兜底补足
@@ -296,6 +297,9 @@ async def check_intent_chat(data: QueryRequest):
 ## question_recommendation - 结构化模板问数推荐
 
 用于问数成功或失败后的推荐问题生成。推荐链路采用"结构化模板 + LLM 表达"方案：结构化模板定义业务域、对象、槽位和恢复策略，LLM 只负责在能力边界内排序、失败恢复和自然化表达。
+
+完整字段说明、必填性、缺失影响和多设备失败示例见
+[`question_recommendation/README.md`](question_recommendation/README.md)。
 
 提供两种调用方式：
 - **`recommend_questions`** — Completion API 版本

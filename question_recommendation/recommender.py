@@ -41,15 +41,23 @@ def recommend_questions(
     生成推荐问题（Completion API 风格）。
 
     参数:
-        user_question: 用户原始问题
+        user_question:
+            用户原始问题。用于保留原始表达、查询条件和值；必填。
         llm_client: LLM 客户端，接收完整 prompt 字符串并返回响应字符串
-        scene_type: error / normal
-        intercept_reason: 失败或拒答原因
-        intercept_detail: 失败细节
-        recognized_intent: 前一步结构化意图识别结果
-        candidate_templates: Top 15 结构化候选模板
-        metadata_columns: 当前查询相关表列元数据
-        business_info: 业务补充信息
+        scene_type:
+            ``error`` 或 ``normal``。默认按失败恢复场景处理。
+        intercept_reason:
+            失败或拒答原因文本。error 场景建议填写，用于识别恢复类型和异常值。
+        intercept_detail:
+            失败补充信息。可用于表达更具体的失败范围或限制。
+        recognized_intent:
+            ``RecognizedIntent`` 或兼容字典。它是锁定意图、业务域和对象的最高优先级输入。
+        candidate_templates:
+            ``StructuredTemplate`` 或兼容字典列表。通常传入外部召回后的 Top 15 模板。
+        metadata_columns:
+            ``MetadataColumn`` 或兼容字典列表。仅辅助字段理解，允许为空。
+        business_info:
+            额外业务范围或限制信息。允许为空。
 
     返回:
         dict: {"recommends": [str, ...], "explain": str}
@@ -89,7 +97,8 @@ def recommend_questions_chat(
     """
     生成推荐问题（Chat API 风格）。
 
-    llm_chat_client 接收 messages 列表并返回响应字符串。
+    参数含义与 ``recommend_questions`` 相同；区别是 ``llm_chat_client`` 接收
+    ``[{"role": "system", ...}, {"role": "user", ...}]`` 消息列表并返回响应字符串。
     """
     context = _build_context(
         user_question=user_question,
