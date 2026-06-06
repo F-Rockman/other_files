@@ -57,6 +57,7 @@ def _build_chat_messages(
     metadata_tables: Sequence[MetadataTable],
     candidate_capabilities: Sequence[Mapping[str, Any]],
 ) -> List[Dict[str, str]]:
+    """将标准上下文、按表元数据和候选能力卡组装为 Chat API messages。"""
     user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
         recommendation_context_json=_json_dumps(context.to_dict()),
         candidate_capabilities_json=_json_dumps(candidate_capabilities),
@@ -90,6 +91,7 @@ def _parse_llm_response(llm_response: str) -> Optional[Dict[str, Any]]:
 
 
 def _extract_json_block(text: str) -> Optional[str]:
+    """从 Markdown 代码块或带额外文本的响应中提取首个 JSON 对象文本。"""
     patterns = [
         r"```json\s*\n?(.*?)\n?\s*```",
         r"```\s*\n?(.*?)\n?\s*```",
@@ -104,6 +106,7 @@ def _extract_json_block(text: str) -> Optional[str]:
 
 
 def _coerce_result(parsed: Any) -> Optional[Dict[str, Any]]:
+    """校验解析结果是否符合 ``recommends: list[str]`` 与 ``explain: str`` 结构。"""
     if not isinstance(parsed, dict):
         return None
     recommends = parsed.get(RECOMMENDS_FIELD)
@@ -116,6 +119,7 @@ def _coerce_result(parsed: Any) -> Optional[Dict[str, Any]]:
 
 
 def _normalize_context(value: Any) -> RecommendationContext:
+    """接受标准上下文实例或兼容字典，其他输入类型直接拒绝。"""
     if isinstance(value, RecommendationContext):
         return value
     if isinstance(value, Mapping):
@@ -124,4 +128,5 @@ def _normalize_context(value: Any) -> RecommendationContext:
 
 
 def _json_dumps(value: Any) -> str:
+    """将 Prompt 输入序列化为缩进 JSON，并保留中文字符。"""
     return json.dumps(value, ensure_ascii=False, indent=2, default=str)

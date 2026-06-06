@@ -87,6 +87,7 @@ def build_recommendation_context(
 
 
 def _detect_failure_type(reason: str, detail: str) -> str:
+    """根据失败原因和详情中的确定性关键词返回标准失败类型。"""
     text = f"{reason or ''} {detail or ''}".lower()
     for failure_type, patterns in FAILURE_PATTERNS:
         if any(pattern.lower() in text for pattern in patterns):
@@ -101,6 +102,12 @@ def _extract_invalid_values(
     kpis: List[str],
     properties: List[str],
 ) -> List[str]:
+    """
+    提取禁止继续继承的值。
+
+    范围过宽、领域歧义等恢复场景不会使原值失效；对象、指标或属性明确失败时，
+    对应输入会被标记为无效。
+    """
     if failure_type in {"匹配到多设备", "业务域不明确", "时间缺失", "条件过细", "无结果"}:
         return []
 
@@ -120,10 +127,12 @@ def _extract_invalid_values(
 
 
 def _failure_summary(reason: str, detail: str) -> str:
+    """合并非空失败原因和详情，生成提供给 LLM 的业务摘要。"""
     return "；".join(item.strip() for item in (reason, detail) if item and item.strip())
 
 
 def _normalize_aggregations(value: Any) -> List[str]:
+    """将聚合算子规范为小写内部值，并处理 ``topN`` 等别名。"""
     result = []
     for item in _string_list(value):
         normalized = AGGREGATION_ALIASES.get(item.lower(), item.lower())
@@ -133,6 +142,7 @@ def _normalize_aggregations(value: Any) -> List[str]:
 
 
 def _mapping_list(value: Any) -> List[Mapping[str, Any]]:
+    """将单个字典或字典列表规范为只包含映射对象的列表。"""
     if isinstance(value, Mapping):
         return [value]
     if isinstance(value, list):
@@ -141,6 +151,7 @@ def _mapping_list(value: Any) -> List[Mapping[str, Any]]:
 
 
 def _string_list(value: Any) -> List[str]:
+    """将单值或集合规范为去重字符串列表。"""
     if value is None:
         return []
     values = [value] if isinstance(value, str) else value
@@ -150,6 +161,7 @@ def _string_list(value: Any) -> List[str]:
 
 
 def _dedupe(values: Any) -> List[str]:
+    """按输入顺序去重，并忽略空值。"""
     result = []
     for value in values:
         text = str(value or "").strip()

@@ -59,6 +59,7 @@ def load_logical_metadata(
 
 
 def _load_yaml_module():
+    """延迟导入 PyYAML，并将依赖缺失转换为模块领域异常。"""
     try:
         return import_module("yaml")
     except ModuleNotFoundError as exc:
@@ -113,6 +114,7 @@ def _extract_metadata_table(document: Any) -> Optional[MetadataTable]:
 
 
 def _dedupe_table_names(table_names: Sequence[str]) -> List[str]:
+    """按输入顺序清理并去重逻辑表名。"""
     seen = set()
     result = []
     for item in table_names or []:
@@ -124,4 +126,5 @@ def _dedupe_table_names(table_names: Sequence[str]) -> List[str]:
 
 
 def _text(value: Any) -> str:
+    """将任意值转换为去除首尾空白的文本，空值转换为空字符串。"""
     return "" if value is None else str(value).strip()

@@ -29,6 +29,7 @@ def _as_list(value: Any) -> List[str]:
 
 
 def _compact_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+    """移除字典中的空值，生成适合序列化和传入 Prompt 的紧凑结构。"""
     return {
         key: value
         for key, value in data.items()
@@ -37,6 +38,7 @@ def _compact_dict(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _known_fields(cls: type) -> set:
+    """返回 dataclass 声明的字段名集合，用于忽略未定义的外部输入字段。"""
     return {item.name for item in fields(cls)}
 
 
@@ -57,6 +59,7 @@ class Identifier:
 
     @classmethod
     def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "Identifier":
+        """从兼容字典构造定位条件，并统一标识类型与匹配模式的大小写。"""
         if isinstance(data, cls):
             return data
         data = data or {}
@@ -67,6 +70,7 @@ class Identifier:
         )
 
     def to_dict(self) -> Dict[str, Any]:
+        """将定位条件转换为不包含空字段的字典。"""
         return _compact_dict(asdict(self))
 
 
@@ -85,6 +89,7 @@ class AlarmCondition:
 
     @classmethod
     def from_dict(cls, data: Optional[Mapping[str, Any]]) -> Optional["AlarmCondition"]:
+        """从兼容字典构造告警条件；无有效类型和值时返回 ``None``。"""
         if isinstance(data, cls):
             return data
         if not isinstance(data, Mapping):
@@ -96,6 +101,7 @@ class AlarmCondition:
         return result if result.alarm_type or result.alarm_value else None
 
     def to_dict(self) -> Dict[str, Any]:
+        """将告警条件转换为不包含空字段的字典。"""
         return _compact_dict(asdict(self))
 
 
@@ -138,6 +144,11 @@ class RecommendationContext:
 
     @classmethod
     def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "RecommendationContext":
+        """
+        从标准上下文字典构造对象。
+
+        未声明字段会被忽略；列表、定位条件、告警条件和文本字段会被规范化。
+        """
         if isinstance(data, cls):
             return data
         if not isinstance(data, Mapping):
@@ -164,13 +175,16 @@ class RecommendationContext:
 
     @classmethod
     def from_json(cls, text: str) -> "RecommendationContext":
+        """解析 JSON 文本并构造标准推荐上下文。"""
         return cls.from_dict(json.loads(text))
 
     def to_dict(self) -> Dict[str, Any]:
+        """将推荐上下文转换为不包含空字段的字典。"""
         data = asdict(self)
         return _compact_dict(data)
 
     def to_json(self) -> str:
+        """将推荐上下文序列化为保留中文字符的 JSON 文本。"""
         return json.dumps(self.to_dict(), ensure_ascii=False)
 
 
@@ -200,6 +214,11 @@ class CapabilityCard:
 
     @classmethod
     def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "CapabilityCard":
+        """
+        从能力卡配置字典构造对象。
+
+        数组字段会统一为去重字符串列表，策略字段仅接受字典，优先级会转换为整数。
+        """
         if isinstance(data, cls):
             return data
         if not isinstance(data, Mapping):
@@ -233,6 +252,7 @@ class CapabilityCard:
         return cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
+        """将能力卡转换为不包含空字段的字典，供排序结果和 Prompt 使用。"""
         return _compact_dict(asdict(self))
 
 
@@ -245,6 +265,7 @@ class MetadataColumn:
 
     @classmethod
     def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "MetadataColumn":
+        """从字段元数据字典构造对象，并兼容常用列名与描述字段别名。"""
         if isinstance(data, cls):
             return data
         if not isinstance(data, Mapping):
@@ -267,6 +288,7 @@ class MetadataColumn:
         return cls(**kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
+        """将字段元数据转换为不包含空字段的字典。"""
         return _compact_dict(asdict(self))
 
 
@@ -287,6 +309,7 @@ class MetadataTable:
 
     @classmethod
     def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "MetadataTable":
+        """从按表组织的元数据字典构造对象，并规范化其中的字段列表。"""
         if isinstance(data, cls):
             return data
         if not isinstance(data, Mapping):
@@ -309,6 +332,7 @@ class MetadataTable:
         )
 
     def to_dict(self) -> Dict[str, Any]:
+        """将表及其字段元数据转换为适合 Prompt 的嵌套字典。"""
         return _compact_dict(
             {
                 "table_name": self.table_name,

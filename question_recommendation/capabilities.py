@@ -32,11 +32,14 @@ INFORMATION_RESULT_FORMS = {"列表", "数量", "基础信息", "属性信息", 
 
 @dataclass
 class RankedCapability:
+    """包含能力卡、确定性匹配分数和可解释匹配原因的排序结果。"""
+
     card: CapabilityCard
     match_score: int
     match_reasons: List[str]
 
     def to_dict(self) -> Dict[str, Any]:
+        """将能力卡内容与匹配分数、匹配原因合并为 Prompt 输入字典。"""
         data = self.card.to_dict()
         data["match_score"] = self.match_score
         data["match_reasons"] = self.match_reasons
@@ -75,6 +78,12 @@ def recommend_capabilities(
 
 
 def _has_hard_conflict(context: RecommendationContext, card: CapabilityCard) -> bool:
+    """
+    判断能力卡是否与标准上下文存在明确冲突。
+
+    仅在意图、对象、已确认领域、能力策略或失败恢复类型明确不兼容时过滤；
+    信息缺失和逻辑表相关度不参与硬过滤。
+    """
     target_objects = context.subcomponent_types or context.device_types
     ambiguous_domain = context.failure_type == "业务域不明确"
     confirmed_domains = {
@@ -123,6 +132,7 @@ def _has_hard_conflict(context: RecommendationContext, card: CapabilityCard) -> 
 
 
 def _policy_rejects(policy: Mapping[str, Any], values: Sequence[str]) -> bool:
+    """判断指标或属性值是否被能力策略的白名单或黑名单明确拒绝。"""
     if not values or not isinstance(policy, Mapping):
         return False
     mode = str(policy.get("mode", "") or "")
@@ -138,6 +148,12 @@ def _score_card(
     card: CapabilityCard,
     metadata_tables: Sequence[MetadataTable],
 ) -> Tuple[int, List[str]]:
+    """
+    计算能力卡与上下文的确定性匹配分数。
+
+    返回静态优先级叠加意图、对象、领域、指标、属性、聚合、定位和元数据相关度
+    后的总分，以及对应的可解释匹配原因。
+    """
     score = card.priority
     reasons: List[str] = []
     target_objects = context.subcomponent_types or context.device_types
@@ -206,6 +222,7 @@ def _score_card(
 
 
 def _policy_matches(policy: Mapping[str, Any], values: Sequence[str]) -> bool:
+    """判断输入值是否被动态策略接受，或命中策略白名单。"""
     if not values or not isinstance(policy, Mapping):
         return False
     mode = str(policy.get("mode", "") or "")
@@ -216,6 +233,7 @@ def _policy_matches(policy: Mapping[str, Any], values: Sequence[str]) -> bool:
 
 
 def _is_information_card(card: CapabilityCard) -> bool:
+    """判断能力卡是否能作为列表、数量、基础信息等信息类恢复能力。"""
     return card.intent_type == "查信息" or bool(INFORMATION_RESULT_FORMS.intersection(card.result_forms))
 
 
@@ -224,6 +242,12 @@ def _select_diverse(
     context: RecommendationContext,
     limit: int,
 ) -> List[RankedCapability]:
+    """
+    从已排序候选中选择稳定且具备多样性的 Top N。
+
+    同一意图、对象和结果形态最多保留三张；领域歧义场景下，同一领域与父对象组合
+    也最多保留三张，避免单一领域占满候选。
+    """
     if limit <= 0:
         return []
     selected: List[RankedCapability] = []
