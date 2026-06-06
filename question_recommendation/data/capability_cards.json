@@ -8,7 +8,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["匹配到多设备", "对象定位失败", "业务域不明确", "指标不支持", "属性不支持", "条件过细", "无结果", "内部执行异常", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["网络设备", "network_device"],
     "golden_questions": ["查询当前网络设备列表", "查询网络设备数量", "查询网络设备基础信息"],
     "priority": 90
@@ -24,7 +24,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["匹配到多设备", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["网络设备", "性能指标", "network_device"],
     "golden_questions": ["查询网络设备平均 CPU 利用率", "查询最近24小时网络设备 CPU 利用率趋势"],
     "priority": 85
@@ -40,7 +40,7 @@
     "aggregations": ["count", "top_n"],
     "result_forms": ["告警列表", "数量", "统计"],
     "time_policy": "optional",
-    "recovery_types": ["对象定位失败", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["网络设备", "告警", "alarm"],
     "golden_questions": ["查询网络设备未恢复告警", "查询网络设备告警数量"],
     "priority": 80
@@ -55,7 +55,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": ["名称", "状态", "型号", "位置", "端口类型"]},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["匹配到多设备", "业务域不明确", "对象定位失败", "父对象定位失败", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["网络设备接口", "网络设备端口", "interface", "port"],
     "golden_questions": ["查询网络设备下的接口列表", "查询网络设备接口基础信息"],
     "priority": 82
@@ -72,7 +72,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["匹配到多设备", "业务域不明确", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["网络设备接口", "网络设备端口", "interface", "port"],
     "golden_questions": ["查询网络设备接口带宽利用率趋势", "查询接收速率最高的网络设备接口"],
     "priority": 80
@@ -87,7 +87,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": ["名称", "状态", "型号", "位置"]},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["业务域不明确", "对象定位失败", "父对象定位失败", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["网络光模块", "网络设备光模块", "network_optical_module"],
     "golden_questions": ["查询网络设备下的光模块列表", "查询网络设备光模块基础信息"],
     "priority": 88
@@ -104,7 +104,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["业务域不明确", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["网络光模块", "网络设备光模块", "network_optical_module"],
     "golden_questions": ["查询网络设备光模块的接收功率", "查询网络设备光模块温度趋势"],
     "priority": 92
@@ -119,7 +119,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["业务域不明确", "对象定位失败", "父对象定位失败", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["网络设备单板", "网络设备机框", "网络设备远端模块"],
     "golden_questions": ["查询网络设备下的单板列表", "查询网络设备机框基础信息"],
     "priority": 75
@@ -136,7 +136,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["业务域不明确", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["网络设备单板", "board"],
     "golden_questions": ["查询网络设备单板 CPU 利用率趋势", "查询温度最高的网络设备单板"],
     "priority": 76
@@ -151,7 +151,7 @@
     "metric_policy": {"mode": "none", "allow": []},
     "aggregations": ["count"],
     "result_forms": ["链路列表", "数量", "对端关系"],
-    "recovery_types": ["对象定位失败", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["链路", "拓扑", "link"],
     "golden_questions": ["查询两台设备之间的链路", "查询网络设备接口相连的对端设备"],
     "priority": 90
@@ -165,7 +165,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["匹配到多设备", "对象定位失败", "业务域不明确", "指标不支持", "属性不支持", "条件过细", "无结果", "内部执行异常", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["服务器设备", "服务器", "server"],
     "golden_questions": ["查询当前服务器设备列表", "查询服务器设备基础信息"],
     "priority": 90
@@ -181,7 +181,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["匹配到多设备", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["服务器设备", "服务器性能指标", "server"],
     "golden_questions": ["查询服务器设备平均 CPU 利用率", "查询服务器设备内存利用率趋势"],
     "priority": 85
@@ -197,7 +197,7 @@
     "aggregations": ["count", "top_n"],
     "result_forms": ["告警列表", "数量", "统计"],
     "time_policy": "optional",
-    "recovery_types": ["对象定位失败", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["服务器", "告警", "alarm"],
     "golden_questions": ["查询服务器设备未恢复告警", "查询服务器设备告警数量"],
     "priority": 80
@@ -212,7 +212,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["业务域不明确", "对象定位失败", "父对象定位失败", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["服务器部件", "服务器硬盘", "服务器风扇", "服务器电源"],
     "golden_questions": ["查询服务器下的硬盘列表", "查询服务器风扇基础信息"],
     "priority": 80
@@ -229,7 +229,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["业务域不明确", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["服务器处理器", "服务器电源", "服务器风扇"],
     "golden_questions": ["查询服务器处理器温度趋势", "查询服务器风扇转速趋势"],
     "priority": 78
@@ -244,7 +244,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": ["名称", "型号", "健康状态", "运行状态"]},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["业务域不明确", "对象定位失败", "父对象定位失败", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["服务器光模块", "server_optical_module"],
     "golden_questions": ["查询服务器下的光模块列表", "查询服务器光模块基础信息"],
     "priority": 86
@@ -258,7 +258,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["匹配到多设备", "对象定位失败", "业务域不明确", "指标不支持", "属性不支持", "条件过细", "无结果", "内部执行异常", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["存储设备", "storage_device"],
     "golden_questions": ["查询当前存储设备列表", "查询存储设备基础信息"],
     "priority": 90
@@ -274,7 +274,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["匹配到多设备", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["存储设备", "存储性能指标", "storage_device"],
     "golden_questions": ["查询存储设备平均读 IOPS", "查询存储设备 IO 响应时间趋势"],
     "priority": 85
@@ -290,7 +290,7 @@
     "aggregations": ["count", "top_n"],
     "result_forms": ["告警列表", "数量", "统计"],
     "time_policy": "optional",
-    "recovery_types": ["对象定位失败", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["存储设备", "告警", "alarm"],
     "golden_questions": ["查询存储设备未恢复告警", "查询告警数量最多的存储设备"],
     "priority": 80
@@ -305,7 +305,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["业务域不明确", "对象定位失败", "父对象定位失败", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["存储池", "LUN", "文件系统"],
     "golden_questions": ["查询存储池列表", "查询文件系统基础信息"],
     "priority": 82
@@ -322,7 +322,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["业务域不明确", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["存储池", "LUN", "文件系统"],
     "golden_questions": ["查询存储池容量利用率趋势", "查询 IO 响应时间最高的 LUN"],
     "priority": 80
@@ -337,7 +337,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["业务域不明确", "对象定位失败", "父对象定位失败", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["存储部件", "存储硬盘", "存储控制器", "storage_component"],
     "golden_questions": ["查询存储设备下的硬盘列表", "查询存储设备控制器基础信息"],
     "priority": 80
@@ -354,7 +354,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["业务域不明确", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["存储部件", "存储性能指标"],
     "golden_questions": ["查询存储设备端口利用率趋势", "查询存储设备控制器 CPU 利用率趋势"],
     "priority": 78
@@ -368,7 +368,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["匹配到多设备", "对象定位失败", "业务域不明确", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["FC交换机", "fc_switch"],
     "golden_questions": ["查询当前 FC 交换机列表", "查询 FC 交换机基础信息"],
     "priority": 82
@@ -383,7 +383,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["业务域不明确", "对象定位失败", "父对象定位失败", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["FC交换机端口", "fc_port"],
     "golden_questions": ["查询 FC 交换机端口列表", "查询 FC 交换机端口基础信息"],
     "priority": 80
@@ -400,7 +400,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["业务域不明确", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["FC交换机端口", "fc_port"],
     "golden_questions": ["查询 FC 交换机端口利用率趋势", "查询发送速率最高的 FC 交换机端口"],
     "priority": 78
@@ -416,7 +416,7 @@
     "aggregations": ["count", "top_n"],
     "result_forms": ["告警列表", "数量", "统计"],
     "time_policy": "optional",
-    "recovery_types": ["对象定位失败", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["FC交换机", "FC告警", "fc_switch"],
     "golden_questions": ["查询 FC 交换机未恢复告警", "查询 FC 交换机告警数量"],
     "priority": 78
@@ -430,7 +430,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["匹配到多设备", "对象定位失败", "业务域不明确", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["OLT", "PON设备"],
     "golden_questions": ["查询当前 OLT 列表", "查询 OLT 基础信息"],
     "priority": 85
@@ -446,7 +446,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["匹配到多设备", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["OLT", "OLT性能指标"],
     "golden_questions": ["查询 OLT CPU 利用率趋势", "查询 OLT 内存利用率趋势"],
     "priority": 82
@@ -461,7 +461,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["匹配到多设备", "业务域不明确", "对象定位失败", "父对象定位失败", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["ONU"],
     "golden_questions": ["查询当前 ONU 列表", "查询 OLT 下的 ONU 列表"],
     "priority": 85
@@ -478,7 +478,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["匹配到多设备", "业务域不明确", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["ONU", "ONU性能指标"],
     "golden_questions": ["查询 ONU 接收光功率趋势", "查询不可达比率最高的 ONU"],
     "priority": 82
@@ -494,7 +494,7 @@
     "aggregations": ["count", "top_n"],
     "result_forms": ["告警列表", "数量", "统计"],
     "time_policy": "optional",
-    "recovery_types": ["对象定位失败", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["OLT", "ONU", "告警"],
     "golden_questions": ["查询 OLT 未恢复告警", "查询 ONU 告警数量"],
     "priority": 78
@@ -508,7 +508,7 @@
     "attribute_policy": {"mode": "dynamic", "allow": []},
     "metric_policy": {"mode": "none", "allow": []},
     "result_forms": ["列表", "数量", "基础信息", "属性信息"],
-    "recovery_types": ["匹配到多设备", "对象定位失败", "业务域不明确", "指标不支持", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["AP", "无线接入点"],
     "golden_questions": ["查询当前 AP 列表", "查询 AP 基础信息"],
     "priority": 84
@@ -524,7 +524,7 @@
     "aggregations": ["avg", "min", "max", "top_n"],
     "result_forms": ["指标值", "趋势", "排行"],
     "time_policy": "optional",
-    "recovery_types": ["匹配到多设备", "时间缺失", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["AP", "无线接入点"],
     "golden_questions": ["查询 AP 当前移动终端数", "查询 AP CPU 利用率趋势"],
     "priority": 82
@@ -539,7 +539,7 @@
     "metric_policy": {"mode": "none", "allow": []},
     "aggregations": ["count"],
     "result_forms": ["列表", "数量", "基础信息", "属性信息", "接入位置"],
-    "recovery_types": ["匹配到多设备", "对象定位失败", "业务域不明确", "属性不支持", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["终端设备", "terminal"],
     "golden_questions": ["查询当前终端设备列表", "查询终端设备接入位置"],
     "priority": 85
@@ -554,7 +554,7 @@
     "metric_policy": {"mode": "none", "allow": []},
     "aggregations": ["count"],
     "result_forms": ["列表", "数量", "基础信息", "父子关系"],
-    "recovery_types": ["对象定位失败", "条件过细", "无结果", "其他失败"],
+    "recovery_strategies": ["basic", "clarify", "disambiguate", "remove_invalid", "reframe", "adjust_scope"],
     "table_hints": ["子网", "subnet"],
     "golden_questions": ["查询当前子网列表", "查询子网的直接下级子网"],
     "priority": 85

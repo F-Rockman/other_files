@@ -309,6 +309,7 @@ async def check_intent_chat(data: QueryRequest):
 ### 快速使用
 
 ```python
+from query_errors import ErrorCode
 from question_recommendation import build_recommendation_context, recommend_questions_chat
 
 context = build_recommendation_context(
@@ -324,7 +325,8 @@ context = build_recommendation_context(
         "subcomponents": [{"subcomponent_type": "接口"}],
         "tables": ["network_device", "network_interface"],
     },
-    failure_reason="未找到设备 IP 为 1.1.1.1",
+    refuse_info=ErrorCode.INTENT_GUIDE_DEVICE_NOT_FOUND.to_info(),
+    llm_refuse_message="未找到设备 IP 为 1.1.1.1",
 )
 
 def my_llm_chat_client(messages: list[dict]) -> str:
@@ -342,6 +344,8 @@ result = recommend_questions_chat(
 
 - `RecommendationContext` 只保存推荐真正使用的标准字段，由
   `build_recommendation_context` 从上一步结构转换。
+- 上游与推荐模块共同使用 `query_errors.ErrorInfo`；恢复策略只由稳定错误 key
+  决定，拒答详情不会参与分类或无效值提取。
 - 推荐器自动加载内置能力卡，确定性过滤并排序 Top 12；召回过程不调用 LLM 或 Embedding。
 - 推荐器根据 `context.tables` 和 `logical_model_path_provider` 自动读取
   `{table_name}.logical.yaml`，只提取表名、表描述、列名和列描述。

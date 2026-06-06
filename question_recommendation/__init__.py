@@ -17,6 +17,7 @@ from .prompt import (
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
 )
 from .recommender import QuestionRecommendationError, recommend_questions_chat
+from .refusal_rules import RefusalRecoveryRule, get_refusal_recovery_rule
 
 __all__ = [
     "QUESTION_RECOMMENDATION_PROMPT",
@@ -36,4 +37,6 @@ __all__ = [
     "load_logical_metadata",
     "QuestionRecommendationError",
     "recommend_questions_chat",
+    "RefusalRecoveryRule",
+    "get_refusal_recovery_rule",
 ]

@@ -6,6 +6,7 @@ from importlib import resources
 from typing import Any, Dict, List, Mapping, Sequence, Tuple
 
 from .models import CapabilityCard, MetadataTable, RecommendationContext
+from .refusal_rules import BASIC, DISAMBIGUATE
 
 
 DOMAIN_BY_DEVICE_TYPE = {
@@ -81,40 +82,43 @@ def _has_hard_conflict(context: RecommendationContext, card: CapabilityCard) -> 
     """
     判断能力卡是否与标准上下文存在明确冲突。
 
-    仅在意图、对象、已确认领域、能力策略或失败恢复类型明确不兼容时过滤；
+    仅在意图、对象、已确认领域、能力策略或恢复策略明确不兼容时过滤；
     信息缺失和逻辑表相关度不参与硬过滤。
     """
     target_objects = context.subcomponent_types or context.device_types
-    ambiguous_domain = context.failure_type == "业务域不明确"
+    recovery_strategy = context.recovery_strategy
+    ambiguous_domain = recovery_strategy == DISAMBIGUATE
     confirmed_domains = {
         DOMAIN_BY_DEVICE_TYPE[item]
         for item in context.device_types
         if item in DOMAIN_BY_DEVICE_TYPE
     }
 
-    if confirmed_domains and len(confirmed_domains) == 1 and not ambiguous_domain:
+    if confirmed_domains and len(confirmed_domains) == 1:
         if card.domain and card.domain not in confirmed_domains:
             return True
 
     if target_objects and not set(target_objects).intersection(card.objects):
         parent_recovery = (
-            bool(context.failure_type)
-            and card.recovery_types
-            and context.failure_type in card.recovery_types
+            bool(recovery_strategy)
+            and recovery_strategy in card.recovery_strategies
             and bool(set(context.device_types).intersection(card.objects))
         )
         if not parent_recovery:
             return True
 
+    if recovery_strategy == BASIC and not _is_information_card(card):
+        return True
+
     if context.intention and card.intent_type != context.intention:
-        if not context.failure_type or context.failure_type not in card.recovery_types:
+        if not recovery_strategy or recovery_strategy not in card.recovery_strategies:
             return True
 
-    if context.failure_type and context.failure_type not in card.recovery_types:
+    if recovery_strategy and recovery_strategy not in card.recovery_strategies:
         return True
 
     if _policy_rejects(card.metric_policy, context.kpis):
-        if not (ambiguous_domain and _is_information_card(card)):
+        if not ((ambiguous_domain or recovery_strategy == BASIC) and _is_information_card(card)):
             return True
     if _policy_rejects(card.attribute_policy, context.properties):
         return True
@@ -123,11 +127,6 @@ def _has_hard_conflict(context: RecommendationContext, card: CapabilityCard) -> 
         if not set(context.aggregations).intersection(card.aggregations):
             return True
 
-    if context.failure_type == "指标不支持" and card.intent_type == "查指标":
-        return True
-    if context.failure_type == "属性不支持" and card.intent_type == "查信息":
-        if card.attribute_policy.get("mode") == "allow":
-            return True
     return False
 
 
@@ -169,9 +168,9 @@ def _score_card(
     if context.intention and card.intent_type == context.intention:
         score += 80
         reasons.append("查询意图匹配")
-    if context.failure_type and context.failure_type in card.recovery_types:
+    if context.recovery_strategy and context.recovery_strategy in card.recovery_strategies:
         score += 90
-        reasons.append("失败恢复类型匹配")
+        reasons.append("恢复策略匹配")
     if set(target_objects).intersection(card.objects):
         score += 80
         reasons.append("查询对象匹配")
@@ -234,7 +233,7 @@ def _policy_matches(policy: Mapping[str, Any], values: Sequence[str]) -> bool:
 
 def _is_information_card(card: CapabilityCard) -> bool:
     """判断能力卡是否能作为列表、数量、基础信息等信息类恢复能力。"""
-    return card.intent_type == "查信息" or bool(INFORMATION_RESULT_FORMS.intersection(card.result_forms))
+    return bool(INFORMATION_RESULT_FORMS.intersection(card.result_forms))
 
 
 def _select_diverse(
@@ -253,7 +252,7 @@ def _select_diverse(
     selected: List[RankedCapability] = []
     group_counts: Dict[Tuple[str, str, str], int] = {}
     domain_counts: Dict[Tuple[str, str], int] = {}
-    ambiguous_domain = context.failure_type == "业务域不明确"
+    ambiguous_domain = context.recovery_strategy == DISAMBIGUATE
 
     for item in ranked:
         card = item.card

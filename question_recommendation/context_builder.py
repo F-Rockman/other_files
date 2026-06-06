@@ -1,10 +1,19 @@
-"""将上一步意图识别结果转换为最小化 RecommendationContext。"""
+"""将上一步意图识别结果和结构化拒答信息转换为最小推荐上下文。"""
 
 import json
-import re
-from typing import Any, List, Mapping
+from typing import Any, List, Mapping, Optional, Tuple
+
+from query_errors import ErrorInfo
 
 from .models import AlarmCondition, Identifier, RecommendationContext
+from .refusal_rules import (
+    ALL_DEVICE_IDENTIFIERS,
+    ALL_KPIS,
+    BASIC,
+    IP_IDENTIFIERS,
+    NAME_IDENTIFIERS,
+    get_refusal_recovery_rule,
+)
 
 
 AGGREGATION_ALIASES = {
@@ -14,40 +23,32 @@ AGGREGATION_ALIASES = {
     "top_n": "top_n",
 }
 
-FAILURE_PATTERNS = [
-    ("业务域不明确", ("多领域", "多个领域", "跨领域", "领域不明确", "业务域不明确")),
-    ("匹配到多设备", ("多设备", "多个设备", "匹配到多个", "匹配到多条")),
-    ("指标不支持", ("指标不支持", "不支持该指标", "指标不存在", "未找到指标")),
-    ("属性不支持", ("属性不支持", "不支持该属性", "属性不存在", "未找到属性")),
-    ("父对象定位失败", ("父对象", "所属设备", "上级设备")),
-    ("对象定位失败", ("对象不存在", "设备不存在", "未找到设备", "无法定位", "未匹配到")),
-    ("时间缺失", ("缺少时间", "时间缺失", "未指定时间")),
-    ("条件过细", ("条件过细", "条件过多", "范围过窄")),
-    ("无结果", ("无结果", "结果为空", "没有数据", "未查询到")),
-    ("内部执行异常", ("执行异常", "内部异常", "系统异常")),
-]
-
 
 def build_recommendation_context(
     upstream_result: Mapping[str, Any],
-    failure_reason: str = "",
-    failure_detail: str = "",
+    refuse_info: Optional[ErrorInfo] = None,
+    llm_refuse_message: str = "",
 ) -> RecommendationContext:
     """
-    将上一步完整意图结构转换为推荐模块的最小化上下文。
+    将上一步意图和共享 ErrorInfo 转换为最小推荐上下文。
 
-    ``tenant``、``subnet``、``link_relation``、子部件名称和未知字段会被忽略。
+    恢复策略只由稳定的 ``refuse_info.key`` 决定。详细 LLM 拒答原因仅透传给最终
+    Prompt，不参与分类或无效值提取。
     """
+    if refuse_info is not None and not isinstance(refuse_info, ErrorInfo):
+        raise TypeError("refuse_info 必须是 query_errors.ErrorInfo 或 None")
+    if not isinstance(llm_refuse_message, str):
+        raise TypeError("llm_refuse_message 必须是字符串")
+
     data = upstream_result if isinstance(upstream_result, Mapping) else {}
     devices = _mapping_list(data.get("devices"))
     subcomponents = _mapping_list(data.get("subcomponents"))
-    failure_type = _detect_failure_type(failure_reason, failure_detail)
-    invalid_values = _extract_invalid_values(
-        failure_type=failure_type,
-        failure_text=f"{failure_reason} {failure_detail}".strip(),
-        devices=devices,
-        kpis=_string_list(data.get("kpis")),
-        properties=_string_list(data.get("properties")),
+    rule = get_refusal_recovery_rule(refuse_info.key) if refuse_info else None
+    recovery_strategy = rule.strategy if rule else (BASIC if llm_refuse_message else "")
+    invalid_values, invalid_kpis = _resolve_invalid_values(
+        rule.invalidation if rule else "",
+        devices,
+        _string_list(data.get("kpis")),
     )
 
     identifiers = []
@@ -63,10 +64,12 @@ def build_recommendation_context(
             identifiers.append(identifier)
 
     time_value = data.get("time")
-    if isinstance(time_value, (Mapping, list)):
-        time_text = json.dumps(time_value, ensure_ascii=False)
-    else:
-        time_text = str(time_value or "").strip()
+    time_text = (
+        json.dumps(time_value, ensure_ascii=False)
+        if isinstance(time_value, (Mapping, list))
+        else str(time_value or "").strip()
+    )
+    kpis = [item for item in _string_list(data.get("kpis")) if item not in invalid_kpis]
 
     return RecommendationContext(
         intention=str(data.get("intention", "") or "").strip(),
@@ -75,60 +78,38 @@ def build_recommendation_context(
         subcomponent_types=_dedupe(item.get("subcomponent_type") for item in subcomponents),
         identifiers=identifiers,
         properties=_string_list(data.get("properties")),
-        kpis=_string_list(data.get("kpis")),
+        kpis=kpis,
         time=time_text,
         alarm=AlarmCondition.from_dict(data.get("alarm")),
         aggregations=_normalize_aggregations(data.get("agg")),
         tables=_string_list(data.get("tables")),
-        failure_type=failure_type,
-        failure_summary=_failure_summary(failure_reason, failure_detail),
-        invalid_values=invalid_values,
+        recovery_strategy=recovery_strategy,
+        refusal_message=refuse_info.message if refuse_info else "",
+        refusal_detail=llm_refuse_message,
+        invalid_values=_dedupe(invalid_values + invalid_kpis),
     )
 
 
-def _detect_failure_type(reason: str, detail: str) -> str:
-    """根据失败原因和详情中的确定性关键词返回标准失败类型。"""
-    text = f"{reason or ''} {detail or ''}".lower()
-    for failure_type, patterns in FAILURE_PATTERNS:
-        if any(pattern.lower() in text for pattern in patterns):
-            return failure_type
-    return "其他失败" if text.strip() else ""
-
-
-def _extract_invalid_values(
-    failure_type: str,
-    failure_text: str,
+def _resolve_invalid_values(
+    invalidation: str,
     devices: List[Mapping[str, Any]],
     kpis: List[str],
-    properties: List[str],
-) -> List[str]:
-    """
-    提取禁止继续继承的值。
-
-    范围过宽、领域歧义等恢复场景不会使原值失效；对象、指标或属性明确失败时，
-    对应输入会被标记为无效。
-    """
-    if failure_type in {"匹配到多设备", "业务域不明确", "时间缺失", "条件过细", "无结果"}:
-        return []
-
-    values: List[str] = []
-    if failure_type in {"对象定位失败", "父对象定位失败"}:
-        for item in devices:
-            value = str(item.get("device_id", "") or "").strip()
-            if value:
-                values.append(value)
-    elif failure_type == "指标不支持":
-        values.extend(kpis)
-    elif failure_type == "属性不支持":
-        values.extend(properties)
-
-    values.extend(re.findall(r"(?:IP|MAC|名称|指标|属性)[为是：:\s]*[\"“']?([0-9A-Za-z_.:-]+)", failure_text))
-    return _dedupe(values)
-
-
-def _failure_summary(reason: str, detail: str) -> str:
-    """合并非空失败原因和详情，生成提供给 LLM 的业务摘要。"""
-    return "；".join(item.strip() for item in (reason, detail) if item and item.strip())
+) -> Tuple[List[str], List[str]]:
+    """根据结构化失效规则，从意图设备标识和 KPI 中确定无效值。"""
+    invalid_identifiers: List[str] = []
+    invalid_kpis: List[str] = []
+    if invalidation == ALL_DEVICE_IDENTIFIERS:
+        invalid_identifiers = _dedupe(item.get("device_id") for item in devices)
+    elif invalidation in {IP_IDENTIFIERS, NAME_IDENTIFIERS}:
+        expected_type = "IP" if invalidation == IP_IDENTIFIERS else "NAME"
+        invalid_identifiers = _dedupe(
+            item.get("device_id")
+            for item in devices
+            if str(item.get("id_type", "") or "").upper() == expected_type
+        )
+    elif invalidation == ALL_KPIS:
+        invalid_kpis = list(kpis)
+    return invalid_identifiers, invalid_kpis
 
 
 def _normalize_aggregations(value: Any) -> List[str]:

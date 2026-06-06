@@ -122,8 +122,9 @@ class RecommendationContext:
         alarm: 告警查询条件。
         aggregations: 规范化后的聚合算子。
         tables: 用于加载逻辑元数据并辅助能力排序的逻辑表名。
-        failure_type: 标准失败恢复类型；为空表示普通推荐场景。
-        failure_summary: 提供给 LLM 的简短业务失败说明。
+        recovery_strategy: 根据稳定错误码确定的推荐恢复策略；为空表示普通推荐。
+        refusal_message: 共享 ErrorInfo 提供的标准用户说明。
+        refusal_detail: LLM 拒答提供的本次详细原因，仅辅助最终表达。
         invalid_values: 已明确失败、禁止继续继承的条件值。
     """
 
@@ -138,8 +139,9 @@ class RecommendationContext:
     alarm: Optional[AlarmCondition] = None
     aggregations: List[str] = field(default_factory=list)
     tables: List[str] = field(default_factory=list)
-    failure_type: str = ""
-    failure_summary: str = ""
+    recovery_strategy: str = ""
+    refusal_message: str = ""
+    refusal_detail: str = ""
     invalid_values: List[str] = field(default_factory=list)
 
     @classmethod
@@ -169,7 +171,14 @@ class RecommendationContext:
             if isinstance(item, (Identifier, Mapping))
         ]
         kwargs["alarm"] = AlarmCondition.from_dict(kwargs.get("alarm"))
-        for key in ("intention", "question", "time", "failure_type", "failure_summary"):
+        for key in (
+            "intention",
+            "question",
+            "time",
+            "recovery_strategy",
+            "refusal_message",
+            "refusal_detail",
+        ):
             kwargs[key] = str(kwargs.get(key, "") or "").strip()
         return cls(**kwargs)
 
@@ -207,7 +216,7 @@ class CapabilityCard:
     aggregations: List[str] = field(default_factory=list)
     result_forms: List[str] = field(default_factory=list)
     time_policy: str = ""
-    recovery_types: List[str] = field(default_factory=list)
+    recovery_strategies: List[str] = field(default_factory=list)
     table_hints: List[str] = field(default_factory=list)
     golden_questions: List[str] = field(default_factory=list)
     priority: int = 0
@@ -229,7 +238,7 @@ class CapabilityCard:
             "locators",
             "aggregations",
             "result_forms",
-            "recovery_types",
+            "recovery_strategies",
             "table_hints",
             "golden_questions",
         }
