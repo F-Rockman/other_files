@@ -238,10 +238,8 @@ class CapabilityCard:
 
 @dataclass
 class MetadataColumn:
-    """逻辑模型中一个字段及其所属表的业务描述。"""
+    """逻辑模型中一个字段的业务描述。"""
 
-    table_name: str = ""
-    table_description: str = ""
     column_name: str = ""
     column_description: str = ""
 
@@ -253,10 +251,6 @@ class MetadataColumn:
             return cls()
 
         aliases = {
-            "table": "table_name",
-            "tableName": "table_name",
-            "table_desc": "table_description",
-            "tableDescription": "table_description",
             "column": "column_name",
             "name": "column_name",
             "columnName": "column_name",
@@ -274,3 +268,51 @@ class MetadataColumn:
 
     def to_dict(self) -> Dict[str, Any]:
         return _compact_dict(asdict(self))
+
+
+@dataclass
+class MetadataTable:
+    """
+    按逻辑表组织的业务元数据。
+
+    Attributes:
+        table_name: 逻辑模型根节点的 ``name``。
+        table_description: 逻辑模型根节点的 ``description_cn``。
+        columns: 当前表 ``schema.fields`` 中有效字段的业务描述。
+    """
+
+    table_name: str = ""
+    table_description: str = ""
+    columns: List[MetadataColumn] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "MetadataTable":
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, Mapping):
+            return cls()
+
+        raw_columns = data.get("columns")
+        if not isinstance(raw_columns, list):
+            raw_columns = []
+        columns = [
+            MetadataColumn.from_dict(item)
+            for item in raw_columns
+            if isinstance(item, (MetadataColumn, Mapping))
+        ]
+        return cls(
+            table_name=str(data.get("table_name", data.get("name", "")) or "").strip(),
+            table_description=str(
+                data.get("table_description", data.get("description_cn", "")) or ""
+            ).strip(),
+            columns=columns,
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return _compact_dict(
+            {
+                "table_name": self.table_name,
+                "table_description": self.table_description,
+                "columns": [column.to_dict() for column in self.columns],
+            }
+        )

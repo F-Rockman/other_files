@@ -8,6 +8,7 @@ from .models import (
     CapabilityCard,
     Identifier,
     MetadataColumn,
+    MetadataTable,
     RecommendationContext,
 )
 from .prompt import (
@@ -26,6 +27,7 @@ __all__ = [
     "RecommendationContext",
     "CapabilityCard",
     "MetadataColumn",
+    "MetadataTable",
     "RankedCapability",
     "build_recommendation_context",
     "load_capability_cards",

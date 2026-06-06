@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from importlib import resources
 from typing import Any, Dict, List, Mapping, Sequence, Tuple
 
-from .models import CapabilityCard, MetadataColumn, RecommendationContext
+from .models import CapabilityCard, MetadataTable, RecommendationContext
 
 
 DOMAIN_BY_DEVICE_TYPE = {
@@ -57,7 +57,7 @@ def load_capability_cards() -> List[CapabilityCard]:
 
 def recommend_capabilities(
     context: RecommendationContext,
-    metadata: Sequence[MetadataColumn] = (),
+    metadata_tables: Sequence[MetadataTable] = (),
     cards: Sequence[CapabilityCard] = (),
     limit: int = 12,
 ) -> List[RankedCapability]:
@@ -67,7 +67,7 @@ def recommend_capabilities(
     for card in available_cards:
         if _has_hard_conflict(context, card):
             continue
-        score, reasons = _score_card(context, card, metadata)
+        score, reasons = _score_card(context, card, metadata_tables)
         ranked.append(RankedCapability(card=card, match_score=score, match_reasons=reasons))
 
     ranked.sort(key=lambda item: (-item.match_score, -item.card.priority, item.card.capability_id))
@@ -136,7 +136,7 @@ def _policy_rejects(policy: Mapping[str, Any], values: Sequence[str]) -> bool:
 def _score_card(
     context: RecommendationContext,
     card: CapabilityCard,
-    metadata: Sequence[MetadataColumn],
+    metadata_tables: Sequence[MetadataTable],
 ) -> Tuple[int, List[str]]:
     score = card.priority
     reasons: List[str] = []
@@ -181,12 +181,20 @@ def _score_card(
         list(context.tables)
         + [
             text
-            for item in metadata
+            for table in metadata_tables
             for text in (
-                item.table_name,
-                item.table_description,
-                item.column_name,
-                item.column_description,
+                table.table_name,
+                table.table_description,
+            )
+            if text
+        ]
+        + [
+            text
+            for table in metadata_tables
+            for column in table.columns
+            for text in (
+                column.column_name,
+                column.column_description,
             )
             if text
         ]

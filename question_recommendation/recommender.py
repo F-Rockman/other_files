@@ -2,12 +2,12 @@
 
 import json
 import re
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
 from .capabilities import recommend_capabilities
 from .config import EXPLAIN_FIELD, LLM_CHAT_CALL_ERROR_REASON, RECOMMENDS_FIELD
 from .metadata_loader import PathProvider, load_logical_metadata
-from .models import MetadataColumn, RecommendationContext
+from .models import MetadataTable, RecommendationContext
 from .prompt import QUESTION_RECOMMENDATION_SYSTEM_PROMPT, QUESTION_RECOMMENDATION_USER_TEMPLATE
 
 
@@ -27,15 +27,19 @@ def recommend_questions_chat(
     Chat LLM 自然化表达。LLM 返回结构合法时直接返回，不做内容过滤或补足。
     """
     normalized_context = _normalize_context(context)
-    metadata = (
+    metadata_tables = (
         load_logical_metadata(normalized_context.tables, logical_model_path_provider)
         if normalized_context.tables and logical_model_path_provider
         else []
     )
-    candidate_capabilities = recommend_capabilities(normalized_context, metadata=metadata, limit=12)
+    candidate_capabilities = recommend_capabilities(
+        normalized_context,
+        metadata_tables=metadata_tables,
+        limit=12,
+    )
     messages = _build_chat_messages(
         normalized_context,
-        metadata,
+        metadata_tables,
         [item.to_dict() for item in candidate_capabilities],
     )
 
@@ -50,13 +54,13 @@ def recommend_questions_chat(
 
 def _build_chat_messages(
     context: RecommendationContext,
-    metadata: Sequence[MetadataColumn],
+    metadata_tables: Sequence[MetadataTable],
     candidate_capabilities: Sequence[Mapping[str, Any]],
 ) -> List[Dict[str, str]]:
     user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
         recommendation_context_json=_json_dumps(context.to_dict()),
         candidate_capabilities_json=_json_dumps(candidate_capabilities),
-        metadata_tables_json=_json_dumps(_group_metadata_by_table(metadata)),
+        metadata_tables_json=_json_dumps([table.to_dict() for table in metadata_tables]),
     )
     return [
         {"role": "system", "content": QUESTION_RECOMMENDATION_SYSTEM_PROMPT},
@@ -117,36 +121,6 @@ def _normalize_context(value: Any) -> RecommendationContext:
     if isinstance(value, Mapping):
         return RecommendationContext.from_dict(value)
     raise TypeError("context 必须是 RecommendationContext 或兼容字典")
-
-
-def _group_metadata_by_table(values: Sequence[MetadataColumn]) -> List[Dict[str, Any]]:
-    """将平铺列元数据按表名和表描述聚合。"""
-    grouped: Dict[Tuple[str, str], Dict[str, Any]] = {}
-    for item in values:
-        key = (item.table_name, item.table_description)
-        if key not in grouped:
-            grouped[key] = {
-                "table_name": item.table_name,
-                "table_description": item.table_description,
-                "columns": [],
-            }
-        grouped[key]["columns"].append(
-            _compact(
-                {
-                    "column_name": item.column_name,
-                    "column_description": item.column_description,
-                }
-            )
-        )
-    return [_compact(table) for table in grouped.values()]
-
-
-def _compact(value: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        key: item
-        for key, item in value.items()
-        if item not in (None, "", [], {})
-    }
 
 
 def _json_dumps(value: Any) -> str:

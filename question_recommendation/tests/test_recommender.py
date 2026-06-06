@@ -11,6 +11,7 @@ from question_recommendation import (
     CapabilityCard,
     LogicalMetadataError,
     MetadataColumn,
+    MetadataTable,
     RecommendationContext,
     build_recommendation_context,
     load_capability_cards,
@@ -18,7 +19,7 @@ from question_recommendation import (
     recommend_capabilities,
     recommend_questions_chat,
 )
-from question_recommendation.recommender import _group_metadata_by_table, _parse_llm_response
+from question_recommendation.recommender import _parse_llm_response
 
 
 def _network_interface_context(**overrides):
@@ -243,14 +244,18 @@ def test_tables_affect_score_but_not_hard_filter():
         tables=["server_optical_module"],
     )
     metadata = [
-        MetadataColumn(
-            "server_optical_module",
-            "服务器光模块",
-            "name",
-            "光模块名称",
+        MetadataTable(
+            table_name="server_optical_module",
+            table_description="服务器光模块",
+            columns=[
+                MetadataColumn(
+                    column_name="name",
+                    column_description="光模块名称",
+                )
+            ],
         )
     ]
-    ranked = recommend_capabilities(context, metadata=metadata)
+    ranked = recommend_capabilities(context, metadata_tables=metadata)
     ids = [item.card.capability_id for item in ranked]
     assert "network_optical_module_information" in ids
     assert "server_optical_module_information" in ids
@@ -355,16 +360,23 @@ def test_parse_markdown_wrapped_json():
     assert result == {"recommends": ["A"], "explain": "ok"}
 
 
-def test_metadata_columns_group_by_table():
-    grouped = _group_metadata_by_table(
-        [
-            MetadataColumn("device", "设备", "name", "设备名称"),
-            MetadataColumn("device", "设备", "ip", "设备IP地址"),
-            MetadataColumn("metric", "设备性能指标", "cpu_usage", "CPU利用率"),
-        ]
+def test_metadata_table_serializes_grouped_columns():
+    metadata = MetadataTable(
+        table_name="device",
+        table_description="设备",
+        columns=[
+            MetadataColumn("name", "设备名称"),
+            MetadataColumn("ip", "设备IP地址"),
+        ],
     )
-    assert len(grouped) == 2
-    assert len(grouped[0]["columns"]) == 2
+    assert metadata.to_dict() == {
+        "table_name": "device",
+        "table_description": "设备",
+        "columns": [
+            {"column_name": "name", "column_description": "设备名称"},
+            {"column_name": "ip", "column_description": "设备IP地址"},
+        ],
+    }
 
 
 def test_load_logical_metadata_skips_missing_and_unsafe_tables(tmp_path, monkeypatch):
@@ -381,7 +393,44 @@ def test_load_logical_metadata_skips_missing_and_unsafe_tables(tmp_path, monkeyp
         encoding="utf-8",
     )
     metadata = load_logical_metadata(["device", "missing", "../unsafe", "device"], lambda: tmp_path)
-    assert [item.column_name for item in metadata] == ["ip"]
+    assert [table.to_dict() for table in metadata] == [
+        {
+            "table_name": "device",
+            "table_description": "设备",
+            "columns": [
+                {
+                    "column_name": "ip",
+                    "column_description": "设备IP地址",
+                }
+            ],
+        }
+    ]
+
+
+def test_load_logical_metadata_returns_one_group_per_table(tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, "yaml", SimpleNamespace(safe_load=lambda stream: json.load(stream)))
+    for table_name, description in (("device", "设备"), ("metric", "设备指标")):
+        (tmp_path / f"{table_name}.logical.yaml").write_text(
+            json.dumps(
+                {
+                    "name": table_name,
+                    "description_cn": description,
+                    "schema": {
+                        "fields": [
+                            {"name": "first", "description_cn": "字段一"},
+                            {"name": "second", "description_cn": "字段二"},
+                        ]
+                    },
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+
+    metadata = load_logical_metadata(["device", "metric"], lambda: tmp_path)
+
+    assert [table.table_name for table in metadata] == ["device", "metric"]
+    assert [len(table.columns) for table in metadata] == [2, 2]
 
 
 def test_load_logical_metadata_rejects_invalid_directory(tmp_path):

@@ -187,7 +187,7 @@ topN → top_n
 ```python
 from question_recommendation import recommend_capabilities
 
-ranked = recommend_capabilities(context, metadata=[], limit=12)
+ranked = recommend_capabilities(context, metadata_tables=[], limit=12)
 for item in ranked:
     print(item.card.capability_id, item.match_score, item.match_reasons)
 ```
@@ -232,6 +232,26 @@ schema:
     - name: device_ip
       description_cn: 设备IP地址
 ```
+
+`load_logical_metadata` 在读取文件时直接按表组织结果，不再返回平铺列列表：
+
+```python
+[
+    MetadataTable(
+        table_name="network_device",
+        table_description="网络设备",
+        columns=[
+            MetadataColumn(
+                column_name="device_ip",
+                column_description="设备IP地址",
+            )
+        ],
+    )
+]
+```
+
+同一张表的字段始终位于该表的 `columns` 中。能力排序和 Prompt 直接消费这个结构，
+推荐器不再进行二次分组。
 
 单个文件缺失或格式错误时跳过。目录无效或缺少 PyYAML 时抛出
 `LogicalMetadataError`。

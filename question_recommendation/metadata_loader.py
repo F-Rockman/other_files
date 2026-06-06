@@ -6,7 +6,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
 
-from .models import MetadataColumn
+from .models import MetadataColumn, MetadataTable
 
 
 class LogicalMetadataError(Exception):
@@ -19,9 +19,12 @@ PathProvider = Callable[[], Union[str, Path]]
 def load_logical_metadata(
     table_names: Sequence[str],
     logical_model_path_provider: PathProvider,
-) -> List[MetadataColumn]:
+) -> List[MetadataTable]:
     """
     根据逻辑表名加载 ``{table_name}.logical.yaml``。
+
+    返回值在加载阶段就按表组织为 ``List[MetadataTable]``，每个逻辑模型文件对应
+    一个 ``MetadataTable``，字段位于其 ``columns`` 中。
 
     路径提供方法返回存放所有逻辑模型文件的目录。单个文件不存在、无法读取或内容
     不符合预期结构时会跳过；缺少 PyYAML 或路径提供方法返回无效目录时抛出
@@ -39,7 +42,7 @@ def load_logical_metadata(
         raise LogicalMetadataError(f"逻辑模型目录不存在或不是目录: {base_dir}")
 
     yaml = _load_yaml_module()
-    result: List[MetadataColumn] = []
+    result: List[MetadataTable] = []
     for table_name in _dedupe_table_names(table_names):
         file_path = _logical_file_path(base_dir, table_name)
         if file_path is None or not file_path.is_file():
@@ -49,7 +52,9 @@ def load_logical_metadata(
                 document = yaml.safe_load(file)
         except Exception:
             continue
-        result.extend(_extract_metadata_columns(document))
+        metadata_table = _extract_metadata_table(document)
+        if metadata_table is not None:
+            result.append(metadata_table)
     return result
 
 
@@ -72,37 +77,39 @@ def _logical_file_path(base_dir: Path, table_name: str) -> Optional[Path]:
     return candidate
 
 
-def _extract_metadata_columns(document: Any) -> List[MetadataColumn]:
-    """从逻辑模型文档提取表名、表描述、列名和列描述。"""
+def _extract_metadata_table(document: Any) -> Optional[MetadataTable]:
+    """从一个逻辑模型文档提取已按表组织的业务元数据。"""
     if not isinstance(document, Mapping):
-        return []
+        return None
 
     table_name = _text(document.get("name"))
     table_description = _text(document.get("description_cn"))
     schema = document.get("schema")
     if not table_name or not isinstance(schema, Mapping):
-        return []
+        return None
 
     fields = schema.get("fields")
     if not isinstance(fields, list):
-        return []
+        return None
 
-    result: List[MetadataColumn] = []
+    columns: List[MetadataColumn] = []
     for field in fields:
         if not isinstance(field, Mapping):
             continue
         column_name = _text(field.get("name"))
         if not column_name:
             continue
-        result.append(
+        columns.append(
             MetadataColumn(
-                table_name=table_name,
-                table_description=table_description,
                 column_name=column_name,
                 column_description=_text(field.get("description_cn")),
             )
         )
-    return result
+    return MetadataTable(
+        table_name=table_name,
+        table_description=table_description,
+        columns=columns,
+    )
 
 
 def _dedupe_table_names(table_names: Sequence[str]) -> List[str]:
