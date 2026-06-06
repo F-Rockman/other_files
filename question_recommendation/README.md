@@ -1,137 +1,228 @@
 # question_recommendation
 
-基于“结构化模板定义能力边界，LLM 负责自然表达”的问数推荐模块。
+基于“最小化推荐上下文 + 内置能力卡 + LLM 自然表达”的问数推荐模块。
 
-推荐输入的优先级为：
+推荐链路：
 
 ```text
-recognized_intent > StructuredTemplate 标签 > 失败原因 > metadata_tables > 模板原文
+上一步意图识别结果
+→ build_recommendation_context
+→ RecommendationContext
+→ 确定性能力卡过滤与 Top 12 排序
+→ 加载逻辑表元数据
+→ Chat LLM 生成自然问题
 ```
 
-## 调用接口
+能力卡召回和排序不调用 LLM 或 Embedding。最终 LLM 输出只校验 JSON 结构，不执行
+内容过滤、去重、补足或改写。
+
+## 快速使用
 
 ```python
-recommend_questions_chat(
-    user_question,
-    llm_chat_client,
-    scene_type="error",
-    intercept_reason="",
-    intercept_detail="",
-    recognized_intent=None,
-    candidate_templates=None,
-    logical_model_path_provider=None,
-    business_info=None,
+from question_recommendation import (
+    build_recommendation_context,
+    recommend_questions_chat,
+)
+
+upstream_result = {
+    "intention": "查指标",
+    "question": "查询 IP 以 10.1 开头的设备平均 CPU 利用率",
+    "devices": [
+        {
+            "device_id": "10.1",
+            "id_type": "IP",
+            "match_mode": "PREFIX",
+            "device_type": "网络设备",
+        }
+    ],
+    "subcomponents": [],
+    "properties": [],
+    "kpis": ["CPU利用率"],
+    "time": "",
+    "alarm": None,
+    "agg": ["avg"],
+    "tables": ["network_device", "network_device_metric"],
+}
+
+context = build_recommendation_context(
+    upstream_result,
+    failure_reason="IP 前缀匹配到多个设备",
+)
+
+result = recommend_questions_chat(
+    context,
+    llm_chat_client=my_llm_chat_client,
+    logical_model_path_provider=lambda: "/data/logical-models",
 )
 ```
 
-| 参数 | 必填 | 含义 | 缺失影响 |
-|---|---|---|---|
-| `user_question` | 是 | 用户原始问题 | 无法保持原问题表达和具体条件 |
-| `llm_chat_client` | 是 | 接收 messages 并返回字符串的 Chat LLM 调用函数 | 无法生成推荐 |
-| `scene_type` | 否 | `error` 或 `normal`，默认 `error` | 默认按失败恢复处理 |
-| `intercept_reason` | error 场景建议 | 对用户可理解的失败原因 | 无法准确判断恢复策略和异常参数 |
-| `intercept_detail` | 否 | 失败补充信息 | 复杂失败场景恢复准确率下降 |
-| `recognized_intent` | 强烈建议 | 前一步结构化意图识别结果 | 更依赖模板文本，业务跑偏风险上升 |
-| `candidate_templates` | 强烈建议 | 外部召回的 Top N 结构化模板 | LLM 缺少可参考的推荐能力边界 |
-| `logical_model_path_provider` | 有 `tables` 时建议 | 返回所有 `.logical.yaml` 文件所在目录的方法 | 不读取表列元数据，仍可依靠意图和模板推荐 |
-| `business_info` | 否 | 额外业务说明或约束 | 不影响核心流程 |
+## RecommendationContext
 
-## RecognizedIntent
+`RecommendationContext` 是推荐模块唯一消费的标准上下文。它不是上一步结构的镜像，
+只保存召回、排序、元数据加载和 LLM 表达实际使用的字段。
 
-前一步意图识别结果。字段值可以是字符串、列表或字典；建议使用字典保留更多结构化信息。
+| 字段 | 类型 | 含义与用途 |
+|---|---|---|
+| `intention` | `str` | 查信息、查告警、查指标或查链路；用于能力卡过滤和排序 |
+| `question` | `str` | 用户原始问题；仅供 LLM 保持原始方向和表达 |
+| `device_types` | `list[str]` | 明确设备类型；用于设备对象匹配，并限定子部件所属父对象 |
+| `subcomponent_types` | `list[str]` | 接口、光模块等子部件类型；存在时作为主要查询对象 |
+| `identifiers` | `list[Identifier]` | 仍有效、允许继承的 IP、MAC、名称等定位条件 |
+| `properties` | `list[str]` | 查询属性；用于匹配属性能力 |
+| `kpis` | `list[str]` | 查询指标；用于匹配指标能力 |
+| `time` | `str` | 时间原始表达；用于时间策略匹配和 LLM 表达 |
+| `alarm` | `AlarmCondition \| None` | 告警类型和值；用于告警能力匹配 |
+| `aggregations` | `list[str]` | 规范化聚合算子；用于聚合能力匹配 |
+| `tables` | `list[str]` | 逻辑表名；用于加载元数据并辅助排序 |
+| `failure_type` | `str` | 标准失败恢复类型；为空表示普通推荐 |
+| `failure_summary` | `str` | 提供给 LLM 的业务失败说明 |
+| `invalid_values` | `list[str]` | 已明确失败、禁止继续继承的条件值 |
 
-| 字段 | 建议级别 | 含义 | 示例 |
-|---|---|---|---|
-| `intent_type` | 必填 | 核心查询意图 | `查信息`、`查告警`、`查指标`、`查链路` |
-| `domain_info` | 多域对象必填 | 原始业务域 | `网络`、`服务器`、`存储`、`PON` |
-| `subnet_info` | 涉及时填写 | 子网对象、条件及匹配方式 | `{"name": "核心网子网"}` |
-| `device_info` | 涉及时填写 | 设备类型、定位条件、匹配方式和查询范围 | `{"object": "网络设备", "ip_prefix": "10.1", "match_type": "prefix"}` |
-| `sub_component_info` | 涉及时填写 | 设备子部件 | `{"object": "接口"}` |
-| `attribute_info` | 涉及时填写 | 查询属性 | `{"attribute": "健康状态"}` |
-| `metric_info` | 查指标建议必填 | 性能指标 | `{"metric": "CPU利用率"}` |
-| `time_info` | 涉及时填写 | 时间范围和时间粒度 | `{"range": "最近24小时", "grain": "小时"}` |
-| `alarm_info` | 查告警建议必填 | 告警名称、级别、状态等 | `{"status": "未恢复"}` |
-| `aggregation_operator` | 涉及时填写 | 聚合或展示算子 | `平均值`、`最大值`、`数量`、`TopN` |
-| `tables` | 有关联表时填写 | 本次意图关联到的全部逻辑表名 | `["network_device", "network_device_metric"]` |
-| `extra` | 否 | 暂未标准化的扩展信息 | `{"matched_device_count": 12}` |
+### Identifier
 
-推荐保留匹配语义，而不只传最终值。例如 IP 前缀条件建议传成：
+| 字段 | 含义 |
+|---|---|
+| `value` | IP、MAC、名称或其他定位值 |
+| `id_type` | `IP`、`MAC`、`NAME`、`OTHER` |
+| `match_mode` | `EXACT`、`PREFIX`、`SUFFIX`、`FUZZY` |
+
+### AlarmCondition
+
+| 字段 | 含义 |
+|---|---|
+| `alarm_type` | `NAME`、`LEVEL` 或 `STATUS` |
+| `alarm_value` | 告警名称、级别或状态值 |
+
+上下文支持序列化：
 
 ```python
-RecognizedIntent(
-    intent_type="查指标",
-    domain_info="网络",
-    device_info={
-        "object": "网络设备",
-        "ip_prefix": "10.1",
-        "match_type": "prefix",
-        "matched_scope": "multiple",
-    },
-    metric_info={"metric": "CPU利用率"},
-    aggregation_operator="平均值",
-    tables=["network_device", "network_device_metric"],
+context.to_dict()
+context.to_json()
+RecommendationContext.from_dict(data)
+RecommendationContext.from_json(text)
+```
+
+## 上一步结构转换
+
+```python
+build_recommendation_context(
+    upstream_result,
+    failure_reason="",
+    failure_detail="",
 )
 ```
 
-## StructuredTemplate
+字段映射：
 
-结构化模板是推荐能力单元。标签决定“能不能推荐”，`template_text` 决定“如何表达”。
+| 上一步字段 | 内部字段 |
+|---|---|
+| `intention` | `intention` |
+| `question` | `question` |
+| `devices[].device_type` | `device_types` |
+| `devices[].device_id/id_type/match_mode` | `identifiers` |
+| `subcomponents[].subcomponent_type` | `subcomponent_types` |
+| `properties` | `properties` |
+| `kpis` | `kpis` |
+| `time` | `time` |
+| `alarm` | `alarm` |
+| `agg` | `aggregations` |
+| `tables` | `tables` |
+| 失败原因和详情 | `failure_type`、`failure_summary`、`invalid_values` |
 
-| 字段 | 建议级别 | 含义 | 不填写的影响 |
-|---|---|---|---|
-| `template_id` | 必填 | 模板稳定唯一标识 | 不影响运行，但难以维护、评估和排障 |
-| `template_text` | 必填 | 可自然化改写的问题骨架 | 无法基于该模板生成问题 |
-| `intent_tags` | 必填 | 支持的用户意图 | 意图排序准确率下降 |
-| `domain_tags` | 多域对象必填 | 适用业务域 | 无法依靠该字段阻止跨域推荐 |
-| `object_tags` | 必填 | 模板涉及对象，建议父对象在前 | 对象跑偏风险明显上升 |
-| `parent_object` | 子部件模板建议必填 | 父对象 | 父对象失败后的恢复能力下降 |
-| `child_object` | 子部件模板建议必填 | 子对象 | 可能退化成父对象级推荐 |
-| `template_type` | 必填 | 列表、数量、基础信息、指标、趋势、告警、链路等 | LLM 对模板查询形态的理解下降 |
-| `slots` | 有槽位时必填 | 需要继承或让用户补充的参数 | 定位条件可能无法正确自然化 |
-| `supported_recovery_types` | error 模板建议必填 | 适用失败恢复类型 | 失败场景只能靠业务域和对象排序 |
-| `priority` | 否 | 静态优先级，值越大越优先 | 默认按 0 处理 |
-| `extra` | 否 | 暂未标准化的模板标签 | 不影响标准流程 |
+以下字段当前没有稳定的推荐用途，因此完全忽略：
 
-多业务域对象包括接口、端口、光模块、硬盘、风扇、电源、机框等。此类模板必须填写
-`domain_tags`，否则容易跨域推荐。
+```text
+tenant
+subnet
+subcomponents[].subcomponent_name
+link_relation
+其他未知字段
+```
+
+聚合算子转换：
+
+```text
+count(distinct) → count_distinct
+topN → top_n
+其他算子统一转成小写
+```
+
+标准失败类型包括：业务域不明确、匹配到多设备、指标不支持、属性不支持、父对象定位
+失败、对象定位失败、时间缺失、条件过细、无结果、内部执行异常、其他失败。
+
+## CapabilityCard
+
+内置能力卡配置位于 `data/capability_cards.json`。能力卡定义“系统允许推荐什么”，
+`golden_questions` 仅指导表达，不是固定输出模板。
+
+| 字段 | 含义 |
+|---|---|
+| `capability_id` | 唯一能力标识 |
+| `domain` | 网络、服务器、存储、PON、终端等业务域 |
+| `intent_type` | 支持的查询意图 |
+| `objects` | 支持的主要查询对象 |
+| `parent_object` | 子对象所属父设备 |
+| `locators` | 支持的定位值类型 |
+| `attribute_policy` | 属性支持策略 |
+| `metric_policy` | 指标支持策略 |
+| `aggregations` | 支持的聚合算子 |
+| `result_forms` | 列表、数量、基础信息、趋势等结果形态 |
+| `time_policy` | 时间是否必填、可选或不适用 |
+| `recovery_types` | 支持处理的失败类型 |
+| `table_hints` | 逻辑表和表描述相关度提示 |
+| `golden_questions` | 提供给 LLM 的自然问题示例 |
+| `priority` | 静态排序优先级 |
+
+指标与属性策略：
+
+- `allow`：仅支持 `allow` 数组中明确列出的值。
+- `dynamic`：允许根据逻辑元数据动态表达。
+- `dynamic_inherit`：允许继承原问题中的值；失败类型为指标不支持时不会继承。
+- `none`：该能力卡不是对应类型的查询能力。
+
+## 确定性推荐算法
+
+可以独立查看算法选出的能力卡：
 
 ```python
-StructuredTemplate(
-    template_id="network_device_avg_cpu_by_ip",
-    template_text="查询 IP 为“IP地址”的网络设备平均 CPU 利用率",
-    intent_tags=["查指标"],
-    domain_tags=["网络"],
-    object_tags=["网络设备"],
-    template_type="指标",
-    slots=["device_ip"],
-    supported_recovery_types=["匹配到多设备", "对象定位失败"],
-    priority=80,
-)
+from question_recommendation import recommend_capabilities
+
+ranked = recommend_capabilities(context, metadata=[], limit=12)
+for item in ranked:
+    print(item.card.capability_id, item.match_score, item.match_reasons)
 ```
+
+算法仅在明确冲突时硬过滤：
+
+- 查询意图冲突，且能力卡不支持当前失败恢复类型；
+- 主要查询对象冲突；
+- 明确设备类型唯一对应的业务域冲突；
+- 能力卡明确不支持当前 KPI、属性或聚合算子；
+- 能力卡不支持当前失败恢复类型。
+
+`tables`、表描述和字段描述只影响排序，不参与硬过滤。
+
+### 多领域对象
+
+当 `failure_type == "业务域不明确"` 时，不执行单一领域硬过滤。例如查询光模块接收
+功率时：
+
+- 保留支持接收功率的网络光模块指标能力；
+- 保留网络光模块信息能力；
+- 保留服务器光模块信息能力；
+- 不会为不支持接收功率的服务器光模块生成该指标能力候选。
+
+Prompt 要求最终推荐明确父对象，例如“网络设备光模块”或“服务器光模块”。
 
 ## 逻辑模型元数据
 
-调用方不直接传表列信息。推荐器从 `recognized_intent.tables` 获取所有表名，并调用
-`logical_model_path_provider` 获取存放逻辑模型文件的目录。
-
-```python
-def logical_model_path_provider() -> str:
-    return "/data/logical-models"
-
-result = recommend_questions_chat(
-    ...,
-    recognized_intent=intent,
-    logical_model_path_provider=logical_model_path_provider,
-)
-```
-
-对于表名 `network_device`，推荐器读取：
+推荐器根据 `context.tables` 和 `logical_model_path_provider` 读取：
 
 ```text
-/data/logical-models/network_device.logical.yaml
+{logical_model_path}/{table_name}.logical.yaml
 ```
 
-逻辑模型文件结构：
+只提取以下内容：
 
 ```yaml
 name: network_device
@@ -140,119 +231,39 @@ schema:
   fields:
     - name: device_ip
       description_cn: 设备IP地址
-    - name: device_name
-      description_cn: 设备名称
 ```
 
-推荐器只提取：
+单个文件缺失或格式错误时跳过。目录无效或缺少 PyYAML 时抛出
+`LogicalMetadataError`。
 
-| YAML 路径 | 用途 |
-|---|---|
-| `name` | 表名 |
-| `description_cn` | 表描述 |
-| `schema.fields[].name` | 列名 |
-| `schema.fields[].description_cn` | 列描述 |
-
-推荐器会在 Prompt 中自动按表组织：
-
-```json
-[
-  {
-    "table_name": "network_device",
-    "table_description": "网络设备",
-    "columns": [
-      {"column_name": "device_ip", "column_description": "设备IP地址"}
-    ]
-  },
-  {
-    "table_name": "network_device_metric",
-    "table_description": "网络设备性能指标",
-    "columns": [
-      {"column_name": "avg_cpu_usage", "column_description": "平均CPU利用率"}
-    ]
-  }
-]
-```
-
-没有表列信息时，只要 `recognized_intent` 和 `candidate_templates` 足够完整，仍然可以正常推荐。
-但模块不会根据未知字段自由扩展问题。
-
-单个逻辑模型文件缺失或格式异常时会跳过该表，不阻断推荐。路径提供方法返回无效目录，
-或环境未安装 PyYAML 时，会抛出 `LogicalMetadataError`。
-
-安装依赖：
-
-```bash
-pip install -r question_recommendation/requirements.txt
-```
-
-## 多设备失败示例
-
-用户问题：
-
-```text
-查询 IP 以 10.1 开头的设备平均 CPU 利用率
-```
-
-前一步识别出查指标、IP 前缀、CPU 利用率、平均值，并返回“匹配到多设备”错误时：
-
-- IP 前缀属于有效查询范围，不应作为异常参数删除。
-- 如果当前能力只支持单设备指标查询，应先推荐设备列表、设备数量和单设备指标查询。
-- 若模板明确支持按设备分组聚合，可以推荐“查询 IP 以 10.1 开头的各设备平均 CPU 利用率”。
-
-建议候选模板至少覆盖：
+## Chat 接口与输出
 
 ```python
-[
-    StructuredTemplate(
-        template_id="network_device_list_by_ip_prefix",
-        template_text="查询 IP 以“IP前缀”开头的网络设备列表",
-        intent_tags=["查信息"],
-        domain_tags=["网络"],
-        object_tags=["网络设备"],
-        template_type="列表",
-        slots=["ip_prefix"],
-        supported_recovery_types=["匹配到多设备"],
-    ),
-    StructuredTemplate(
-        template_id="network_device_count_by_ip_prefix",
-        template_text="查询 IP 以“IP前缀”开头的网络设备数量",
-        intent_tags=["查信息"],
-        domain_tags=["网络"],
-        object_tags=["网络设备"],
-        template_type="数量",
-        slots=["ip_prefix"],
-        supported_recovery_types=["匹配到多设备"],
-    ),
-    StructuredTemplate(
-        template_id="network_device_avg_cpu_by_ip",
-        template_text="查询 IP 为“IP地址”的网络设备平均 CPU 利用率",
-        intent_tags=["查指标"],
-        domain_tags=["网络"],
-        object_tags=["网络设备"],
-        template_type="指标",
-        slots=["device_ip"],
-        supported_recovery_types=["匹配到多设备"],
-    ),
-]
+recommend_questions_chat(
+    context,
+    llm_chat_client,
+    logical_model_path_provider=None,
+)
 ```
 
-## 输出
+输出结构：
 
 ```json
 {
-  "recommends": [
-    "推荐问题1",
-    "推荐问题2",
-    "推荐问题3"
-  ],
-  "explain": "80字以内的推荐理由"
+  "recommends": ["推荐问题1", "推荐问题2", "推荐问题3"],
+  "explain": "推荐说明"
 }
 ```
 
-调用器不对推荐内容做过滤、去重、模板补足或业务校验。只要 LLM 输出能解析为约定 JSON
-结构，就直接返回；无法解析或结构不合法时返回：
+结构合法时直接返回；无法解析或结构不合法时返回：
 
 ```json
 {"recommends": [], "explain": ""}
+```
+
+安装 YAML 依赖并运行测试：
+
+```bash
+pip install -r question_recommendation/requirements.txt
+python3 -m pytest question_recommendation/tests -q
 ```

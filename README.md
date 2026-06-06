@@ -298,7 +298,8 @@ async def check_intent_chat(data: QueryRequest):
 
 ## question_recommendation - 结构化模板问数推荐
 
-用于问数成功或失败后的推荐问题生成。推荐链路采用"结构化模板 + LLM 表达"方案：结构化模板定义业务域、对象、槽位和恢复策略，LLM 只负责在能力边界内排序、失败恢复和自然化表达。
+用于问数成功或失败后的推荐问题生成。推荐链路采用“最小化推荐上下文 + 内置能力卡 +
+确定性 Top 12 召回 + LLM 自然表达”方案。
 
 完整字段说明、必填性、缺失影响和多设备失败示例见
 [`question_recommendation/README.md`](question_recommendation/README.md)。
@@ -308,40 +309,30 @@ async def check_intent_chat(data: QueryRequest):
 ### 快速使用
 
 ```python
-from question_recommendation import RecognizedIntent, StructuredTemplate, recommend_questions_chat
+from question_recommendation import build_recommendation_context, recommend_questions_chat
 
-intent = RecognizedIntent(
-    intent_type="查信息",
-    domain_info="网络",
-    device_info={"name": "网络设备"},
-    sub_component_info={"name": "接口"},
-    tables=["network_device", "network_interface"],
+context = build_recommendation_context(
+    {
+        "intention": "查信息",
+        "question": "查询 IP 为 1.1.1.1 的网络设备接口",
+        "devices": [{
+            "device_id": "1.1.1.1",
+            "id_type": "IP",
+            "match_mode": "EXACT",
+            "device_type": "网络设备",
+        }],
+        "subcomponents": [{"subcomponent_type": "接口"}],
+        "tables": ["network_device", "network_interface"],
+    },
+    failure_reason="未找到设备 IP 为 1.1.1.1",
 )
-
-templates = [
-    StructuredTemplate(
-        template_id="network_interface_list",
-        template_text="查询网络设备接口列表",
-        intent_tags=["查信息"],
-        domain_tags=["网络"],
-        object_tags=["网络设备", "接口"],
-        parent_object="网络设备",
-        child_object="接口",
-        template_type="列表",
-        priority=80,
-    )
-]
 
 def my_llm_chat_client(messages: list[dict]) -> str:
     return llm_chat_sdk_call(messages)
 
 result = recommend_questions_chat(
-    "查询 IP 为 1.1.1.1 的网络设备接口",
+    context,
     my_llm_chat_client,
-    scene_type="error",
-    intercept_reason="未找到 IP 为 1.1.1.1 的设备",
-    recognized_intent=intent,
-    candidate_templates=templates,
     logical_model_path_provider=lambda: "/data/logical-models",
 )
 # {"recommends": [...], "explain": "..."}
@@ -349,9 +340,10 @@ result = recommend_questions_chat(
 
 ### 输入边界
 
-- `recognized_intent` 是最高优先级输入，用于锁定用户意图、业务域、对象、父子对象、属性、指标、时间、告警和聚合算子。
-- `candidate_templates` 是外部打分工具召回后的 Top 15 结构化模板；推荐问题必须来自这些模板的能力边界。
-- 推荐器根据 `recognized_intent.tables` 和 `logical_model_path_provider` 自动读取
+- `RecommendationContext` 只保存推荐真正使用的标准字段，由
+  `build_recommendation_context` 从上一步结构转换。
+- 推荐器自动加载内置能力卡，确定性过滤并排序 Top 12；召回过程不调用 LLM 或 Embedding。
+- 推荐器根据 `context.tables` 和 `logical_model_path_provider` 自动读取
   `{table_name}.logical.yaml`，只提取表名、表描述、列名和列描述。
 - 调用器只解析 LLM 返回结构，不过滤或补足推荐内容。
 

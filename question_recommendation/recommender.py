@@ -1,18 +1,13 @@
-"""
-结构化模板 + LLM 表达的问数推荐调用器。
-"""
+"""最小化上下文 + 能力卡召回 + LLM 表达的问数推荐调用器。"""
 
 import json
 import re
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
-from .config import (
-    EXPLAIN_FIELD,
-    LLM_CHAT_CALL_ERROR_REASON,
-    RECOMMENDS_FIELD,
-)
+from .capabilities import recommend_capabilities
+from .config import EXPLAIN_FIELD, LLM_CHAT_CALL_ERROR_REASON, RECOMMENDS_FIELD
 from .metadata_loader import PathProvider, load_logical_metadata
-from .models import MetadataColumn, RecognizedIntent, StructuredTemplate
+from .models import MetadataColumn, RecommendationContext
 from .prompt import QUESTION_RECOMMENDATION_SYSTEM_PROMPT, QUESTION_RECOMMENDATION_USER_TEMPLATE
 
 
@@ -21,55 +16,28 @@ class QuestionRecommendationError(Exception):
 
 
 def recommend_questions_chat(
-    user_question: str,
+    context: Any,
     llm_chat_client: Callable[[List[Dict[str, str]]], str],
-    scene_type: str = "error",
-    intercept_reason: str = "",
-    intercept_detail: str = "",
-    recognized_intent: Optional[Any] = None,
-    candidate_templates: Optional[Sequence[Any]] = None,
     logical_model_path_provider: Optional[PathProvider] = None,
-    business_info: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
-    生成推荐问题（Chat API 风格）。
+    根据标准化 RecommendationContext 生成推荐问题。
 
-    参数:
-        user_question:
-            用户原始问题。用于保留原始表达、查询条件和值；必填。
-        llm_chat_client:
-            接收 ``[{"role": "system", ...}, {"role": "user", ...}]`` 消息列表并
-            返回响应字符串的 Chat LLM 客户端。
-        scene_type:
-            ``error`` 或 ``normal``。默认按失败恢复场景处理。
-        intercept_reason:
-            失败或拒答原因文本。error 场景建议填写，用于识别恢复类型和异常值。
-        intercept_detail:
-            失败补充信息。可用于表达更具体的失败范围或限制。
-        recognized_intent:
-            ``RecognizedIntent`` 或兼容字典。它是锁定意图、业务域和对象的最高优先级输入。
-        candidate_templates:
-            ``StructuredTemplate`` 或兼容字典列表。通常传入外部召回后的 Top 15 模板。
-        logical_model_path_provider:
-            返回逻辑模型文件目录的可调用方法。推荐器根据 ``recognized_intent.tables``
-            读取 ``{table_name}.logical.yaml`` 并按表组织元数据。
-        business_info:
-            额外业务范围或限制信息。允许为空。
-
-    返回:
-        dict: {"recommends": [str, ...], "explain": str}
+    推荐器自动加载内置能力卡，执行确定性过滤和 Top 12 排序，再将候选能力交给
+    Chat LLM 自然化表达。LLM 返回结构合法时直接返回，不做内容过滤或补足。
     """
-    context = _build_context(
-        user_question=user_question,
-        scene_type=scene_type,
-        intercept_reason=intercept_reason,
-        intercept_detail=intercept_detail,
-        recognized_intent=recognized_intent,
-        candidate_templates=candidate_templates,
-        logical_model_path_provider=logical_model_path_provider,
-        business_info=business_info,
+    normalized_context = _normalize_context(context)
+    metadata = (
+        load_logical_metadata(normalized_context.tables, logical_model_path_provider)
+        if normalized_context.tables and logical_model_path_provider
+        else []
     )
-    messages = _build_chat_messages(context)
+    candidate_capabilities = recommend_capabilities(normalized_context, metadata=metadata, limit=12)
+    messages = _build_chat_messages(
+        normalized_context,
+        metadata,
+        [item.to_dict() for item in candidate_capabilities],
+    )
 
     try:
         llm_response = llm_chat_client(messages)
@@ -80,62 +48,24 @@ def recommend_questions_chat(
     return parsed or {RECOMMENDS_FIELD: [], EXPLAIN_FIELD: ""}
 
 
-def _build_context(
-    user_question: str,
-    scene_type: str,
-    intercept_reason: str,
-    intercept_detail: str,
-    recognized_intent: Optional[Any],
-    candidate_templates: Optional[Sequence[Any]],
-    logical_model_path_provider: Optional[PathProvider],
-    business_info: Optional[Any],
-) -> Dict[str, Any]:
-    intent = _normalize_intent(recognized_intent)
-    templates = _normalize_templates(candidate_templates or [])
-    metadata = (
-        load_logical_metadata(intent.tables, logical_model_path_provider)
-        if intent.tables and logical_model_path_provider
-        else []
+def _build_chat_messages(
+    context: RecommendationContext,
+    metadata: Sequence[MetadataColumn],
+    candidate_capabilities: Sequence[Mapping[str, Any]],
+) -> List[Dict[str, str]]:
+    user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
+        recommendation_context_json=_json_dumps(context.to_dict()),
+        candidate_capabilities_json=_json_dumps(candidate_capabilities),
+        metadata_tables_json=_json_dumps(_group_metadata_by_table(metadata)),
     )
-    return {
-        "user_question": user_question or "",
-        "scene_type": scene_type or "error",
-        "intercept_reason": intercept_reason or "",
-        "intercept_detail": intercept_detail or "",
-        "recognized_intent": intent,
-        "candidate_templates": templates,
-        "metadata_tables": _group_metadata_by_table(metadata),
-        "business_info": business_info if business_info is not None else {},
-    }
-
-
-def _build_chat_messages(context: Mapping[str, Any]) -> List[Dict[str, str]]:
     return [
         {"role": "system", "content": QUESTION_RECOMMENDATION_SYSTEM_PROMPT},
-        {"role": "user", "content": _build_user_prompt(context)},
+        {"role": "user", "content": user_prompt},
     ]
 
 
-def _build_user_prompt(context: Mapping[str, Any]) -> str:
-    return QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
-        user_question=context["user_question"],
-        scene_type=context["scene_type"],
-        intercept_reason=context["intercept_reason"],
-        intercept_detail=context["intercept_detail"],
-        recognized_intent_json=_json_dumps(context["recognized_intent"].to_dict()),
-        candidate_templates_json=_json_dumps([item.to_dict() for item in context["candidate_templates"]]),
-        metadata_tables_json=_json_dumps(context["metadata_tables"]),
-        business_info_json=_json_dumps(context["business_info"]),
-    )
-
-
 def _parse_llm_response(llm_response: str) -> Optional[Dict[str, Any]]:
-    """
-    解析 LLM 输出。
-
-    支持纯 JSON、Markdown 代码块 JSON、带额外解释文本的 JSON。
-    返回 None 表示无法解析或结构不合法。
-    """
+    """解析纯 JSON、Markdown JSON 或带额外文本的 JSON。"""
     if not llm_response:
         return None
 
@@ -166,45 +96,31 @@ def _extract_json_block(text: str) -> Optional[str]:
             return match.group(1).strip()
 
     match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match:
-        return match.group(0).strip()
-    return None
+    return match.group(0).strip() if match else None
 
 
 def _coerce_result(parsed: Any) -> Optional[Dict[str, Any]]:
     if not isinstance(parsed, dict):
         return None
-
     recommends = parsed.get(RECOMMENDS_FIELD)
     explain = parsed.get(EXPLAIN_FIELD)
     if not isinstance(recommends, list) or not all(isinstance(item, str) for item in recommends):
         return None
     if not isinstance(explain, str):
         return None
-
     return {RECOMMENDS_FIELD: recommends, EXPLAIN_FIELD: explain}
 
 
-def _normalize_intent(value: Any) -> RecognizedIntent:
-    if isinstance(value, RecognizedIntent):
+def _normalize_context(value: Any) -> RecommendationContext:
+    if isinstance(value, RecommendationContext):
         return value
     if isinstance(value, Mapping):
-        return RecognizedIntent.from_dict(value)
-    return RecognizedIntent()
-
-
-def _normalize_templates(values: Sequence[Any]) -> List[StructuredTemplate]:
-    result = []
-    for item in values:
-        if isinstance(item, StructuredTemplate):
-            result.append(item)
-        elif isinstance(item, Mapping):
-            result.append(StructuredTemplate.from_dict(item))
-    return result
+        return RecommendationContext.from_dict(value)
+    raise TypeError("context 必须是 RecommendationContext 或兼容字典")
 
 
 def _group_metadata_by_table(values: Sequence[MetadataColumn]) -> List[Dict[str, Any]]:
-    """将平铺列元数据按表名和表描述聚合，避免多张表的列混在一起。"""
+    """将平铺列元数据按表名和表描述聚合。"""
     grouped: Dict[Tuple[str, str], Dict[str, Any]] = {}
     for item in values:
         key = (item.table_name, item.table_description)
@@ -214,19 +130,24 @@ def _group_metadata_by_table(values: Sequence[MetadataColumn]) -> List[Dict[str,
                 "table_description": item.table_description,
                 "columns": [],
             }
-        column = {
-            "column_name": item.column_name,
-            "column_description": item.column_description,
-        }
         grouped[key]["columns"].append(
-            {name: value for name, value in column.items() if value not in (None, "", [], {})}
+            _compact(
+                {
+                    "column_name": item.column_name,
+                    "column_description": item.column_description,
+                }
+            )
         )
-    return [
-        {name: value for name, value in table.items() if value not in (None, "", [], {})}
-        for table in grouped.values()
-    ]
+    return [_compact(table) for table in grouped.values()]
+
+
+def _compact(value: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        key: item
+        for key, item in value.items()
+        if item not in (None, "", [], {})
+    }
 
 
 def _json_dumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2, default=str)
-
