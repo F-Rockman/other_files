@@ -2,7 +2,7 @@
 
 import json
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from importlib import resources
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -107,19 +107,18 @@ def recommend_capabilities(
     )
     matched_profiles = _matching_profiles(context, available_profiles)
 
-    candidates: List[CapabilityCandidate] = []
-    if context.recovery_strategy == BASIC:
-        candidates.extend(_basic_candidates(context, matched_profiles))
-    else:
-        primary_type = resolve_primary_capability_type(context)
-        candidates.extend(
-            _primary_candidates(context, matched_profiles, available_special, primary_type)
-        )
-        candidates.extend(_adjacent_candidates(context, matched_profiles, primary_type))
+    primary_type = resolve_primary_capability_type(context)
+    candidates = _primary_candidates(
+        context, matched_profiles, available_special, primary_type
+    )
+    candidates.extend(_adjacent_candidates(context, matched_profiles, primary_type))
+    candidates = _dedupe_candidates(candidates)
+    if not candidates and context.recovery_strategy == BASIC:
+        candidates = _global_basic_fallback_candidates(available_profiles)
 
     ranked = [
         _rank_candidate(context, candidate, metadata_tables)
-        for candidate in _dedupe_candidates(candidates)
+        for candidate in candidates
     ]
     ranked.sort(
         key=lambda item: (
@@ -208,50 +207,20 @@ def _adjacent_candidates(
     return candidates
 
 
-def _basic_candidates(
-    context: RecommendationContext,
+def _global_basic_fallback_candidates(
     profiles: Sequence[DeviceCapabilityProfile],
 ) -> List[CapabilityCandidate]:
-    """生成 Basic 兜底候选，仅包含同对象信息和数量能力。"""
+    """在 Basic 没有兼容候选时生成全局设备信息和数量候选。"""
+    empty_context = RecommendationContext()
     candidates: List[CapabilityCandidate] = []
     for profile in profiles:
-        if context.subcomponent_types:
-            candidates.extend(
-                _profile_candidates(context, profile, SUBCOMPONENT_INFO, relax=True)
-            )
-            candidates.extend(
-                _profile_candidates(context, profile, SUBCOMPONENT_COUNT, relax=True)
-            )
-            candidates.extend(_profile_candidates(context, profile, DEVICE_INFO, relax=True))
-        else:
-            candidates.extend(_profile_candidates(context, profile, DEVICE_INFO, relax=True))
-            candidates.extend(_profile_candidates(context, profile, DEVICE_COUNT, relax=True))
-    return [_restrict_basic_candidate(candidate) for candidate in candidates]
-
-
-def _restrict_basic_candidate(candidate: CapabilityCandidate) -> CapabilityCandidate:
-    """将 Basic 候选收紧为无属性、过滤、分组和指标操作的基础信息或数量能力。"""
-    basic_forms = {
-        DEVICE_INFO: ["设备列表", "设备基础信息"],
-        DEVICE_COUNT: ["设备数量"],
-        SUBCOMPONENT_INFO: ["子部件列表", "子部件基础信息"],
-        SUBCOMPONENT_COUNT: ["子部件数量"],
-    }
-    examples = [
-        example
-        for example in candidate.examples
-        if any(word in example for word in ("列表", "基础信息", "数量"))
-    ]
-    return replace(
-        candidate,
-        properties=[],
-        filter_fields=[],
-        group_by_fields=[],
-        metrics=[],
-        allowed_operations=[],
-        result_forms=basic_forms.get(candidate.capability_type, candidate.result_forms),
-        examples=examples,
-    )
+        candidates.extend(
+            _profile_candidates(empty_context, profile, DEVICE_INFO, relax=True)
+        )
+        candidates.extend(
+            _profile_candidates(empty_context, profile, DEVICE_COUNT, relax=True)
+        )
+    return _dedupe_candidates(candidates)
 
 
 def _profile_candidates(
@@ -512,27 +481,7 @@ def _rank_candidate(
     if _metadata_matches(candidate.table_hints, context.tables, metadata_tables):
         score += 30
         reasons.append("逻辑表或元数据相关")
-    if context.recovery_strategy == BASIC and candidate.capability_type in INFORMATION_TYPES:
-        score += _basic_preference_score(context, candidate)
-        reasons.append("Basic基础能力")
     return RankedCapability(candidate=candidate, match_score=score, match_reasons=reasons)
-
-
-def _basic_preference_score(
-    context: RecommendationContext,
-    candidate: CapabilityCandidate,
-) -> int:
-    """为 Basic 候选建立信息优先、数量其次、父设备信息兜底的稳定顺序。"""
-    if context.subcomponent_types:
-        return {
-            SUBCOMPONENT_INFO: 140,
-            SUBCOMPONENT_COUNT: 130,
-            DEVICE_INFO: 100,
-        }.get(candidate.capability_type, 80)
-    return {
-        DEVICE_INFO: 140,
-        DEVICE_COUNT: 130,
-    }.get(candidate.capability_type, 80)
 
 
 def _metadata_matches(

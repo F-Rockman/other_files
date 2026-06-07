@@ -485,7 +485,9 @@ def test_prompt_requires_user_friendly_actionable_explanation():
     assert "不责备用户" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "不复述 invalid_values" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "80 个中文字符以内" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "候选能力不足时允许少于 3 条" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "先定位，再收敛" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "basic 是通用 error 兜底策略" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "必须输出正好 3 条推荐" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     for strategy in (
         "clarify",
         "disambiguate",
@@ -620,7 +622,7 @@ def test_no_refusal_keeps_normal_recommendation():
     assert context.refusal_detail == ""
 
 
-def test_intent_reject_only_selects_basic_information_cards():
+def test_intent_reject_basic_uses_normal_recall_and_ranking():
     context = build_recommendation_context(
         {
             "intention": "查指标",
@@ -629,45 +631,78 @@ def test_intent_reject_only_selects_basic_information_cards():
         },
         refuse_info=ErrorCode.INTENT_REJECT_NON_QUERY_INTENT.to_info(),
     )
-    ranked = recommend_capabilities(context)
-    assert context.recovery_strategy == "basic"
-    assert ranked
-    assert all(
-        item.candidate.capability_type in {DEVICE_INFO, DEVICE_COUNT}
-        for item in ranked
+    normal_context = RecommendationContext.from_dict(
+        {
+            key: value
+            for key, value in context.to_dict().items()
+            if key != "recovery_strategy"
+        }
     )
-    assert all(not item.candidate.metrics for item in ranked)
+    ranked = recommend_capabilities(context)
+    normal_ranked = recommend_capabilities(normal_context)
+    assert context.recovery_strategy == "basic"
+    assert [item.to_dict() for item in ranked] == [item.to_dict() for item in normal_ranked]
+    assert ranked[0].candidate.capability_type == DEVICE_METRIC
 
 
-def test_basic_subcomponent_prefers_child_info_count_and_parent_info():
-    context = RecommendationContext(
+def test_basic_subcomponent_uses_normal_recall_and_keeps_metric_context():
+    normal_context = RecommendationContext(
         intention="查指标",
         device_types=["网络设备"],
         subcomponent_types=["光模块"],
         kpis=["接收功率"],
         time="近七天",
         aggregations=["avg"],
+    )
+    basic_context = RecommendationContext.from_dict(
+        {**normal_context.to_dict(), "recovery_strategy": "basic"}
+    )
+    normal_ranked = recommend_capabilities(normal_context)
+    basic_ranked = recommend_capabilities(basic_context)
+    assert [item.to_dict() for item in basic_ranked] == [
+        item.to_dict() for item in normal_ranked
+    ]
+    assert basic_ranked[0].candidate.capability_type == SUBCOMPONENT_METRIC
+    assert basic_ranked[0].candidate.metrics[0].name == "接收功率"
+
+
+@pytest.mark.parametrize(
+    "normal_context",
+    [
+        RecommendationContext(intention="查告警", device_types=["服务器"]),
+        RecommendationContext(intention="查链路", device_types=["网络设备"]),
+    ],
+)
+def test_basic_special_intents_use_normal_recall_and_ranking(normal_context):
+    basic_context = RecommendationContext.from_dict(
+        {**normal_context.to_dict(), "recovery_strategy": "basic"}
+    )
+    assert [
+        item.to_dict() for item in recommend_capabilities(basic_context)
+    ] == [
+        item.to_dict() for item in recommend_capabilities(normal_context)
+    ]
+
+
+def test_basic_without_compatible_candidate_falls_back_to_global_device_basics():
+    basic_context = RecommendationContext(
+        intention="查指标",
+        device_types=["未知设备"],
+        kpis=["未知指标"],
         recovery_strategy="basic",
     )
-    candidates = [item.candidate for item in recommend_capabilities(context)]
-    assert [item.capability_type for item in candidates] == [
-        SUBCOMPONENT_INFO,
-        SUBCOMPONENT_COUNT,
-        DEVICE_INFO,
-    ]
-    assert all(not item.metrics and "趋势" not in item.result_forms for item in candidates)
-    assert all(
-        not item.properties and not item.filter_fields and not item.group_by_fields
-        for item in candidates
+    normal_context = RecommendationContext.from_dict(
+        {
+            key: value
+            for key, value in basic_context.to_dict().items()
+            if key != "recovery_strategy"
+        }
     )
-    assert not any("趋势" in example for item in candidates for example in item.examples)
-
-
-def test_basic_without_object_provides_global_device_basics():
+    assert recommend_capabilities(normal_context) == []
     candidates = [
         item.candidate
         for item in recommend_capabilities(
-            RecommendationContext(recovery_strategy="basic"),
+            basic_context,
             limit=12,
         )
     ]
@@ -714,7 +749,7 @@ def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monk
     assert "candidate_templates" not in prompt
 
 
-def test_basic_prompt_hides_non_inheritable_query_conditions():
+def test_basic_prompt_keeps_full_context_and_invalid_values():
     llm_chat_client = MagicMock(
         return_value='{"recommends": [], "explain": "建议先查看设备基础信息。"}'
     )
@@ -729,16 +764,19 @@ def test_basic_prompt_hides_non_inheritable_query_conditions():
             aggregations=["avg"],
             recovery_strategy="basic",
             refusal_detail="当前条件无法直接查询CPU利用率",
+            invalid_values=["无效设备"],
         ),
         llm_chat_client,
     )
     prompt = llm_chat_client.call_args[0][0][1]["content"]
-    assert "CPU利用率" not in prompt
-    assert "近七天" not in prompt
-    assert '"avg"' not in prompt
-    assert '"状态"' not in prompt
-    assert "当前条件无法直接查询" not in prompt
-    assert "network_device:device_info" in prompt
+    assert '"question": "查询近七天网络设备CPU利用率平均值"' in prompt
+    assert '"kpis": [' in prompt and '"CPU利用率"' in prompt
+    assert '"time": "近七天"' in prompt
+    assert '"aggregations": [' in prompt and '"avg"' in prompt
+    assert '"properties": [' in prompt and '"状态"' in prompt
+    assert '"refusal_detail": "当前条件无法直接查询CPU利用率"' in prompt
+    assert '"invalid_values": [' in prompt and '"无效设备"' in prompt
+    assert "network_device:device_metric" in prompt
 
 
 def test_structurally_valid_llm_result_is_returned_without_content_filtering():
