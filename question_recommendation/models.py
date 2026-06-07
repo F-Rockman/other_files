@@ -198,71 +198,227 @@ class RecommendationContext:
 
 
 @dataclass
-class CapabilityCard:
-    """
-    系统可推荐能力的结构化边界。
+class MetricSpec:
+    """一个 KPI 及其允许的查询操作。"""
 
-    ``golden_questions`` 仅指导 LLM 表达；领域、对象和策略字段决定能力是否可用。
-    """
-
-    capability_id: str = ""
-    domain: str = ""
-    intent_type: str = ""
-    objects: List[str] = field(default_factory=list)
-    parent_object: str = ""
-    locators: List[str] = field(default_factory=list)
-    attribute_policy: Dict[str, Any] = field(default_factory=dict)
-    metric_policy: Dict[str, Any] = field(default_factory=dict)
+    name: str = ""
+    aliases: List[str] = field(default_factory=list)
+    supports_current: bool = False
+    supports_trend: bool = False
     aggregations: List[str] = field(default_factory=list)
-    result_forms: List[str] = field(default_factory=list)
-    time_policy: str = ""
-    recovery_strategies: List[str] = field(default_factory=list)
-    table_hints: List[str] = field(default_factory=list)
-    golden_questions: List[str] = field(default_factory=list)
-    priority: int = 0
+    comparisons: List[str] = field(default_factory=list)
+    ranking_modes: List[str] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "CapabilityCard":
-        """
-        从能力卡配置字典构造对象。
-
-        数组字段会统一为去重字符串列表，策略字段仅接受字典，优先级会转换为整数。
-        """
+    def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "MetricSpec":
+        """从配置字典构造 KPI 规格。"""
         if isinstance(data, cls):
             return data
         if not isinstance(data, Mapping):
             return cls()
+        return cls(
+            name=str(data.get("name", "") or "").strip(),
+            aliases=_as_list(data.get("aliases")),
+            supports_current=bool(data.get("supports_current", False)),
+            supports_trend=bool(data.get("supports_trend", False)),
+            aggregations=_as_list(data.get("aggregations")),
+            comparisons=_as_list(data.get("comparisons")),
+            ranking_modes=_as_list(data.get("ranking_modes")),
+        )
 
-        list_fields = {
-            "objects",
-            "locators",
-            "aggregations",
-            "result_forms",
-            "recovery_strategies",
-            "table_hints",
-            "golden_questions",
-        }
-        kwargs: Dict[str, Any] = {}
-        for key in _known_fields(cls):
-            if key not in data:
-                continue
-            value = data[key]
-            if key in list_fields:
-                kwargs[key] = _as_list(value)
-            elif key in {"attribute_policy", "metric_policy"}:
-                kwargs[key] = dict(value) if isinstance(value, Mapping) else {}
-            elif key == "priority":
-                try:
-                    kwargs[key] = int(value)
-                except (TypeError, ValueError):
-                    kwargs[key] = 0
-            else:
-                kwargs[key] = str(value or "").strip()
-        return cls(**kwargs)
+    def matches(self, value: str) -> bool:
+        """判断输入 KPI 是否命中名称或别名。"""
+        return str(value or "").strip() in {self.name, *self.aliases}
 
     def to_dict(self) -> Dict[str, Any]:
-        """将能力卡转换为不包含空字段的字典，供排序结果和 Prompt 使用。"""
+        """将 KPI 规格转换为紧凑字典。"""
         return _compact_dict(asdict(self))
+
+
+@dataclass
+class SubcomponentCapabilitySpec:
+    """设备下一个同能力子部件族的能力规格。"""
+
+    types: List[str] = field(default_factory=list)
+    aliases: List[str] = field(default_factory=list)
+    properties: List[str] = field(default_factory=list)
+    filter_fields: List[str] = field(default_factory=list)
+    group_by_fields: List[str] = field(default_factory=list)
+    metrics: List[MetricSpec] = field(default_factory=list)
+    table_hints: List[str] = field(default_factory=list)
+    examples: List[str] = field(default_factory=list)
+    priority: int = 0
+
+    @classmethod
+    def from_dict(
+        cls, data: Optional[Mapping[str, Any]]
+    ) -> "SubcomponentCapabilitySpec":
+        """从配置字典构造子部件能力规格。"""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, Mapping):
+            return cls()
+        return cls(
+            types=_as_list(data.get("types")),
+            aliases=_as_list(data.get("aliases")),
+            properties=_as_list(data.get("properties")),
+            filter_fields=_as_list(data.get("filter_fields")),
+            group_by_fields=_as_list(data.get("group_by_fields")),
+            metrics=[
+                MetricSpec.from_dict(item)
+                for item in data.get("metrics", [])
+                if isinstance(item, (MetricSpec, Mapping))
+            ],
+            table_hints=_as_list(data.get("table_hints")),
+            examples=_as_list(data.get("examples")),
+            priority=_as_int(data.get("priority")),
+        )
+
+    def matches(self, value: str) -> bool:
+        """判断输入对象是否命中子部件标准类型或别名。"""
+        return str(value or "").strip() in {*self.types, *self.aliases}
+
+    def to_dict(self) -> Dict[str, Any]:
+        """将子部件规格转换为紧凑字典。"""
+        return _compact_dict(asdict(self))
+
+
+@dataclass
+class DeviceCapabilityProfile:
+    """一种设备及其嵌套子部件的完整推荐能力规格。"""
+
+    profile_id: str = ""
+    domain: str = ""
+    device_types: List[str] = field(default_factory=list)
+    aliases: List[str] = field(default_factory=list)
+    locators: List[str] = field(default_factory=list)
+    properties: List[str] = field(default_factory=list)
+    filter_fields: List[str] = field(default_factory=list)
+    group_by_fields: List[str] = field(default_factory=list)
+    metrics: List[MetricSpec] = field(default_factory=list)
+    subcomponents: List[SubcomponentCapabilitySpec] = field(default_factory=list)
+    table_hints: List[str] = field(default_factory=list)
+    examples: List[str] = field(default_factory=list)
+    priority: int = 0
+
+    @classmethod
+    def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "DeviceCapabilityProfile":
+        """从配置字典构造设备能力规格。"""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, Mapping):
+            return cls()
+        return cls(
+            profile_id=str(data.get("profile_id", "") or "").strip(),
+            domain=str(data.get("domain", "") or "").strip(),
+            device_types=_as_list(data.get("device_types")),
+            aliases=_as_list(data.get("aliases")),
+            locators=_as_list(data.get("locators")),
+            properties=_as_list(data.get("properties")),
+            filter_fields=_as_list(data.get("filter_fields")),
+            group_by_fields=_as_list(data.get("group_by_fields")),
+            metrics=[
+                MetricSpec.from_dict(item)
+                for item in data.get("metrics", [])
+                if isinstance(item, (MetricSpec, Mapping))
+            ],
+            subcomponents=[
+                SubcomponentCapabilitySpec.from_dict(item)
+                for item in data.get("subcomponents", [])
+                if isinstance(item, (SubcomponentCapabilitySpec, Mapping))
+            ],
+            table_hints=_as_list(data.get("table_hints")),
+            examples=_as_list(data.get("examples")),
+            priority=_as_int(data.get("priority")),
+        )
+
+    def matches(self, value: str) -> bool:
+        """判断输入设备类型是否命中标准类型或别名。"""
+        return str(value or "").strip() in {*self.device_types, *self.aliases}
+
+    def to_dict(self) -> Dict[str, Any]:
+        """将设备能力规格转换为紧凑字典。"""
+        return _compact_dict(asdict(self))
+
+
+@dataclass
+class SpecialCapabilitySpec:
+    """告警、链路、资源和关系等六类骨架之外的特殊能力。"""
+
+    capability_id: str = ""
+    capability_type: str = ""
+    domain: str = ""
+    device_types: List[str] = field(default_factory=list)
+    objects: List[str] = field(default_factory=list)
+    properties: List[str] = field(default_factory=list)
+    filter_fields: List[str] = field(default_factory=list)
+    group_by_fields: List[str] = field(default_factory=list)
+    aggregations: List[str] = field(default_factory=list)
+    result_forms: List[str] = field(default_factory=list)
+    table_hints: List[str] = field(default_factory=list)
+    examples: List[str] = field(default_factory=list)
+    priority: int = 0
+
+    @classmethod
+    def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "SpecialCapabilitySpec":
+        """从配置字典构造特殊能力规格。"""
+        if isinstance(data, cls):
+            return data
+        if not isinstance(data, Mapping):
+            return cls()
+        return cls(
+            capability_id=str(data.get("capability_id", "") or "").strip(),
+            capability_type=str(data.get("capability_type", "") or "").strip(),
+            domain=str(data.get("domain", "") or "").strip(),
+            device_types=_as_list(data.get("device_types")),
+            objects=_as_list(data.get("objects")),
+            properties=_as_list(data.get("properties")),
+            filter_fields=_as_list(data.get("filter_fields")),
+            group_by_fields=_as_list(data.get("group_by_fields")),
+            aggregations=_as_list(data.get("aggregations")),
+            result_forms=_as_list(data.get("result_forms")),
+            table_hints=_as_list(data.get("table_hints")),
+            examples=_as_list(data.get("examples")),
+            priority=_as_int(data.get("priority")),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """将特殊能力规格转换为紧凑字典。"""
+        return _compact_dict(asdict(self))
+
+
+@dataclass
+class CapabilityCandidate:
+    """由设备规格和查询骨架动态生成的最终候选能力。"""
+
+    capability_id: str = ""
+    capability_type: str = ""
+    domain: str = ""
+    device_types: List[str] = field(default_factory=list)
+    subcomponent_types: List[str] = field(default_factory=list)
+    parent_device_type: str = ""
+    locators: List[str] = field(default_factory=list)
+    properties: List[str] = field(default_factory=list)
+    filter_fields: List[str] = field(default_factory=list)
+    group_by_fields: List[str] = field(default_factory=list)
+    metrics: List[MetricSpec] = field(default_factory=list)
+    allowed_operations: List[str] = field(default_factory=list)
+    result_forms: List[str] = field(default_factory=list)
+    table_hints: List[str] = field(default_factory=list)
+    examples: List[str] = field(default_factory=list)
+    priority: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """将动态候选能力转换为 Prompt 输入字典。"""
+        return _compact_dict(asdict(self))
+
+
+def _as_int(value: Any) -> int:
+    """将任意值安全转换为整数，失败时返回零。"""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
 
 
 @dataclass

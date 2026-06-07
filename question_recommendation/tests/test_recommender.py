@@ -1,4 +1,4 @@
-"""最小化上下文和能力卡推荐单元测试。"""
+"""最小化上下文、六类能力规格和推荐调用器单元测试。"""
 
 import json
 import sys
@@ -12,16 +12,23 @@ from query_errors import ErrorCode, ErrorInfo, ErrorLevel, ErrorStage
 from question_recommendation import (
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
-    CapabilityCard,
+    DEVICE_COUNT,
+    DEVICE_INFO,
+    DEVICE_METRIC,
+    SUBCOMPONENT_COUNT,
+    SUBCOMPONENT_INFO,
+    SUBCOMPONENT_METRIC,
     LogicalMetadataError,
     MetadataColumn,
     MetadataTable,
     RecommendationContext,
     build_recommendation_context,
-    load_capability_cards,
+    load_device_capability_profiles,
+    load_special_capabilities,
     load_logical_metadata,
     recommend_capabilities,
     recommend_questions_chat,
+    resolve_primary_capability_type,
 )
 from question_recommendation.recommender import _parse_llm_response
 from question_recommendation.refusal_rules import get_refusal_recovery_rule
@@ -171,23 +178,63 @@ def test_multi_device_prefix_is_not_invalidated():
     assert context.identifiers[0].value == "10.1"
 
 
+def _candidate_ids(context, **kwargs):
+    return [item.candidate.capability_id for item in recommend_capabilities(context, **kwargs)]
+
+
 def test_capability_configuration_is_valid():
-    cards = load_capability_cards()
-    ids = [card.capability_id for card in cards]
-    assert len(cards) >= 25
-    assert len(ids) == len(set(ids))
-    assert all(card.domain and card.intent_type and card.objects for card in cards)
-    assert all("/" not in question for card in cards for question in card.golden_questions)
-    assert all(
-        card.metric_policy.get("mode") in {"none", "allow", "dynamic", "dynamic_inherit"}
-        for card in cards
+    profiles = load_device_capability_profiles()
+    specials = load_special_capabilities()
+    profile_ids = [profile.profile_id for profile in profiles]
+    assert len(profiles) >= 8
+    assert len(profile_ids) == len(set(profile_ids))
+    assert all(profile.domain and profile.device_types for profile in profiles)
+    assert all(profile.locators for profile in profiles)
+    assert not any("诊断" in question for profile in profiles for question in profile.examples)
+    assert not any(
+        "诊断" in question
+        for profile in profiles
+        for spec in profile.subcomponents
+        for question in spec.examples
     )
-    assert all(
-        card.attribute_policy.get("mode") in {"none", "allow", "dynamic", "dynamic_inherit"}
-        for card in cards
-    )
-    assert all(card.recovery_strategies for card in cards)
-    assert not any("诊断" in question for card in cards for question in card.golden_questions)
+    assert not any("诊断" in question for spec in specials for question in spec.examples)
+    assert {item.capability_type for item in specials} == {
+        "alarm_query",
+        "link_query",
+        "resource_query",
+        "relation_query",
+    }
+
+
+@pytest.mark.parametrize(
+    ("context", "expected"),
+    [
+        (RecommendationContext(intention="查信息"), DEVICE_INFO),
+        (
+            RecommendationContext(intention="查信息", aggregations=["count_distinct"]),
+            DEVICE_COUNT,
+        ),
+        (RecommendationContext(intention="查指标"), DEVICE_METRIC),
+        (
+            RecommendationContext(intention="查信息", subcomponent_types=["接口"]),
+            SUBCOMPONENT_INFO,
+        ),
+        (
+            RecommendationContext(
+                intention="查信息",
+                subcomponent_types=["接口"],
+                aggregations=["count"],
+            ),
+            SUBCOMPONENT_COUNT,
+        ),
+        (
+            RecommendationContext(intention="查指标", subcomponent_types=["接口"]),
+            SUBCOMPONENT_METRIC,
+        ),
+    ],
+)
+def test_six_skeletons_route_by_intent_subcomponent_and_count(context, expected):
+    assert resolve_primary_capability_type(context) == expected
 
 
 def test_explicit_device_type_hard_filters_other_domains():
@@ -196,60 +243,165 @@ def test_explicit_device_type_hard_filters_other_domains():
         device_types=["网络设备"],
         subcomponent_types=["光模块"],
     )
-    ranked = recommend_capabilities(context)
-    ids = [item.card.capability_id for item in ranked]
-    assert "network_optical_module_information" in ids
-    assert "server_optical_module_information" not in ids
+    ids = _candidate_ids(context)
+    assert "network_device:光模块:subcomponent_info" in ids
+    assert not any(item.startswith("server:光模块") for item in ids)
 
 
-def test_disambiguation_still_respects_uniquely_confirmed_device_domain():
-    context = RecommendationContext(
-        intention="查指标",
-        device_types=["网络设备"],
-        subcomponent_types=["光模块"],
-        kpis=["接收功率"],
-        recovery_strategy="disambiguate",
-    )
-    ids = [item.card.capability_id for item in recommend_capabilities(context)]
-    assert "network_optical_module_information" in ids
-    assert "server_optical_module_information" not in ids
+def test_missing_device_type_keeps_compatible_parent_domains():
+    context = RecommendationContext(intention="查信息", subcomponent_types=["光模块"])
+    ids = _candidate_ids(context)
+    assert "network_device:光模块:subcomponent_info" in ids
+    assert "server:光模块:subcomponent_info" in ids
 
 
-def test_missing_device_type_does_not_hard_filter_domain():
+def test_unsupported_parent_child_relation_returns_no_candidate():
     context = RecommendationContext(
         intention="查信息",
-        subcomponent_types=["光模块"],
+        device_types=["服务器"],
+        subcomponent_types=["端口"],
     )
-    ids = [item.card.capability_id for item in recommend_capabilities(context)]
-    assert "network_optical_module_information" in ids
-    assert "server_optical_module_information" in ids
+    assert recommend_capabilities(context) == []
 
 
-def test_ambiguous_optical_module_keeps_supported_metric_and_other_domain_information():
+def test_server_nic_and_network_port_are_separate_capabilities():
+    server_ids = _candidate_ids(
+        RecommendationContext(
+            intention="查信息",
+            device_types=["服务器"],
+            subcomponent_types=["网卡"],
+        )
+    )
+    network_ids = _candidate_ids(
+        RecommendationContext(
+            intention="查信息",
+            device_types=["网络设备"],
+            subcomponent_types=["端口"],
+        )
+    )
+    assert "server:网卡:subcomponent_info" in server_ids
+    assert "network_device:接口:subcomponent_info" in network_ids
+    assert not any("端口" in item for item in server_ids)
+
+
+def test_serial_number_is_property_and_filter_but_not_locator():
+    profiles = load_device_capability_profiles()
+    for profile_id in ("server", "storage_device"):
+        profile = next(item for item in profiles if item.profile_id == profile_id)
+        assert "序列号" in profile.properties
+        assert "序列号" in profile.filter_fields
+        assert "SERIAL" not in profile.locators
+
+
+@pytest.mark.parametrize("subcomponent", ["存储池", "LUN", "文件系统"])
+def test_storage_resources_use_subcomponent_skeleton(subcomponent):
     context = RecommendationContext(
-        intention="查指标",
-        question="查询光模块接收功率",
-        subcomponent_types=["光模块"],
-        kpis=["接收功率"],
-        recovery_strategy="disambiguate",
+        intention="查信息",
+        device_types=["存储设备"],
+        subcomponent_types=[subcomponent],
     )
-    ranked = recommend_capabilities(context)
-    ids = [item.card.capability_id for item in ranked]
-    assert "network_optical_module_metric" in ids
-    assert "network_optical_module_information" in ids
-    assert "server_optical_module_information" in ids
-    assert all("interface" not in item for item in ids)
+    assert resolve_primary_capability_type(context) == SUBCOMPONENT_INFO
+    assert f"storage_device:{subcomponent}:subcomponent_info" in _candidate_ids(context)
 
 
-def test_unsupported_metric_filters_metric_card():
+def test_fan_metrics_only_support_trend():
+    trend = RecommendationContext(
+        intention="查指标",
+        question="查询服务器风扇转速趋势",
+        device_types=["服务器"],
+        subcomponent_types=["风扇"],
+        kpis=["风扇转速"],
+    )
+    average = RecommendationContext(
+        intention="查指标",
+        question="查询服务器风扇转速平均值",
+        device_types=["服务器"],
+        subcomponent_types=["风扇"],
+        kpis=["风扇转速"],
+        aggregations=["avg"],
+    )
+    current = RecommendationContext(
+        intention="查指标",
+        question="查询服务器风扇转速",
+        device_types=["服务器"],
+        subcomponent_types=["风扇"],
+        kpis=["风扇转速"],
+    )
+    assert "server:风扇:subcomponent_metric" in _candidate_ids(trend)
+    assert "server:风扇:subcomponent_metric" not in _candidate_ids(average)
+    assert "server:风扇:subcomponent_metric" not in _candidate_ids(current)
+
+
+def test_storage_total_capacity_only_supports_current_value():
+    current = RecommendationContext(
+        intention="查指标",
+        question="查询存储设备总容量",
+        device_types=["存储设备"],
+        kpis=["总容量"],
+    )
+    trend = RecommendationContext(
+        intention="查指标",
+        question="查询存储设备总容量趋势",
+        device_types=["存储设备"],
+        kpis=["总容量"],
+    )
+    assert "storage_device:device_metric" in _candidate_ids(current)
+    assert "storage_device:device_metric" not in _candidate_ids(trend)
+
+
+def test_topn_requires_explicit_n_and_direction():
+    incomplete = RecommendationContext(
+        intention="查指标",
+        question="查询CPU利用率最高的服务器",
+        device_types=["服务器"],
+        kpis=["CPU利用率"],
+        aggregations=["top_n"],
+    )
+    complete = RecommendationContext(
+        intention="查指标",
+        question="查询CPU利用率最高的Top5服务器",
+        device_types=["服务器"],
+        kpis=["CPU利用率"],
+        aggregations=["top_n"],
+    )
+    assert "server:device_metric" not in _candidate_ids(incomplete)
+    assert "server:device_metric" in _candidate_ids(complete)
+
+
+@pytest.mark.parametrize(
+    ("context", "expected_id"),
+    [
+        (RecommendationContext(intention="查告警", device_types=["服务器"]), "alarm_query"),
+        (RecommendationContext(intention="查链路", device_types=["网络设备"]), "network_link"),
+        (
+            RecommendationContext(
+                intention="查信息",
+                question="查询OLT下的ONU",
+                device_types=["OLT"],
+            ),
+            "olt_onu_relation",
+        ),
+        (
+            RecommendationContext(
+                intention="查信息",
+                device_types=["子网"],
+            ),
+            "subnet_resource",
+        ),
+    ],
+)
+def test_special_capabilities_are_preserved(context, expected_id):
+    assert expected_id in _candidate_ids(context)
+
+
+def test_unsupported_metric_filters_metric_candidate():
     context = RecommendationContext(
         intention="查指标",
         device_types=["网络设备"],
         subcomponent_types=["光模块"],
         kpis=["CPU利用率"],
     )
-    ids = [item.card.capability_id for item in recommend_capabilities(context)]
-    assert "network_optical_module_metric" not in ids
+    assert "network_device:光模块:subcomponent_metric" not in _candidate_ids(context)
 
 
 def test_metric_not_found_removes_kpi_from_context():
@@ -287,11 +439,11 @@ def test_tables_affect_score_but_not_hard_filter():
         )
     ]
     ranked = recommend_capabilities(context, metadata_tables=metadata)
-    ids = [item.card.capability_id for item in ranked]
-    assert "network_optical_module_information" in ids
-    assert "server_optical_module_information" in ids
-    server = next(item for item in ranked if item.card.capability_id == "server_optical_module_information")
-    network = next(item for item in ranked if item.card.capability_id == "network_optical_module_information")
+    ids = [item.candidate.capability_id for item in ranked]
+    assert "network_device:光模块:subcomponent_info" in ids
+    assert "server:光模块:subcomponent_info" in ids
+    server = next(item for item in ranked if item.candidate.capability_id == "server:光模块:subcomponent_info")
+    network = next(item for item in ranked if item.candidate.capability_id == "network_device:光模块:subcomponent_info")
     assert server.match_score > network.match_score
 
 
@@ -302,15 +454,15 @@ def test_table_names_can_affect_score_without_loaded_metadata():
         tables=["server_optical_module"],
     )
     ranked = recommend_capabilities(context)
-    server = next(item for item in ranked if item.card.capability_id == "server_optical_module_information")
-    network = next(item for item in ranked if item.card.capability_id == "network_optical_module_information")
+    server = next(item for item in ranked if item.candidate.capability_id == "server:光模块:subcomponent_info")
+    network = next(item for item in ranked if item.candidate.capability_id == "network_device:光模块:subcomponent_info")
     assert server.match_score > network.match_score
 
 
 def test_top_twelve_selection_is_stable():
     context = RecommendationContext(intention="查信息")
-    first = [item.card.capability_id for item in recommend_capabilities(context, limit=12)]
-    second = [item.card.capability_id for item in recommend_capabilities(context, limit=12)]
+    first = [item.candidate.capability_id for item in recommend_capabilities(context, limit=12)]
+    second = [item.candidate.capability_id for item in recommend_capabilities(context, limit=12)]
     assert first == second
     assert len(first) == 12
 
@@ -320,17 +472,21 @@ def test_prompt_contains_minimal_context_and_ambiguity_rules():
     assert "candidate_capabilities" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "disambiguate" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "invalid_values" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "设备与子部件兼容关系" not in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "candidate_templates" not in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "诊断、异常原因分析" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "description_cn 明确提供的枚举" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "不能扩大候选能力" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "{recommendation_context_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
 
 
 def test_prompt_requires_user_friendly_actionable_explanation():
-    assert "直接展示给用户的下一步建议" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "直接展示给用户的友好下一步建议" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "不责备用户" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "不暴露错误码" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "不包含 invalid_values 中的值" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "50 个中文字符以内" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "不复述 invalid_values" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "80 个中文字符以内" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "候选能力不足时允许少于 3 条" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     for strategy in (
-        "basic",
         "clarify",
         "disambiguate",
         "remove_invalid",
@@ -476,9 +632,47 @@ def test_intent_reject_only_selects_basic_information_cards():
     ranked = recommend_capabilities(context)
     assert context.recovery_strategy == "basic"
     assert ranked
-    assert all(item.card.intent_type == "查信息" for item in ranked)
-    allowed_forms = {"列表", "数量", "基础信息", "属性信息", "概览"}
-    assert all(allowed_forms.intersection(item.card.result_forms) for item in ranked)
+    assert all(
+        item.candidate.capability_type in {DEVICE_INFO, DEVICE_COUNT}
+        for item in ranked
+    )
+    assert all(not item.candidate.metrics for item in ranked)
+
+
+def test_basic_subcomponent_prefers_child_info_count_and_parent_info():
+    context = RecommendationContext(
+        intention="查指标",
+        device_types=["网络设备"],
+        subcomponent_types=["光模块"],
+        kpis=["接收功率"],
+        time="近七天",
+        aggregations=["avg"],
+        recovery_strategy="basic",
+    )
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+    assert [item.capability_type for item in candidates] == [
+        SUBCOMPONENT_INFO,
+        SUBCOMPONENT_COUNT,
+        DEVICE_INFO,
+    ]
+    assert all(not item.metrics and "趋势" not in item.result_forms for item in candidates)
+    assert all(
+        not item.properties and not item.filter_fields and not item.group_by_fields
+        for item in candidates
+    )
+    assert not any("趋势" in example for item in candidates for example in item.examples)
+
+
+def test_basic_without_object_provides_global_device_basics():
+    candidates = [
+        item.candidate
+        for item in recommend_capabilities(
+            RecommendationContext(recovery_strategy="basic"),
+            limit=12,
+        )
+    ]
+    assert candidates
+    assert all(item.capability_type in {DEVICE_INFO, DEVICE_COUNT} for item in candidates)
 
 
 def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monkeypatch):
@@ -515,9 +709,36 @@ def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monk
 
     assert result["recommends"] == ["查询网络设备接口列表"]
     prompt = llm_chat_client.call_args[0][0][1]["content"]
-    assert "network_interface_information" in prompt
+    assert "network_device:接口:subcomponent_info" in prompt
     assert '"table_name": "network_interface"' in prompt
     assert "candidate_templates" not in prompt
+
+
+def test_basic_prompt_hides_non_inheritable_query_conditions():
+    llm_chat_client = MagicMock(
+        return_value='{"recommends": [], "explain": "建议先查看设备基础信息。"}'
+    )
+    recommend_questions_chat(
+        RecommendationContext(
+            intention="查指标",
+            question="查询近七天网络设备CPU利用率平均值",
+            device_types=["网络设备"],
+            kpis=["CPU利用率"],
+            properties=["状态"],
+            time="近七天",
+            aggregations=["avg"],
+            recovery_strategy="basic",
+            refusal_detail="当前条件无法直接查询CPU利用率",
+        ),
+        llm_chat_client,
+    )
+    prompt = llm_chat_client.call_args[0][0][1]["content"]
+    assert "CPU利用率" not in prompt
+    assert "近七天" not in prompt
+    assert '"avg"' not in prompt
+    assert '"状态"' not in prompt
+    assert "当前条件无法直接查询" not in prompt
+    assert "network_device:device_info" in prompt
 
 
 def test_structurally_valid_llm_result_is_returned_without_content_filtering():

@@ -32,11 +32,13 @@ python_utils/
 │   ├── config.py          # 配置常量
 │   └── tests/
 │       └── test_normalizer.py
-├── question_recommendation/ # 结构化模板问数推荐
+├── question_recommendation/ # 六类能力规格问数推荐
 │   ├── __init__.py
 │   ├── README.md          # 输入字段、必填性、缺失影响和示例
 │   ├── prompt.py          # 推荐问题生成 Prompt 文本
-│   ├── models.py          # 结构化意图、模板、元数据模型
+│   ├── models.py          # 推荐上下文、能力规格、元数据模型
+│   ├── capabilities.py    # 六类查询骨架的确定性召回与排序
+│   ├── data/              # 设备与特殊能力规格
 │   ├── metadata_loader.py # 根据意图表名读取 .logical.yaml
 │   ├── recommender.py     # Chat LLM 调用与 JSON 结构解析
 │   ├── config.py          # 配置常量

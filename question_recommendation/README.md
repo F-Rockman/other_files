@@ -1,21 +1,19 @@
 # question_recommendation
 
-基于“共享错误码 + 最小推荐上下文 + 内置能力卡 + LLM 自然表达”的问数推荐模块。
+基于“最小推荐上下文 + 六类通用查询骨架 + 设备能力规格 + LLM 自然表达”的问数推荐模块。
 
 ```text
 上一步结构化意图 + ErrorInfo + llm_refuse_message
 → build_recommendation_context
 → RecommendationContext
-→ 确定性能力卡过滤与 Top 12 排序
-→ Chat LLM 生成自然问题
+→ 确定性生成并排序 Top 12 候选能力
+→ Chat LLM 组合自然问题
 ```
 
-能力卡召回和排序不调用 LLM 或 Embedding。最终 LLM 输出只校验 JSON 结构，不执行
-内容过滤、去重、补足或改写。
+确定性召回不调用 LLM 或 Embedding。最终 LLM 输出只校验 JSON 结构，不执行内容过滤、
+补足或改写。改造只作用于推荐模块，不参与后续 SQL 或问数执行流程。
 
 ## 快速使用
-
-上游和推荐模块必须共同使用 `query_errors.ErrorInfo`，不接受字典或其他同形对象。
 
 ```python
 from query_errors import ErrorCode
@@ -26,7 +24,7 @@ from question_recommendation import (
 
 upstream_result = {
     "intention": "查指标",
-    "question": "查询 IP 以 10.1 开头的设备平均 CPU 利用率",
+    "question": "查询 IP 以 10.1 开头的网络设备平均 CPU 利用率",
     "devices": [{
         "device_id": "10.1",
         "id_type": "IP",
@@ -55,202 +53,113 @@ result = recommend_questions_chat(
 )
 ```
 
-`llm_refuse_message` 只辅助最终 LLM 理解本次详细原因，不参与错误分类或无效值提取。
-
-## 共享错误类型
-
-`query_errors` 包提供完整统一错误定义：
-
-```python
-from query_errors import ErrorCode, ErrorCodeLike, ErrorInfo, ErrorLevel, ErrorStage
-```
-
-推荐分类只依赖稳定的 `ErrorInfo.key`。未知错误码、第 1 类和第 7～11 类错误统一使用
-`basic` 基础推荐，不根据 `message` 猜测错误类型。
-
-| `ErrorInfo` 字段 | 含义 |
-|---|---|
-| `key` | 稳定错误码，是推荐分类的唯一依据 |
-| `level` | `info`、`warning` 或 `error` |
-| `stage` | 错误发生阶段，仅用于统一错误协议，不保存到推荐上下文 |
-| `message` | 稳定用户说明，透传为 `refusal_message` |
-
 ## RecommendationContext
 
 `RecommendationContext` 是推荐模块唯一消费的标准上下文，不保存上一步全部结构。
 
-| 字段 | 类型 | 含义与用途 |
-|---|---|---|
-| `intention` | `str` | 查信息、查告警、查指标或查链路；用于能力过滤和排序 |
-| `question` | `str` | 用户原始问题；供 LLM 保持原查询方向 |
-| `device_types` | `list[str]` | 设备类型；用于对象和业务域匹配 |
-| `subcomponent_types` | `list[str]` | 接口、光模块等主要子部件对象 |
-| `identifiers` | `list[Identifier]` | 仍有效、允许继承的 IP、MAC、名称等定位条件 |
-| `properties` | `list[str]` | 查询属性；用于属性能力匹配 |
-| `kpis` | `list[str]` | 查询指标；用于指标能力匹配 |
-| `time` | `str` | 时间原始表达 |
-| `alarm` | `AlarmCondition \| None` | 告警类型和值 |
-| `aggregations` | `list[str]` | 规范化聚合算子 |
-| `tables` | `list[str]` | 逻辑表名；用于加载元数据并辅助排序 |
-| `recovery_strategy` | `str` | 根据 `ErrorInfo.key` 确定的恢复策略 |
-| `refusal_message` | `str` | `ErrorInfo.message` 提供的稳定说明 |
-| `refusal_detail` | `str` | 本次 LLM 拒答详情，仅辅助表达 |
-| `invalid_values` | `list[str]` | 已确认无效、禁止推荐问题继承的值 |
-
-上下文支持 `to_dict`、`to_json`、`from_dict` 和 `from_json`。
-
-`Identifier` 字段：
-
-| 字段 | 含义 |
+| 字段 | 用途 |
 |---|---|
-| `value` | IP、MAC、名称或其他设备定位值 |
-| `id_type` | `IP`、`MAC`、`NAME` 或 `OTHER` |
-| `match_mode` | `EXACT`、`PREFIX`、`SUFFIX` 或 `FUZZY` |
+| `intention` | 路由查信息、查指标、查告警或查链路能力 |
+| `question` | 保持原查询方向，并判断明确出现的趋势、TopN 数值和方向 |
+| `device_types` | 匹配设备规格和限定子部件父对象 |
+| `subcomponent_types` | 匹配主要子部件对象 |
+| `identifiers` | 仍有效、允许继承的 IP、MAC、名称等定位条件 |
+| `properties` / `kpis` | 属性与 KPI 能力匹配 |
+| `time` / `alarm` / `aggregations` | 时间、告警和聚合要求 |
+| `tables` | 加载逻辑元数据并辅助排序 |
+| `recovery_strategy` | 根据共享错误码确定恢复行为 |
+| `refusal_message` / `refusal_detail` | 辅助生成用户友好说明 |
+| `invalid_values` | 已确认无效、禁止推荐问题继承的值 |
 
-`AlarmCondition` 字段：
+`build_recommendation_context(...)` 只接受共享 `query_errors.ErrorInfo`。错误分类依赖稳定
+`ErrorInfo.key`，不会从拒答文案猜测类型或提取无效值。
 
-| 字段 | 含义 |
+## 六类查询骨架
+
+设备和子部件的通用查询只使用六类骨架：
+
+| 骨架 | 路由条件 |
 |---|---|
-| `alarm_type` | `NAME`、`LEVEL` 或 `STATUS` |
-| `alarm_value` | 告警名称、级别或状态值 |
+| `device_info` | 查信息、无子部件、无 count |
+| `device_count` | 查信息、无子部件、有 count 或 count_distinct |
+| `device_metric` | 查指标、无子部件 |
+| `subcomponent_info` | 查信息、有子部件、无 count |
+| `subcomponent_count` | 查信息、有子部件、有 count 或 count_distinct |
+| `subcomponent_metric` | 查指标、有子部件 |
 
-## 上一步结构转换
+过滤、分组、聚合、比较、排序、TopN 和时间是候选能力允许组合的操作，不单独建卡。
+告警、链路、子网资源和对象关系保留为特殊能力。
+
+## 设备能力规格
+
+内置规格位于 `data/device_capability_profiles.json`：
+
+- `device_profiles` 定义业务域、设备类型、别名、定位方式、属性、过滤、分组、KPI、
+  子部件和逻辑表提示。
+- `subcomponents` 嵌套在所属设备规格中；设备与子部件兼容关系以此为唯一事实来源。
+- 每个 KPI 独立声明是否支持当前值、趋势、聚合、比较和排名口径。
+- `special_capabilities` 定义告警、链路、子网资源和关系能力。
+- `examples` 只指导 LLM 表达，不是固定输出模板，也不是当前环境事实。
+
+重要边界：
+
+- 序列号是属性和过滤字段，不是设备定位方式。
+- 服务器只有网卡，不提供服务器端口能力。
+- 存储池、LUN、文件系统是存储设备子部件。
+- 风扇转速和风扇转速百分比只支持趋势。
+- 存储总容量只支持当前值。
+- TopN 必须由 KPI 支持对应排名口径，且原问题明确给出 N 与排序方向。
 
 ```python
-build_recommendation_context(
-    upstream_result,
-    refuse_info=None,
-    llm_refuse_message="",
+from question_recommendation import (
+    load_device_capability_profiles,
+    load_special_capabilities,
+    recommend_capabilities,
+    resolve_primary_capability_type,
 )
 ```
 
-转换行为：
+## Basic 兜底
 
-- `refuse_info` 只接受共享 `ErrorInfo` 或 `None`，否则抛出 `TypeError`。
-- `llm_refuse_message` 只接受字符串。
-- 无拒答信息时保持普通推荐，`recovery_strategy` 为空。
-- 只有 `llm_refuse_message`、未知错误码或未专门处理阶段时使用 `basic`。
-- 忽略 `tenant`、`subnet`、`subcomponents[].subcomponent_name`、`link_relation` 和未知字段。
-- `count(distinct)` 规范为 `count_distinct`，`topN` 规范为 `top_n`。
+`recovery_strategy == "basic"` 时：
 
-### 无效值
+- 有子部件：优先子部件信息、子部件数量，再补父设备信息。
+- 只有设备：优先设备信息和设备数量。
+- 没有对象：按候选优先级提供全局设备基础问题。
+- 只允许继承仍有效的定位参数和父子关系。
+- 不推荐 KPI、趋势、TopN、告警或链路，不继承属性、时间、聚合等失败条件。
 
-无效值只根据错误码规则从结构化意图获取，不从拒答文案提取：
+推荐器会同时收紧 Basic 候选能力，并在发送给 LLM 前隐藏原问题、本次详细拒答原因以及
+KPI、属性、时间、告警和聚合条件，避免仅依赖 Prompt 指令约束继承行为。
 
-| 失效规则 | 处理 |
-|---|---|
-| `all_device_identifiers` | 移除所有 `devices[].device_id` |
-| `ip_identifiers` | 仅移除 `id_type == "IP"` 的设备标识 |
-| `name_identifiers` | 仅移除 `id_type == "NAME"` 的设备标识 |
-| `all_kpis` | 移除所有 `kpis` |
-
-移除的值加入 `invalid_values`，Prompt 禁止从用户原问题或详细拒答信息中重新继承。
-多候选场景保留原值，以便最终问题帮助用户消歧。
-
-## 恢复策略
-
-| 策略 | 推荐行为 |
-|---|---|
-| `basic` | 已识别对象的列表、数量、基础信息、属性信息或概览 |
-| `clarify` | 补齐对象、指标、时间、过滤条件或聚合参数 |
-| `disambiguate` | 明确业务域、父对象、设备类型或具体方向 |
-| `remove_invalid` | 移除无效定位值或 KPI，推荐不依赖无效值的问题 |
-| `reframe` | 推荐更简单、拆分后或改变查询路径的同对象问题 |
-| `adjust_scope` | 保留原查询方向并放宽或缩小范围 |
-
-第 2 类 `intent_reject_*` 统一使用 `basic`。第 3～6 类的具体映射集中定义在
-`refusal_rules.py` 的 `REFUSAL_RECOVERY_RULES`，未配置错误码同样使用 `basic`。
-
-| 错误码类别或关键错误码 | 策略 |
-|---|---|
-| `intent_reject_*` | `basic` |
-| 跨域、设备类型不一致、多候选、值语义歧义 | `disambiguate` |
-| 设备/IP/名称/KPI 不存在 | `remove_invalid` |
-| 未配置的 `intent_clarify_*` | `clarify` |
-| 不支持子网查询、关系/字段失败、别名规范化失败、主要 SQL 生成失败 | `reframe` |
-| `sql_generation_timeout` | `adjust_scope` |
-| 未配置错误码 | `basic` |
-
-## CapabilityCard
-
-内置能力卡位于 `data/capability_cards.json`。能力卡定义“系统允许推荐什么”，
-`golden_questions` 仅指导表达，不是固定输出模板。
-
-| 字段 | 含义 |
-|---|---|
-| `capability_id` | 唯一能力标识 |
-| `domain` | 网络、服务器、存储、PON、终端等业务域 |
-| `intent_type` | 支持的查询意图 |
-| `objects` / `parent_object` | 支持的主要对象和父对象 |
-| `locators` | 支持的定位值类型 |
-| `attribute_policy` / `metric_policy` | 属性和指标支持策略 |
-| `aggregations` | 支持的聚合算子 |
-| `result_forms` | 列表、数量、基础信息、趋势等结果形态 |
-| `time_policy` | 时间是否必填、可选或不适用 |
-| `recovery_strategies` | 支持的恢复策略 |
-| `table_hints` | 逻辑表和元数据相关度提示 |
-| `golden_questions` | 提供给 LLM 的自然问题示例 |
-| `priority` | 静态排序优先级 |
-
-属性和指标策略的 `mode`：
-
-- `allow`：只允许 `allow` 数组中明确声明的值。
-- `dynamic`：允许根据逻辑模型元数据表达。
-- `dynamic_inherit`：允许继承上下文中仍有效的原查询值。
-- `none`：能力卡不提供该类能力。
-
-`basic` 只召回信息能力卡。其他策略按意图、主要对象、明确业务域、KPI、属性、
-聚合算子和策略边界执行硬过滤，再结合逻辑表元数据做确定性排序。
-
-设备类型能够唯一确定业务域时，始终过滤其他领域。没有设备类型且策略为
-`disambiguate` 时，可保留同一对象的多个领域能力卡，最终问题必须明确父设备或领域。
-
-```python
-from question_recommendation import recommend_capabilities
-
-ranked = recommend_capabilities(context, metadata_tables=[], limit=12)
-```
+其他恢复策略仍由 `refusal_rules.py` 根据共享错误码确定。
 
 ## 逻辑模型元数据
 
-推荐器根据 `context.tables` 和 `logical_model_path_provider` 读取：
+推荐器根据 `context.tables` 读取：
 
 ```text
 {logical_model_path}/{table_name}.logical.yaml
 ```
 
-只提取表名 `name`、表描述 `description_cn`，以及 `schema.fields` 中每个字段的
-`name` 和 `description_cn`。加载结果直接按表组织为 `MetadataTable`，只影响排序和
-LLM 表达，不参与业务域硬过滤。
+只提取表名 `name`、表描述 `description_cn`，以及 `schema.fields` 中字段的 `name` 和
+`description_cn`。元数据辅助候选排序和 LLM 理解当前环境真实业务含义，但不能突破
+设备能力规格。
 
-## Chat 接口与输出
-
-```python
-recommend_questions_chat(
-    context,
-    llm_chat_client,
-    logical_model_path_provider=None,
-)
-```
-
-结构合法时直接返回：
+## 输出
 
 ```json
 {
   "recommends": ["推荐问题1", "推荐问题2", "推荐问题3"],
-  "explain": "先查看可用设备，再选择具体设备继续查询。"
+  "explain": "面向用户的下一步建议"
 }
 ```
 
-`explain` 是直接展示给用户的一句话建议。Prompt 要求它友好、可执行、不责备用户，
-且不暴露错误码、恢复策略、能力卡、评分、表名或无效值。普通场景说明推荐内容与
-用户关注方向的关系；拒答场景则提示用户下一步如何补充、选择、拆分或调整范围。
+Prompt 要求尽量生成三条语义不同的问题；候选不足时允许少于三条。结构合法时直接返回，
+无法解析时返回 `{"recommends": [], "explain": ""}`。
 
-无法解析或结构不合法时返回 `{"recommends": [], "explain": ""}`。
-
-安装 YAML 依赖并运行测试：
+运行测试：
 
 ```bash
-pip install -r question_recommendation/requirements.txt
 python3 -m pytest question_recommendation/tests query_errors/tests -q
 ```

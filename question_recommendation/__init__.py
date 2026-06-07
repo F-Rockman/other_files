@@ -1,15 +1,31 @@
-"""最小化上下文 + 内置能力卡 + LLM 表达的问数推荐模块。"""
+"""最小化上下文 + 六类能力规格 + LLM 表达的问数推荐模块。"""
 
-from .capabilities import RankedCapability, load_capability_cards, recommend_capabilities
+from .capabilities import (
+    DEVICE_COUNT,
+    DEVICE_INFO,
+    DEVICE_METRIC,
+    SUBCOMPONENT_COUNT,
+    SUBCOMPONENT_INFO,
+    SUBCOMPONENT_METRIC,
+    RankedCapability,
+    load_device_capability_profiles,
+    load_special_capabilities,
+    recommend_capabilities,
+    resolve_primary_capability_type,
+)
 from .context_builder import build_recommendation_context
 from .metadata_loader import LogicalMetadataError, load_logical_metadata
 from .models import (
     AlarmCondition,
-    CapabilityCard,
+    CapabilityCandidate,
+    DeviceCapabilityProfile,
     Identifier,
     MetadataColumn,
     MetadataTable,
+    MetricSpec,
     RecommendationContext,
+    SpecialCapabilitySpec,
+    SubcomponentCapabilitySpec,
 )
 from .prompt import (
     QUESTION_RECOMMENDATION_PROMPT,
@@ -26,12 +42,24 @@ __all__ = [
     "Identifier",
     "AlarmCondition",
     "RecommendationContext",
-    "CapabilityCard",
+    "MetricSpec",
+    "SubcomponentCapabilitySpec",
+    "DeviceCapabilityProfile",
+    "SpecialCapabilitySpec",
+    "CapabilityCandidate",
     "MetadataColumn",
     "MetadataTable",
     "RankedCapability",
     "build_recommendation_context",
-    "load_capability_cards",
+    "DEVICE_INFO",
+    "DEVICE_COUNT",
+    "DEVICE_METRIC",
+    "SUBCOMPONENT_INFO",
+    "SUBCOMPONENT_COUNT",
+    "SUBCOMPONENT_METRIC",
+    "load_device_capability_profiles",
+    "load_special_capabilities",
+    "resolve_primary_capability_type",
     "recommend_capabilities",
     "LogicalMetadataError",
     "load_logical_metadata",

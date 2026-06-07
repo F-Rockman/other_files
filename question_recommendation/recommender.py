@@ -1,4 +1,4 @@
-"""最小化上下文 + 能力卡召回 + LLM 表达的问数推荐调用器。"""
+"""最小化上下文 + 六类能力召回 + LLM 表达的问数推荐调用器。"""
 
 import json
 import re
@@ -9,6 +9,7 @@ from .config import EXPLAIN_FIELD, LLM_CHAT_CALL_ERROR_REASON, RECOMMENDS_FIELD
 from .metadata_loader import PathProvider, load_logical_metadata
 from .models import MetadataTable, RecommendationContext
 from .prompt import QUESTION_RECOMMENDATION_SYSTEM_PROMPT, QUESTION_RECOMMENDATION_USER_TEMPLATE
+from .refusal_rules import BASIC
 
 
 class QuestionRecommendationError(Exception):
@@ -23,7 +24,7 @@ def recommend_questions_chat(
     """
     根据标准化 RecommendationContext 生成推荐问题。
 
-    推荐器自动加载内置能力卡，执行确定性过滤和 Top 12 排序，再将候选能力交给
+    推荐器自动加载内置设备能力规格，执行确定性过滤和 Top 12 排序，再将候选能力交给
     Chat LLM 自然化表达。LLM 返回结构合法时直接返回，不做内容过滤或补足。
     """
     normalized_context = _normalize_context(context)
@@ -57,9 +58,9 @@ def _build_chat_messages(
     metadata_tables: Sequence[MetadataTable],
     candidate_capabilities: Sequence[Mapping[str, Any]],
 ) -> List[Dict[str, str]]:
-    """将标准上下文、按表元数据和候选能力卡组装为 Chat API messages。"""
+    """将标准上下文、按表元数据和候选能力组装为 Chat API messages。"""
     user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
-        recommendation_context_json=_json_dumps(context.to_dict()),
+        recommendation_context_json=_json_dumps(_context_for_prompt(context)),
         candidate_capabilities_json=_json_dumps(candidate_capabilities),
         metadata_tables_json=_json_dumps([table.to_dict() for table in metadata_tables]),
     )
@@ -67,6 +68,24 @@ def _build_chat_messages(
         {"role": "system", "content": QUESTION_RECOMMENDATION_SYSTEM_PROMPT},
         {"role": "user", "content": user_prompt},
     ]
+
+
+def _context_for_prompt(context: RecommendationContext) -> Dict[str, Any]:
+    """在 Basic 场景隐藏不可继承条件，避免 LLM 从原问题重新引入失败方向。"""
+    data = context.to_dict()
+    if context.recovery_strategy != BASIC:
+        return data
+    for key in (
+        "question",
+        "properties",
+        "kpis",
+        "time",
+        "alarm",
+        "aggregations",
+        "refusal_detail",
+    ):
+        data.pop(key, None)
+    return data
 
 
 def _parse_llm_response(llm_response: str) -> Optional[Dict[str, Any]]:

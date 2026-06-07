@@ -1,272 +1,683 @@
-"""内置能力卡加载、硬过滤、确定性打分和 Top N 选择。"""
+"""六类查询骨架、设备能力规格和特殊能力的确定性召回算法。"""
 
 import json
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from importlib import resources
-from typing import Any, Dict, List, Mapping, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from .models import CapabilityCard, MetadataTable, RecommendationContext
-from .refusal_rules import BASIC, DISAMBIGUATE
+from .models import (
+    CapabilityCandidate,
+    DeviceCapabilityProfile,
+    MetadataTable,
+    MetricSpec,
+    RecommendationContext,
+    SpecialCapabilitySpec,
+    SubcomponentCapabilitySpec,
+)
+from .refusal_rules import BASIC
 
 
-DOMAIN_BY_DEVICE_TYPE = {
-    "网络设备": "网络",
-    "路由器": "网络",
-    "交换机": "网络",
-    "AP": "网络",
-    "AC": "网络",
-    "服务器": "服务器",
-    "服务器设备": "服务器",
-    "存储设备": "存储",
-    "FC交换机": "存储",
-    "OLT": "PON",
-    "ONU": "PON",
-    "PON设备": "PON",
-    "终端设备": "终端",
-    "终端": "终端",
-    "子网": "网络",
-    "链路": "网络",
-}
+DEVICE_INFO = "device_info"
+DEVICE_COUNT = "device_count"
+DEVICE_METRIC = "device_metric"
+SUBCOMPONENT_INFO = "subcomponent_info"
+SUBCOMPONENT_COUNT = "subcomponent_count"
+SUBCOMPONENT_METRIC = "subcomponent_metric"
 
-INFORMATION_RESULT_FORMS = {"列表", "数量", "基础信息", "属性信息", "概览"}
+ALARM_QUERY = "alarm_query"
+LINK_QUERY = "link_query"
+RESOURCE_QUERY = "resource_query"
+RELATION_QUERY = "relation_query"
+
+COUNT_AGGREGATIONS = {"count", "count_distinct"}
+METRIC_AGGREGATIONS = {"avg", "min", "max", "sum"}
+INFORMATION_TYPES = {DEVICE_INFO, DEVICE_COUNT, SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT}
 
 
 @dataclass
 class RankedCapability:
-    """包含能力卡、确定性匹配分数和可解释匹配原因的排序结果。"""
+    """包含动态候选能力、确定性分数和可解释匹配原因的排序结果。"""
 
-    card: CapabilityCard
+    candidate: CapabilityCandidate
     match_score: int
     match_reasons: List[str]
 
     def to_dict(self) -> Dict[str, Any]:
-        """将能力卡内容与匹配分数、匹配原因合并为 Prompt 输入字典。"""
-        data = self.card.to_dict()
+        """将候选能力、匹配分数和原因合并为 Prompt 输入字典。"""
+        data = self.candidate.to_dict()
         data["match_score"] = self.match_score
         data["match_reasons"] = self.match_reasons
         return data
 
 
-def load_capability_cards() -> List[CapabilityCard]:
-    """从包内 JSON 配置加载能力卡。"""
-    path = resources.files("question_recommendation").joinpath("data/capability_cards.json")
-    with path.open("r", encoding="utf-8") as file:
-        document = json.load(file)
+def load_device_capability_profiles() -> List[DeviceCapabilityProfile]:
+    """从包内配置加载设备及其嵌套子部件能力规格。"""
+    document = _load_capability_document()
     return [
-        CapabilityCard.from_dict(item)
-        for item in document
-        if isinstance(item, Mapping)
+        DeviceCapabilityProfile.from_dict(item)
+        for item in document.get("device_profiles", [])
+        if isinstance(item, dict)
     ]
+
+
+def load_special_capabilities() -> List[SpecialCapabilitySpec]:
+    """从包内配置加载告警、链路、资源和关系特殊能力。"""
+    document = _load_capability_document()
+    return [
+        SpecialCapabilitySpec.from_dict(item)
+        for item in document.get("special_capabilities", [])
+        if isinstance(item, dict)
+    ]
+
+
+def resolve_primary_capability_type(context: RecommendationContext) -> str:
+    """根据意图、子部件和 count 聚合确定主查询骨架。"""
+    if context.intention == "查告警":
+        return ALARM_QUERY
+    if context.intention == "查链路":
+        return LINK_QUERY
+    if context.intention == "查信息" and _is_subnet_context(context):
+        return RESOURCE_QUERY
+
+    has_subcomponent = bool(context.subcomponent_types)
+    is_count = bool(COUNT_AGGREGATIONS.intersection(context.aggregations))
+    if context.intention == "查指标":
+        return SUBCOMPONENT_METRIC if has_subcomponent else DEVICE_METRIC
+    if context.intention == "查信息":
+        if has_subcomponent:
+            return SUBCOMPONENT_COUNT if is_count else SUBCOMPONENT_INFO
+        return DEVICE_COUNT if is_count else DEVICE_INFO
+    return ""
 
 
 def recommend_capabilities(
     context: RecommendationContext,
     metadata_tables: Sequence[MetadataTable] = (),
-    cards: Sequence[CapabilityCard] = (),
+    profiles: Sequence[DeviceCapabilityProfile] = (),
+    special_capabilities: Sequence[SpecialCapabilitySpec] = (),
     limit: int = 12,
 ) -> List[RankedCapability]:
-    """确定性过滤、排序并选择候选能力卡，不调用 LLM 或 Embedding。"""
-    available_cards = list(cards) if cards else load_capability_cards()
-    ranked = []
-    for card in available_cards:
-        if _has_hard_conflict(context, card):
-            continue
-        score, reasons = _score_card(context, card, metadata_tables)
-        ranked.append(RankedCapability(card=card, match_score=score, match_reasons=reasons))
+    """根据标准上下文生成、过滤、排序并选择动态候选能力。"""
+    if limit <= 0:
+        return []
+    available_profiles = list(profiles) if profiles else load_device_capability_profiles()
+    available_special = (
+        list(special_capabilities) if special_capabilities else load_special_capabilities()
+    )
+    matched_profiles = _matching_profiles(context, available_profiles)
 
-    ranked.sort(key=lambda item: (-item.match_score, -item.card.priority, item.card.capability_id))
-    return _select_diverse(ranked, context, limit)
-
-
-def _has_hard_conflict(context: RecommendationContext, card: CapabilityCard) -> bool:
-    """
-    判断能力卡是否与标准上下文存在明确冲突。
-
-    仅在意图、对象、已确认领域、能力策略或恢复策略明确不兼容时过滤；
-    信息缺失和逻辑表相关度不参与硬过滤。
-    """
-    target_objects = context.subcomponent_types or context.device_types
-    recovery_strategy = context.recovery_strategy
-    ambiguous_domain = recovery_strategy == DISAMBIGUATE
-    confirmed_domains = {
-        DOMAIN_BY_DEVICE_TYPE[item]
-        for item in context.device_types
-        if item in DOMAIN_BY_DEVICE_TYPE
-    }
-
-    if confirmed_domains and len(confirmed_domains) == 1:
-        if card.domain and card.domain not in confirmed_domains:
-            return True
-
-    if target_objects and not set(target_objects).intersection(card.objects):
-        parent_recovery = (
-            bool(recovery_strategy)
-            and recovery_strategy in card.recovery_strategies
-            and bool(set(context.device_types).intersection(card.objects))
+    candidates: List[CapabilityCandidate] = []
+    if context.recovery_strategy == BASIC:
+        candidates.extend(_basic_candidates(context, matched_profiles))
+    else:
+        primary_type = resolve_primary_capability_type(context)
+        candidates.extend(
+            _primary_candidates(context, matched_profiles, available_special, primary_type)
         )
-        if not parent_recovery:
-            return True
+        candidates.extend(_adjacent_candidates(context, matched_profiles, primary_type))
 
-    if recovery_strategy == BASIC and not _is_information_card(card):
-        return True
-
-    if context.intention and card.intent_type != context.intention:
-        if not recovery_strategy or recovery_strategy not in card.recovery_strategies:
-            return True
-
-    if recovery_strategy and recovery_strategy not in card.recovery_strategies:
-        return True
-
-    if _policy_rejects(card.metric_policy, context.kpis):
-        if not ((ambiguous_domain or recovery_strategy == BASIC) and _is_information_card(card)):
-            return True
-    if _policy_rejects(card.attribute_policy, context.properties):
-        return True
-
-    if context.aggregations and card.aggregations:
-        if not set(context.aggregations).intersection(card.aggregations):
-            return True
-
-    return False
+    ranked = [
+        _rank_candidate(context, candidate, metadata_tables)
+        for candidate in _dedupe_candidates(candidates)
+    ]
+    ranked.sort(
+        key=lambda item: (
+            -item.match_score,
+            -item.candidate.priority,
+            item.candidate.capability_id,
+        )
+    )
+    return _select_diverse(ranked, limit)
 
 
-def _policy_rejects(policy: Mapping[str, Any], values: Sequence[str]) -> bool:
-    """判断指标或属性值是否被能力策略的白名单或黑名单明确拒绝。"""
-    if not values or not isinstance(policy, Mapping):
-        return False
-    mode = str(policy.get("mode", "") or "")
-    allowed = set(str(item) for item in policy.get("allow", []) if item)
-    denied = set(str(item) for item in policy.get("deny", []) if item)
-    if denied.intersection(values):
-        return True
-    return mode == "allow" and bool(allowed) and not allowed.intersection(values)
+def _load_capability_document() -> Dict[str, Any]:
+    """读取六类骨架设备规格配置文档。"""
+    path = resources.files("question_recommendation").joinpath(
+        "data/device_capability_profiles.json"
+    )
+    with path.open("r", encoding="utf-8") as file:
+        document = json.load(file)
+    return document if isinstance(document, dict) else {}
 
 
-def _score_card(
+def _matching_profiles(
     context: RecommendationContext,
-    card: CapabilityCard,
-    metadata_tables: Sequence[MetadataTable],
-) -> Tuple[int, List[str]]:
-    """
-    计算能力卡与上下文的确定性匹配分数。
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> List[DeviceCapabilityProfile]:
+    """按明确设备类型或子部件对象过滤设备规格。"""
+    if context.device_types:
+        return [
+            profile
+            for profile in profiles
+            if any(profile.matches(item) for item in context.device_types)
+        ]
+    if context.subcomponent_types:
+        return [
+            profile
+            for profile in profiles
+            if any(
+                spec.matches(item)
+                for spec in profile.subcomponents
+                for item in context.subcomponent_types
+            )
+        ]
+    return list(profiles)
 
-    返回静态优先级叠加意图、对象、领域、指标、属性、聚合、定位和元数据相关度
-    后的总分，以及对应的可解释匹配原因。
-    """
-    score = card.priority
-    reasons: List[str] = []
-    target_objects = context.subcomponent_types or context.device_types
-    confirmed_domains = {
-        DOMAIN_BY_DEVICE_TYPE[item]
-        for item in context.device_types
-        if item in DOMAIN_BY_DEVICE_TYPE
+
+def _primary_candidates(
+    context: RecommendationContext,
+    profiles: Sequence[DeviceCapabilityProfile],
+    special_capabilities: Sequence[SpecialCapabilitySpec],
+    primary_type: str,
+) -> List[CapabilityCandidate]:
+    """生成主查询骨架对应的设备或特殊能力候选。"""
+    if primary_type in {ALARM_QUERY, LINK_QUERY, RESOURCE_QUERY, RELATION_QUERY}:
+        return _special_candidates(context, special_capabilities, primary_type)
+    return [
+        candidate
+        for profile in profiles
+        for candidate in _profile_candidates(context, profile, primary_type)
+    ]
+
+
+def _adjacent_candidates(
+    context: RecommendationContext,
+    profiles: Sequence[DeviceCapabilityProfile],
+    primary_type: str,
+) -> List[CapabilityCandidate]:
+    """在主能力附近补充同对象、低成本且语义不同的候选能力。"""
+    if context.subcomponent_types:
+        adjacent_types = [SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT]
+        if primary_type == SUBCOMPONENT_INFO:
+            adjacent_types.append(SUBCOMPONENT_METRIC)
+    else:
+        adjacent_types = [DEVICE_INFO, DEVICE_COUNT]
+        if primary_type == DEVICE_INFO:
+            adjacent_types.append(DEVICE_METRIC)
+
+    candidates: List[CapabilityCandidate] = []
+    for profile in profiles:
+        for capability_type in adjacent_types:
+            if capability_type == primary_type:
+                continue
+            candidates.extend(_profile_candidates(context, profile, capability_type, relax=True))
+
+    if context.intention == "查信息":
+        candidates.extend(_relation_candidates(context))
+    return candidates
+
+
+def _basic_candidates(
+    context: RecommendationContext,
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> List[CapabilityCandidate]:
+    """生成 Basic 兜底候选，仅包含同对象信息和数量能力。"""
+    candidates: List[CapabilityCandidate] = []
+    for profile in profiles:
+        if context.subcomponent_types:
+            candidates.extend(
+                _profile_candidates(context, profile, SUBCOMPONENT_INFO, relax=True)
+            )
+            candidates.extend(
+                _profile_candidates(context, profile, SUBCOMPONENT_COUNT, relax=True)
+            )
+            candidates.extend(_profile_candidates(context, profile, DEVICE_INFO, relax=True))
+        else:
+            candidates.extend(_profile_candidates(context, profile, DEVICE_INFO, relax=True))
+            candidates.extend(_profile_candidates(context, profile, DEVICE_COUNT, relax=True))
+    return [_restrict_basic_candidate(candidate) for candidate in candidates]
+
+
+def _restrict_basic_candidate(candidate: CapabilityCandidate) -> CapabilityCandidate:
+    """将 Basic 候选收紧为无属性、过滤、分组和指标操作的基础信息或数量能力。"""
+    basic_forms = {
+        DEVICE_INFO: ["设备列表", "设备基础信息"],
+        DEVICE_COUNT: ["设备数量"],
+        SUBCOMPONENT_INFO: ["子部件列表", "子部件基础信息"],
+        SUBCOMPONENT_COUNT: ["子部件数量"],
     }
+    examples = [
+        example
+        for example in candidate.examples
+        if any(word in example for word in ("列表", "基础信息", "数量"))
+    ]
+    return replace(
+        candidate,
+        properties=[],
+        filter_fields=[],
+        group_by_fields=[],
+        metrics=[],
+        allowed_operations=[],
+        result_forms=basic_forms.get(candidate.capability_type, candidate.result_forms),
+        examples=examples,
+    )
 
-    if len(confirmed_domains) == 1 and card.domain in confirmed_domains:
+
+def _profile_candidates(
+    context: RecommendationContext,
+    profile: DeviceCapabilityProfile,
+    capability_type: str,
+    relax: bool = False,
+) -> List[CapabilityCandidate]:
+    """根据一个设备规格和查询骨架动态生成候选能力。"""
+    if capability_type in {DEVICE_INFO, DEVICE_COUNT, DEVICE_METRIC}:
+        candidate = _device_candidate(context, profile, capability_type, relax)
+        return [candidate] if candidate else []
+
+    if capability_type not in {
+        SUBCOMPONENT_INFO,
+        SUBCOMPONENT_COUNT,
+        SUBCOMPONENT_METRIC,
+    }:
+        return []
+    return [
+        candidate
+        for spec in _matching_subcomponents(context, profile)
+        for candidate in [_subcomponent_candidate(context, profile, spec, capability_type, relax)]
+        if candidate
+    ]
+
+
+def _device_candidate(
+    context: RecommendationContext,
+    profile: DeviceCapabilityProfile,
+    capability_type: str,
+    relax: bool,
+) -> Optional[CapabilityCandidate]:
+    """生成设备信息、数量或指标候选。"""
+    if not relax and not _locators_compatible(context, profile.locators):
+        return None
+    metrics = _matching_metrics(context, profile.metrics, capability_type, relax)
+    if capability_type == DEVICE_METRIC and not metrics:
+        return None
+    if not relax and capability_type == DEVICE_INFO:
+        if context.properties and not set(context.properties).intersection(profile.properties):
+            return None
+
+    return CapabilityCandidate(
+        capability_id=f"{profile.profile_id}:{capability_type}",
+        capability_type=capability_type,
+        domain=profile.domain,
+        device_types=profile.device_types,
+        locators=profile.locators,
+        properties=profile.properties if capability_type == DEVICE_INFO else [],
+        filter_fields=profile.filter_fields if capability_type in INFORMATION_TYPES else [],
+        group_by_fields=profile.group_by_fields if capability_type == DEVICE_COUNT else [],
+        metrics=metrics,
+        allowed_operations=_allowed_operations(metrics, context),
+        result_forms=_result_forms(capability_type),
+        table_hints=profile.table_hints,
+        examples=_examples_for_type(profile.examples, capability_type),
+        priority=profile.priority,
+    )
+
+
+def _subcomponent_candidate(
+    context: RecommendationContext,
+    profile: DeviceCapabilityProfile,
+    spec: SubcomponentCapabilitySpec,
+    capability_type: str,
+    relax: bool,
+) -> Optional[CapabilityCandidate]:
+    """生成设备子部件信息、数量或指标候选。"""
+    if not relax and not _locators_compatible(context, profile.locators):
+        return None
+    metrics = _matching_metrics(context, spec.metrics, capability_type, relax)
+    if capability_type == SUBCOMPONENT_METRIC and not metrics:
+        return None
+    if not relax and capability_type == SUBCOMPONENT_INFO:
+        if context.properties and not set(context.properties).intersection(spec.properties):
+            return None
+
+    return CapabilityCandidate(
+        capability_id=f"{profile.profile_id}:{_slug(spec.types)}:{capability_type}",
+        capability_type=capability_type,
+        domain=profile.domain,
+        device_types=profile.device_types,
+        subcomponent_types=spec.types,
+        parent_device_type=profile.device_types[0] if profile.device_types else "",
+        locators=profile.locators,
+        properties=spec.properties if capability_type == SUBCOMPONENT_INFO else [],
+        filter_fields=spec.filter_fields if capability_type in INFORMATION_TYPES else [],
+        group_by_fields=spec.group_by_fields if capability_type == SUBCOMPONENT_COUNT else [],
+        metrics=metrics,
+        allowed_operations=_allowed_operations(metrics, context),
+        result_forms=_result_forms(capability_type),
+        table_hints=profile.table_hints + spec.table_hints,
+        examples=_examples_for_type(spec.examples, capability_type),
+        priority=profile.priority + spec.priority,
+    )
+
+
+def _matching_subcomponents(
+    context: RecommendationContext,
+    profile: DeviceCapabilityProfile,
+) -> List[SubcomponentCapabilitySpec]:
+    """返回与上下文对象匹配的嵌套子部件规格。"""
+    if not context.subcomponent_types:
+        return list(profile.subcomponents)
+    return [
+        spec
+        for spec in profile.subcomponents
+        if any(spec.matches(item) for item in context.subcomponent_types)
+    ]
+
+
+def _matching_metrics(
+    context: RecommendationContext,
+    metrics: Sequence[MetricSpec],
+    capability_type: str,
+    relax: bool,
+) -> List[MetricSpec]:
+    """按 KPI 名称和操作约束过滤指标规格。"""
+    if capability_type not in {DEVICE_METRIC, SUBCOMPONENT_METRIC}:
+        return []
+    matched = [
+        metric
+        for metric in metrics
+        if not context.kpis or any(metric.matches(kpi) for kpi in context.kpis)
+    ]
+    if not relax:
+        matched = [metric for metric in matched if _metric_supports_context(metric, context)]
+    return [_visible_metric(metric, context) for metric in matched]
+
+
+def _metric_supports_context(metric: MetricSpec, context: RecommendationContext) -> bool:
+    """判断指标是否支持上下文明确要求的聚合或 TopN 口径。"""
+    requested = set(context.aggregations) - COUNT_AGGREGATIONS
+    if "趋势" in context.question and not metric.supports_trend:
+        return False
+    requested_aggregations = requested.intersection(METRIC_AGGREGATIONS)
+    if not requested_aggregations.issubset(set(metric.aggregations)):
+        return False
+    if "top_n" in requested:
+        return bool(metric.ranking_modes) and _question_has_explicit_topn(context.question)
+    if not requested_aggregations and "趋势" not in context.question:
+        return metric.supports_current
+    return True
+
+
+def _visible_metric(metric: MetricSpec, context: RecommendationContext) -> MetricSpec:
+    """隐藏当前问题未明确提供 N 和方向时不可主动使用的 TopN 口径。"""
+    data = metric.to_dict()
+    if not _question_has_explicit_topn(context.question):
+        data["ranking_modes"] = []
+    return MetricSpec.from_dict(data)
+
+
+def _allowed_operations(
+    metrics: Sequence[MetricSpec],
+    context: RecommendationContext,
+) -> List[str]:
+    """汇总候选指标允许的当前值、趋势、聚合、比较和排名操作。"""
+    operations: List[str] = []
+    for metric in metrics:
+        if metric.supports_current:
+            operations.append("current")
+        if metric.supports_trend:
+            operations.append("trend")
+        operations.extend(metric.aggregations)
+        operations.extend(metric.comparisons)
+        operations.extend(f"top_n_{item}" for item in metric.ranking_modes)
+    return _dedupe(operations)
+
+
+def _special_candidates(
+    context: RecommendationContext,
+    special_capabilities: Sequence[SpecialCapabilitySpec],
+    primary_type: str,
+) -> List[CapabilityCandidate]:
+    """生成当前特殊查询类型允许的候选能力。"""
+    result = []
+    for spec in special_capabilities:
+        if spec.capability_type != primary_type or not _special_matches_context(spec, context):
+            continue
+        result.append(
+            CapabilityCandidate(
+                capability_id=spec.capability_id,
+                capability_type=spec.capability_type,
+                domain=spec.domain,
+                device_types=_matched_values(context.device_types, spec.device_types)
+                or spec.device_types,
+                subcomponent_types=spec.objects,
+                properties=spec.properties,
+                filter_fields=spec.filter_fields,
+                group_by_fields=spec.group_by_fields,
+                allowed_operations=spec.aggregations,
+                result_forms=spec.result_forms,
+                table_hints=spec.table_hints,
+                examples=spec.examples,
+                priority=spec.priority,
+            )
+        )
+    return result
+
+
+def _relation_candidates(context: RecommendationContext) -> List[CapabilityCandidate]:
+    """普通信息场景下仅在原问题明确关系方向时补充关系候选。"""
+    text = context.question
+    if not any(word in text for word in ("下", "相连", "父", "子", "所属")):
+        return []
+    return _special_candidates(context, load_special_capabilities(), RELATION_QUERY)
+
+
+def _special_matches_context(
+    spec: SpecialCapabilitySpec,
+    context: RecommendationContext,
+) -> bool:
+    """判断特殊能力是否与当前设备、对象和问题文本相关。"""
+    if spec.device_types and context.device_types:
+        if not set(spec.device_types).intersection(context.device_types):
+            return False
+    if spec.objects and context.subcomponent_types:
+        if not set(spec.objects).intersection(context.subcomponent_types):
+            return False
+    if spec.capability_type == RESOURCE_QUERY:
+        return _is_subnet_context(context)
+    if spec.capability_type == RELATION_QUERY:
+        words = set(spec.device_types + spec.objects)
+        return bool(words.intersection(context.device_types + context.subcomponent_types)) or any(
+            word and word in context.question for word in words
+        )
+    return True
+
+
+def _rank_candidate(
+    context: RecommendationContext,
+    candidate: CapabilityCandidate,
+    metadata_tables: Sequence[MetadataTable],
+) -> RankedCapability:
+    """计算动态候选与上下文的确定性相关分数。"""
+    score = candidate.priority
+    reasons: List[str] = []
+    primary_type = resolve_primary_capability_type(context)
+    if candidate.capability_type == primary_type:
+        score += 160
+        reasons.append("主查询骨架匹配")
+    if set(context.device_types).intersection(candidate.device_types):
+        score += 120
+        reasons.append("设备对象匹配")
+    if set(context.subcomponent_types).intersection(candidate.subcomponent_types):
         score += 100
-        reasons.append("业务域匹配")
-    if context.intention and card.intent_type == context.intention:
-        score += 80
-        reasons.append("查询意图匹配")
-    if context.recovery_strategy and context.recovery_strategy in card.recovery_strategies:
-        score += 90
-        reasons.append("恢复策略匹配")
-    if set(target_objects).intersection(card.objects):
-        score += 80
-        reasons.append("查询对象匹配")
-    if context.device_types and card.parent_object in context.device_types:
-        score += 50
-        reasons.append("父对象匹配")
-    if _policy_matches(card.metric_policy, context.kpis):
-        score += 35
+        reasons.append("子部件对象匹配")
+    if context.kpis and any(
+        metric.matches(kpi) for metric in candidate.metrics for kpi in context.kpis
+    ):
+        score += 60
         reasons.append("指标匹配")
-    if _policy_matches(card.attribute_policy, context.properties):
-        score += 25
+    if context.properties and set(context.properties).intersection(candidate.properties):
+        score += 40
         reasons.append("属性匹配")
-    if context.aggregations and set(context.aggregations).intersection(card.aggregations):
-        score += 20
-        reasons.append("聚合算子匹配")
+    if _metadata_matches(candidate.table_hints, context.tables, metadata_tables):
+        score += 30
+        reasons.append("逻辑表或元数据相关")
+    if context.recovery_strategy == BASIC and candidate.capability_type in INFORMATION_TYPES:
+        score += _basic_preference_score(context, candidate)
+        reasons.append("Basic基础能力")
+    return RankedCapability(candidate=candidate, match_score=score, match_reasons=reasons)
 
-    locator_types = {item.id_type for item in context.identifiers}
-    if locator_types.intersection(card.locators):
-        score += 20
-        reasons.append("定位方式匹配")
 
-    flattened_metadata = " ".join(
-        list(context.tables)
+def _basic_preference_score(
+    context: RecommendationContext,
+    candidate: CapabilityCandidate,
+) -> int:
+    """为 Basic 候选建立信息优先、数量其次、父设备信息兜底的稳定顺序。"""
+    if context.subcomponent_types:
+        return {
+            SUBCOMPONENT_INFO: 140,
+            SUBCOMPONENT_COUNT: 130,
+            DEVICE_INFO: 100,
+        }.get(candidate.capability_type, 80)
+    return {
+        DEVICE_INFO: 140,
+        DEVICE_COUNT: 130,
+    }.get(candidate.capability_type, 80)
+
+
+def _metadata_matches(
+    hints: Sequence[str],
+    table_names: Sequence[str],
+    metadata_tables: Sequence[MetadataTable],
+) -> bool:
+    """判断候选表提示是否命中逻辑表名、表描述或字段描述。"""
+    flattened = " ".join(
+        list(table_names)
         + [
             text
             for table in metadata_tables
-            for text in (
-                table.table_name,
-                table.table_description,
-            )
+            for text in (table.table_name, table.table_description)
             if text
         ]
         + [
             text
             for table in metadata_tables
             for column in table.columns
-            for text in (
-                column.column_name,
-                column.column_description,
-            )
+            for text in (column.column_name, column.column_description)
             if text
         ]
     )
-    if any(hint and hint in flattened_metadata for hint in card.table_hints):
-        score += 20
-        reasons.append("逻辑表或元数据相关")
-    return score, reasons
-
-
-def _policy_matches(policy: Mapping[str, Any], values: Sequence[str]) -> bool:
-    """判断输入值是否被动态策略接受，或命中策略白名单。"""
-    if not values or not isinstance(policy, Mapping):
-        return False
-    mode = str(policy.get("mode", "") or "")
-    allowed = set(str(item) for item in policy.get("allow", []) if item)
-    if mode in {"dynamic", "dynamic_inherit"}:
-        return True
-    return bool(allowed.intersection(values))
-
-
-def _is_information_card(card: CapabilityCard) -> bool:
-    """判断能力卡是否能作为列表、数量、基础信息等信息类恢复能力。"""
-    return bool(INFORMATION_RESULT_FORMS.intersection(card.result_forms))
+    return any(hint and hint in flattened for hint in hints)
 
 
 def _select_diverse(
     ranked: Sequence[RankedCapability],
-    context: RecommendationContext,
     limit: int,
 ) -> List[RankedCapability]:
-    """
-    从已排序候选中选择稳定且具备多样性的 Top N。
-
-    同一意图、对象和结果形态最多保留三张；领域歧义场景下，同一领域与父对象组合
-    也最多保留三张，避免单一领域占满候选。
-    """
-    if limit <= 0:
-        return []
+    """按能力骨架和对象族限制重复，选择稳定且有差异的 Top N。"""
     selected: List[RankedCapability] = []
     group_counts: Dict[Tuple[str, str, str], int] = {}
-    domain_counts: Dict[Tuple[str, str], int] = {}
-    ambiguous_domain = context.recovery_strategy == DISAMBIGUATE
-
     for item in ranked:
-        card = item.card
-        object_key = card.objects[0] if card.objects else ""
-        form_key = card.result_forms[0] if card.result_forms else ""
-        group_key = (card.intent_type, object_key, form_key)
-        domain_key = (card.domain, card.parent_object)
-        if group_counts.get(group_key, 0) >= 3:
-            continue
-        if ambiguous_domain and domain_counts.get(domain_key, 0) >= 3:
+        candidate = item.candidate
+        key = (
+            candidate.capability_type,
+            candidate.device_types[0] if candidate.device_types else "",
+            candidate.subcomponent_types[0] if candidate.subcomponent_types else "",
+        )
+        if group_counts.get(key, 0) >= 2:
             continue
         selected.append(item)
-        group_counts[group_key] = group_counts.get(group_key, 0) + 1
-        domain_counts[domain_key] = domain_counts.get(domain_key, 0) + 1
+        group_counts[key] = group_counts.get(key, 0) + 1
         if len(selected) >= limit:
             break
     return selected
+
+
+def _locators_compatible(context: RecommendationContext, locators: Sequence[str]) -> bool:
+    """判断仍有效的定位参数是否被设备规格支持。"""
+    identifier_types = {item.id_type for item in context.identifiers}
+    return not identifier_types or bool(identifier_types.intersection(locators))
+
+
+def _question_has_explicit_topn(question: str) -> bool:
+    """判断原始问题是否同时明确 TopN 数值和最高或最低方向。"""
+    text = str(question or "")
+    has_n = bool(re.search(r"(?:top\s*|前)\d+", text, re.IGNORECASE))
+    has_direction = any(word in text for word in ("最高", "最低", "最多", "最少"))
+    return has_n and has_direction
+
+
+def _is_subnet_context(context: RecommendationContext) -> bool:
+    """判断上下文是否明确查询子网资源。"""
+    return "子网" in context.device_types or "子网" in context.subcomponent_types
+
+
+def _result_forms(capability_type: str) -> List[str]:
+    """返回六类查询骨架的稳定结果形态。"""
+    return {
+        DEVICE_INFO: ["设备列表", "设备基础信息", "设备属性信息"],
+        DEVICE_COUNT: ["设备数量", "设备分组数量"],
+        DEVICE_METRIC: ["设备指标"],
+        SUBCOMPONENT_INFO: ["子部件列表", "子部件基础信息", "子部件属性信息"],
+        SUBCOMPONENT_COUNT: ["子部件数量", "每台设备子部件数量"],
+        SUBCOMPONENT_METRIC: ["子部件指标"],
+    }.get(capability_type, [])
+
+
+def _examples_for_type(examples: Sequence[str], capability_type: str) -> List[str]:
+    """只保留与当前六类骨架一致的表达示例，避免 Basic 被指标示例干扰。"""
+    result = []
+    for example in examples:
+        is_count = any(word in example for word in ("数量", "总数"))
+        is_metric = any(
+            word in example
+            for word in (
+                "趋势",
+                "平均",
+                "最大",
+                "最小",
+                "Top",
+                "TOP",
+                "利用率",
+                "IOPS",
+                "响应时间",
+                "功率",
+                "温度",
+                "速率",
+                "流量",
+                "丢包率",
+                "错包率",
+                "光功率",
+                "不可达比率",
+                "当前移动终端数",
+            )
+        )
+        if capability_type in {DEVICE_COUNT, SUBCOMPONENT_COUNT} and is_count:
+            result.append(example)
+        elif capability_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC} and is_metric:
+            result.append(example)
+        elif capability_type in {DEVICE_INFO, SUBCOMPONENT_INFO} and not is_count and not is_metric:
+            result.append(example)
+    return result
+
+
+def _matched_values(values: Sequence[str], supported: Sequence[str]) -> List[str]:
+    """按原顺序返回输入和支持集合的交集。"""
+    return [item for item in values if item in supported]
+
+
+def _dedupe_candidates(
+    candidates: Iterable[CapabilityCandidate],
+) -> List[CapabilityCandidate]:
+    """按候选能力标识去重并保留首次出现项。"""
+    result: List[CapabilityCandidate] = []
+    seen = set()
+    for candidate in candidates:
+        if candidate.capability_id and candidate.capability_id not in seen:
+            seen.add(candidate.capability_id)
+            result.append(candidate)
+    return result
+
+
+def _dedupe(values: Iterable[str]) -> List[str]:
+    """按输入顺序去重字符串。"""
+    result = []
+    for item in values:
+        if item and item not in result:
+            result.append(item)
+    return result
+
+
+def _slug(values: Sequence[str]) -> str:
+    """用首个标准类型生成稳定候选标识片段。"""
+    return values[0] if values else "subcomponent"
