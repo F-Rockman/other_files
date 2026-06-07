@@ -323,6 +323,23 @@ def test_prompt_contains_minimal_context_and_ambiguity_rules():
     assert "{recommendation_context_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
 
 
+def test_prompt_requires_user_friendly_actionable_explanation():
+    assert "直接展示给用户的下一步建议" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "不责备用户" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "不暴露错误码" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "不包含 invalid_values 中的值" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "50 个中文字符以内" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    for strategy in (
+        "basic",
+        "clarify",
+        "disambiguate",
+        "remove_invalid",
+        "reframe",
+        "adjust_scope",
+    ):
+        assert f"- {strategy}：" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+
+
 def test_refuse_info_requires_shared_error_info():
     try:
         build_recommendation_context({}, refuse_info={"key": "intent_reject_non_query_intent"})
