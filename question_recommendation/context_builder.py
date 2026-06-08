@@ -5,7 +5,7 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 from query_errors import ErrorInfo
 
-from .models import AlarmCondition, Identifier, RecommendationContext
+from .models import AlarmCondition, Identifier, RecommendationContext, SubnetScope
 from .refusal_rules import (
     ALL_DEVICE_IDENTIFIERS,
     ALL_KPIS,
@@ -77,6 +77,7 @@ def build_recommendation_context(
         device_types=_dedupe(item.get("device_type") for item in devices),
         subcomponent_types=_dedupe(item.get("subcomponent_type") for item in subcomponents),
         identifiers=identifiers,
+        subnet=SubnetScope.from_dict(data.get("subnet")),
         properties=_string_list(data.get("properties")),
         kpis=kpis,
         time=time_text,

@@ -24,6 +24,7 @@ from .models import (
     MetadataTable,
     RecommendationContext,
     SpecialCapabilitySpec,
+    SubnetScope,
     SubcomponentCapabilitySpec,
 )
 from .prompt import (
@@ -40,6 +41,7 @@ __all__ = [
     "QUESTION_RECOMMENDATION_USER_TEMPLATE",
     "Identifier",
     "AlarmCondition",
+    "SubnetScope",
     "RecommendationContext",
     "SubcomponentCapabilitySpec",
     "DeviceCapabilityProfile",

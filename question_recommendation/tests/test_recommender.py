@@ -22,6 +22,7 @@ from question_recommendation import (
     MetadataColumn,
     MetadataTable,
     RecommendationContext,
+    SubnetScope,
     build_recommendation_context,
     load_device_capability_profiles,
     load_special_capabilities,
@@ -83,11 +84,18 @@ def test_build_context_keeps_only_consumed_fields():
     }
     assert context.aggregations == ["avg", "count_distinct", "top_n"]
     assert context.recovery_strategy == "disambiguate"
+    assert context.subnet.to_dict() == {"path": "/园区", "name": "生产网"}
     serialized = context.to_dict()
     assert "tenant" not in serialized
-    assert "subnet" not in serialized
+    assert serialized["subnet"] == {"path": "/园区", "name": "生产网"}
     assert "link_relation" not in serialized
     assert "unknown" not in serialized
+
+
+@pytest.mark.parametrize("subnet", [None, "", [], {}, {"path": " ", "name": ""}])
+def test_build_context_ignores_empty_or_invalid_subnet(subnet):
+    context = build_recommendation_context({"subnet": subnet})
+    assert context.subnet is None
 
 
 def test_build_context_ignores_subcomponent_name():
@@ -106,10 +114,12 @@ def test_build_context_ignores_subcomponent_name():
 def test_context_json_round_trip():
     original = _network_interface_context(
         identifiers=[{"value": "10.0.0.1", "id_type": "IP", "match_mode": "EXACT"}],
+        subnet={"path": "根子网", "name": "127网段"},
         aggregations=["count"],
     )
     restored = RecommendationContext.from_json(original.to_json())
     assert restored.to_dict() == original.to_dict()
+    assert restored.subnet == SubnetScope(path="根子网", name="127网段")
 
 
 def test_invalid_device_identifier_is_removed():
@@ -386,6 +396,74 @@ def test_special_capabilities_are_preserved(context, expected_id):
     assert expected_id in _candidate_ids(context)
 
 
+def test_subnet_scope_keeps_device_info_primary_and_adds_relation_candidate():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询根子网下127网段的存储设备列表",
+        device_types=["存储设备"],
+        subnet=SubnetScope(path="根子网", name="127网段"),
+    )
+    ranked = recommend_capabilities(context)
+    ids = [item.candidate.capability_id for item in ranked]
+    assert resolve_primary_capability_type(context) == DEVICE_INFO
+    assert "storage_device:device_info" in ids
+    assert "subnet_relation" in ids
+    assert ids.index("storage_device:device_info") < ids.index("subnet_relation")
+
+
+def test_subnet_scope_does_not_change_device_candidate_score():
+    without_subnet = RecommendationContext(
+        intention="查信息",
+        question="查询存储设备列表",
+        device_types=["存储设备"],
+    )
+    with_subnet = RecommendationContext(
+        intention="查信息",
+        question="查询存储设备列表",
+        device_types=["存储设备"],
+        subnet=SubnetScope(path="根子网", name="127网段"),
+    )
+    without_ranked = recommend_capabilities(without_subnet)
+    with_ranked = recommend_capabilities(with_subnet)
+    without_score = next(
+        item.match_score
+        for item in without_ranked
+        if item.candidate.capability_id == "storage_device:device_info"
+    )
+    with_score = next(
+        item.match_score
+        for item in with_ranked
+        if item.candidate.capability_id == "storage_device:device_info"
+    )
+    assert without_score == with_score
+    assert "subnet_relation" not in [
+        item.candidate.capability_id for item in without_ranked
+    ]
+
+
+def test_subnet_scope_adds_relation_without_changing_metric_primary():
+    context = RecommendationContext(
+        intention="查指标",
+        question="查询根子网下127网段的存储设备CPU利用率",
+        device_types=["存储设备"],
+        subnet=SubnetScope(path="根子网", name="127网段"),
+        kpis=["CPU利用率"],
+    )
+    ranked = recommend_capabilities(context)
+    ids = [item.candidate.capability_id for item in ranked]
+    assert ranked[0].candidate.capability_id == "storage_device:device_metric"
+    assert "subnet_relation" in ids
+
+
+def test_subnet_scope_does_not_add_incompatible_relation_candidate():
+    context = RecommendationContext(
+        intention="查信息",
+        device_types=["未知设备"],
+        subnet=SubnetScope(path="根子网", name="127网段"),
+    )
+    assert "subnet_relation" not in _candidate_ids(context)
+
+
 def test_unsupported_metric_filters_metric_candidate():
     context = RecommendationContext(
         intention="查指标",
@@ -505,6 +583,16 @@ def test_prompt_contains_minimal_context_and_ambiguity_rules():
     ):
         assert removed not in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "{recommendation_context_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
+
+
+def test_prompt_requires_valid_subnet_scope_inheritance():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "subnet 是设备或子部件查询的有效范围条件" in prompt
+    assert "延续原设备或子部件对象的推荐必须继承有效子网范围" in prompt
+    assert "根子网下127网段的存储设备" in prompt
+    assert "path 和 name 必须逐字继承" in prompt
+    assert "subnet.path 或 subnet.name 出现在 invalid_values 中时" in prompt
+    assert "只有 resource_query 或 relation_query 候选才能把子网本身作为主要查询对象" in prompt
 
 
 def test_prompt_requires_user_friendly_actionable_explanation():
@@ -813,6 +901,27 @@ def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monk
     assert '"match_score"' not in prompt
     assert '"table_hints"' not in prompt
     assert '"priority"' not in prompt
+
+
+def test_chat_prompt_contains_structured_subnet_scope_and_relation_candidate():
+    llm_chat_client = MagicMock(
+        return_value='{"recommends": [], "explain": "建议保留子网范围查询。"}'
+    )
+    recommend_questions_chat(
+        RecommendationContext(
+            intention="查信息",
+            question="查询根子网下127网段的存储设备列表",
+            device_types=["存储设备"],
+            subnet=SubnetScope(path="根子网", name="127网段"),
+        ),
+        llm_chat_client,
+    )
+    prompt = llm_chat_client.call_args[0][0][1]["content"]
+    assert '"subnet": {' in prompt
+    assert '"path": "根子网"' in prompt
+    assert '"name": "127网段"' in prompt
+    assert "storage_device:device_info" in prompt
+    assert "subnet_relation" in prompt
 
 
 def test_basic_prompt_keeps_full_context_and_invalid_values():

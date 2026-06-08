@@ -106,6 +106,37 @@ class AlarmCondition:
 
 
 @dataclass
+class SubnetScope:
+    """
+    推荐问题可继承的子网范围。
+
+    Attributes:
+        path: 子网层级路径或上级范围。
+        name: 当前子网名称。
+    """
+
+    path: str = ""
+    name: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Optional[Mapping[str, Any]]) -> Optional["SubnetScope"]:
+        """从上游子网对象构造范围；没有有效路径和名称时返回 ``None``。"""
+        if isinstance(data, cls):
+            data = asdict(data)
+        if not isinstance(data, Mapping):
+            return None
+        result = cls(
+            path=str(data.get("path", "") or "").strip(),
+            name=str(data.get("name", "") or "").strip(),
+        )
+        return result if result.path or result.name else None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """将子网范围转换为不包含空字段的字典。"""
+        return _compact_dict(asdict(self))
+
+
+@dataclass
 class RecommendationContext:
     """
     推荐模块使用的最小化标准上下文。
@@ -116,6 +147,7 @@ class RecommendationContext:
         device_types: 明确设备类型，用于匹配设备对象和限定子部件父对象。
         subcomponent_types: 接口、光模块等子部件类型，存在时作为主要查询对象。
         identifiers: 仍然有效、允许继承的对象定位条件。
+        subnet: 仍然有效、允许继承的子网范围，不改变主要查询对象。
         properties: 用户查询的属性名称。
         kpis: 用户查询的性能指标名称。
         time: 时间条件的原始表达。
@@ -133,6 +165,7 @@ class RecommendationContext:
     device_types: List[str] = field(default_factory=list)
     subcomponent_types: List[str] = field(default_factory=list)
     identifiers: List[Identifier] = field(default_factory=list)
+    subnet: Optional[SubnetScope] = None
     properties: List[str] = field(default_factory=list)
     kpis: List[str] = field(default_factory=list)
     time: str = ""
@@ -170,6 +203,7 @@ class RecommendationContext:
             for item in kwargs.get("identifiers", [])
             if isinstance(item, (Identifier, Mapping))
         ]
+        kwargs["subnet"] = SubnetScope.from_dict(kwargs.get("subnet"))
         kwargs["alarm"] = AlarmCondition.from_dict(kwargs.get("alarm"))
         for key in (
             "intention",

@@ -13,6 +13,30 @@
 确定性召回不调用 LLM 或 Embedding。最终 LLM 输出只校验 JSON 结构，不执行内容过滤、
 补足或改写。改造只作用于推荐模块，不参与后续 SQL 或问数执行流程。
 
+## 核心概念
+
+本模块中的“能力卡”不是固定问题模板，也不会直接作为最终推荐问题输出。
+
+```text
+设备能力规格 DeviceCapabilityProfile
+或特殊能力规格 SpecialCapabilitySpec
+→ 结合 RecommendationContext 动态生成 CapabilityCandidate
+→ 硬过滤、打分、排序和多样性裁剪
+→ 将排序后的精简候选交给 LLM
+→ LLM 在候选边界内组合自然问题
+```
+
+| 概念 | 含义 |
+|---|---|
+| 设备能力规格 | 声明一种设备及其子部件实际存在的属性、指标和定位方式 |
+| 特殊能力规格 | 声明告警、链路、子网资源和对象关系等非六类骨架能力 |
+| 查询骨架 | 描述查设备信息、数量、指标或查子部件信息、数量、指标 |
+| 候选能力 | 能力规格和查询骨架结合后动态生成的、可交给 LLM 使用的推荐边界 |
+| 推荐问题 | LLM 根据候选能力、上下文和元数据生成的自然语言问题 |
+
+能力卡只声明“这个对象有哪些属性和指标”。它不判断指标是否支持瞬时值、趋势、聚合、
+比较或排序，这些查询形式由后续问数流程负责。
+
 ## 快速使用
 
 ```python
@@ -32,6 +56,7 @@ upstream_result = {
         "device_type": "网络设备",
     }],
     "subcomponents": [],
+    "subnet": {"path": "根子网", "name": "127网段"},
     "properties": [],
     "kpis": ["CPU利用率"],
     "time": "",
@@ -61,15 +86,40 @@ result = recommend_questions_chat(
 |---|---|
 | `intention` | 路由查信息、查指标、查告警或查链路能力 |
 | `question` | 保持原查询方向和自然表达 |
-| `device_types` | 匹配设备规格和限定子部件父对象 |
-| `subcomponent_types` | 匹配主要子部件对象 |
-| `identifiers` | 仍有效、允许继承的 IP、MAC、名称等定位条件 |
-| `properties` / `kpis` | 属性与 KPI 能力匹配 |
-| `time` / `alarm` / `aggregations` | 时间、告警和聚合要求 |
-| `tables` | 加载逻辑元数据并辅助排序 |
+| `device_types` | 硬过滤设备规格；精确命中候选标准类型时额外加分 |
+| `subcomponent_types` | 硬过滤子部件规格；精确命中候选标准类型时额外加分 |
+| `identifiers` | 仍有效、允许继承的定位值；主候选要求定位类型与能力卡兼容 |
+| `subnet` | 有效子网范围；必须由延续原对象的推荐继承，但不改变主路由或分数 |
+| `properties` | 属性命中时加分；属性未命中不扣分、不屏蔽候选 |
+| `kpis` | KPI 名称匹配；指定 KPI 未命中时屏蔽对应指标候选 |
+| `time` | 透传给 LLM 保持用户时间方向，不参与能力过滤或打分 |
+| `alarm` | 透传告警查询条件，不参与通用能力打分 |
+| `aggregations` | `count` 和 `count_distinct` 用于数量骨架路由；其他值仅透传给 LLM |
+| `tables` | 加载逻辑元数据，并通过 `table_hints` 为相关候选加分 |
 | `recovery_strategy` | 根据共享错误码确定恢复行为 |
 | `refusal_message` / `refusal_detail` | 辅助生成用户友好说明 |
 | `invalid_values` | 已确认无效、禁止推荐问题继承的值 |
+
+`Identifier` 包含：
+
+| 字段 | 含义 |
+|---|---|
+| `value` | 实际定位值，例如 IP、名称或 MAC |
+| `id_type` | 定位类型，例如 `IP`、`NAME`、`MAC`、`OTHER` |
+| `match_mode` | 匹配方式，例如 `EXACT`、`PREFIX`、`SUFFIX`、`FUZZY`；当前不参与能力过滤和打分 |
+
+`SubnetScope` 包含：
+
+| 字段 | 含义 |
+|---|---|
+| `path` | 子网层级路径或上级范围，例如“根子网” |
+| `name` | 当前子网名称，例如“127网段” |
+
+子网范围与子网查询对象是两件事：
+
+- `subnet={"path": "根子网", "name": "127网段"}` 表示设备或子部件查询的有效范围。
+- `device_types=["子网"]` 或 `subcomponent_types=["子网"]` 表示查询对象本身是子网。
+- 子网范围不会写入设备类型、子部件类型或定位条件，也不会把设备查询改路由成子网查询。
 
 `build_recommendation_context(...)` 只接受共享 `query_errors.ErrorInfo`。错误分类依赖稳定
 `ErrorInfo.key`，不会从拒答文案猜测类型或提取无效值。
@@ -78,28 +128,268 @@ result = recommend_questions_chat(
 
 设备和子部件的通用查询只使用六类骨架：
 
-| 骨架 | 路由条件 |
+| 骨架 | 能力含义 | 主路由条件 |
 |---|---|
-| `device_info` | 查信息、无子部件、无 count |
-| `device_count` | 查信息、无子部件、有 count 或 count_distinct |
-| `device_metric` | 查指标、无子部件 |
-| `subcomponent_info` | 查信息、有子部件、无 count |
-| `subcomponent_count` | 查信息、有子部件、有 count 或 count_distinct |
-| `subcomponent_metric` | 查指标、有子部件 |
+| `device_info` | 查询设备列表、基础信息或属性 | 查信息、无子部件、无 count |
+| `device_count` | 查询设备数量 | 查信息、无子部件、有 count 或 count_distinct |
+| `device_metric` | 查询设备已声明的 KPI | 查指标、无子部件 |
+| `subcomponent_info` | 查询设备下子部件列表、基础信息或属性 | 查信息、有子部件、无 count |
+| `subcomponent_count` | 查询设备下子部件数量 | 查信息、有子部件、有 count 或 count_distinct |
+| `subcomponent_metric` | 查询设备下子部件已声明的 KPI | 查指标、有子部件 |
 
 过滤、分组、聚合、排序、TopN 和时间不单独建卡，也不由推荐能力卡判断支持范围。
 告警、链路、子网资源和对象关系保留为特殊能力。
 
-## 设备能力规格
+除了主骨架，算法还会生成同对象的相邻候选，帮助 LLM 给出语义不同的推荐：
 
-内置规格位于 `data/device_capability_profiles.json`：
+| 主骨架 | 相邻候选 |
+|---|---|
+| `device_info` | `device_count`、`device_metric` |
+| `device_count` | `device_info` |
+| `device_metric` | `device_info`、`device_count` |
+| `subcomponent_info` | `subcomponent_count`、`subcomponent_metric` |
+| `subcomponent_count` | `subcomponent_info` |
+| `subcomponent_metric` | `subcomponent_info`、`subcomponent_count` |
 
-- `device_profiles` 定义业务域、设备类型、别名、定位方式、属性、KPI、子部件和逻辑表
-  提示。
-- `subcomponents` 嵌套在所属设备规格中；设备与子部件兼容关系以此为唯一事实来源。
-- `metrics` 是该对象可查询的 KPI 名称列表，只判断指标是否存在。
-- `special_capabilities` 定义告警、链路、子网资源和关系能力。
-- `examples` 只指导 LLM 表达，不是固定输出模板，也不是当前环境事实。
+相邻候选会放宽定位类型校验，但仍受设备、父子对象和 KPI 名称能力边界约束。
+告警、链路等特殊主路由也会按上下文是否包含子部件，补充同对象的信息和数量候选。
+存在结构化 `subnet` 时，还会稳定补充兼容的 `subnet_relation` 候选，但不改变原设备
+或子部件主路由。
+
+## 能力卡字段
+
+内置能力卡位于 `data/device_capability_profiles.json`，包括 `device_profiles` 和
+`special_capabilities`。
+
+### 设备能力卡
+
+```json
+{
+  "profile_id": "server",
+  "domain": "服务器",
+  "device_types": ["服务器"],
+  "aliases": ["服务器设备"],
+  "locators": ["IP", "NAME"],
+  "properties": ["名称", "IP地址", "序列号", "型号", "厂商", "健康状态"],
+  "metrics": ["CPU利用率", "内存利用率"],
+  "subcomponents": [],
+  "table_hints": ["服务器", "server"],
+  "examples": ["查询当前服务器列表", "查询服务器数量"],
+  "priority": 94
+}
+```
+
+| 字段 | 是否传给 LLM | 能力含义 |
+|---|---:|---|
+| `profile_id` | 是，作为候选 `capability_id` 的组成部分 | 稳定且唯一的设备能力卡标识 |
+| `domain` | 是 | 业务域名称，帮助 LLM 保持业务方向 |
+| `device_types` | 是 | 标准设备类型；生成候选时作为允许的设备对象 |
+| `aliases` | 否 | 上游设备类型的精确别名，只用于匹配能力卡，不做模糊匹配 |
+| `locators` | 是 | 该设备允许继承的定位类型，例如 `IP`、`NAME` |
+| `properties` | 仅信息候选 | 该设备存在的可查询属性；命中加分，未命中不屏蔽 |
+| `metrics` | 仅指标候选 | 该设备存在的 KPI 标准名称；按名称精确匹配 |
+| `subcomponents` | 间接传递 | 该设备拥有的子部件能力；也是父子对象兼容关系的唯一事实来源 |
+| `table_hints` | 否 | 内部元数据相关度提示，只用于加分 |
+| `examples` | 是 | 自然问法示例，只指导表达，不代表当前环境事实 |
+| `priority` | 否 | 能力卡基础分，用于同类候选的稳定排序 |
+
+### 子部件能力卡
+
+子部件能力卡必须嵌套在所属设备能力卡内。相同子部件可以出现在多个设备能力卡中，例如
+网络设备光模块和服务器光模块是两个独立能力边界。
+
+| 字段 | 能力含义 |
+|---|---|
+| `types` | 子部件标准类型；候选中作为 `subcomponent_types` |
+| `aliases` | 上游子部件类型的精确别名，只用于匹配，不传给 LLM |
+| `properties` | 该父设备下该子部件存在的属性 |
+| `metrics` | 该父设备下该子部件存在的 KPI 标准名称 |
+| `table_hints` | 子部件元数据相关度提示，与父设备提示合并后参与加分 |
+| `examples` | 子部件自然问法示例 |
+| `priority` | 子部件附加基础分；最终基础分为设备 `priority + 子部件 priority` |
+
+### 特殊能力卡
+
+特殊能力不使用六类查询骨架，目前包括：
+
+| `capability_type` | 能力含义 |
+|---|---|
+| `alarm_query` | 告警查询 |
+| `link_query` | 网络链路和对端关系查询 |
+| `resource_query` | 子网资源查询 |
+| `relation_query` | 父子对象或所属关系查询 |
+
+| 字段 | 能力含义 |
+|---|---|
+| `capability_id` | 特殊能力稳定标识 |
+| `capability_type` | 特殊能力类型 |
+| `domain` | 业务域 |
+| `device_types` | 支持的设备类型；有明确设备类型时用于硬过滤 |
+| `objects` | 支持的关联对象，候选中映射为 `subcomponent_types` |
+| `properties` | 特殊对象可查询的属性 |
+| `table_hints` | 内部元数据相关度提示 |
+| `examples` | 自然问法示例 |
+| `priority` | 特殊能力基础分 |
+
+能力卡有意不包含 `filter_fields`、`group_by_fields`、指标操作或结果形态。当前推荐模块
+没有足够结构化输入来可靠约束这些内容，因此不在能力卡中提前建模。
+
+`properties` 和 `metrics` 是两套独立能力。同一个业务词可以同时出现，例如“容量利用率”
+既可以作为设备属性，也可以作为采集指标；最终使用哪一类由上游 `intention` 和六类骨架
+决定。
+
+`examples` 不是固定模板，也不参与打分。生成候选时会按骨架筛选示例：包含“数量”或
+“总数”的示例用于数量候选，包含趋势、平均、Top、利用率等指标表达的示例用于指标候选，
+剩余示例用于信息候选。LLM 只能学习其表达方式，不能继承示例中的具体事实。
+
+## 候选召回与硬过滤
+
+算法先执行确定性召回和硬过滤，再计算分数。被硬过滤的能力不会因高分重新进入候选集。
+
+### 设备和父子对象过滤
+
+1. `context.device_types` 非空时，只保留 `device_types` 或 `aliases` 精确命中的设备能力卡。
+2. 没有设备类型但存在 `subcomponent_types` 时，只保留包含该子部件标准类型或别名的设备
+   能力卡，因此多领域光模块等场景可以同时保留多个父设备领域。
+3. 设备类型和子部件类型都为空时，保留全部设备能力卡。
+4. 子部件候选只从其所属设备卡中生成，不允许跨父设备拼接。
+5. `subnet` 只作为范围条件，不参与设备和子部件硬过滤。
+
+### 定位方式过滤
+
+主候选存在有效 `identifiers` 时，至少一个 `Identifier.id_type` 必须出现在能力卡
+`locators` 中，否则主候选被过滤。没有定位条件时不执行定位过滤。
+
+相邻候选用于提供低成本回退方向，会放宽定位方式过滤；这使定位值不兼容时仍可推荐
+同对象列表或数量问题。
+
+### 属性和 KPI 规则
+
+| 输入 | 命中行为 | 未命中行为 |
+|---|---|---|
+| `properties` | 对信息候选加 40 分 | 不加分、不扣分、不屏蔽候选 |
+| `kpis` | 对指标候选保留匹配 KPI，并加 60 分 | 指定 KPI 全部未命中时，屏蔽对应指标候选 |
+
+KPI 只按标准名称精确匹配。上游需要负责 KPI 标准化；能力卡不维护 KPI 别名。
+
+### 特殊能力过滤
+
+- 特殊能力类型必须与主路由类型一致。
+- 上下文和能力卡都明确设备类型时，必须存在精确交集。
+- 上下文和能力卡都明确关联对象时，必须存在精确交集。
+- `resource_query` 只在上下文明确出现子网对象时召回。
+- `relation_query` 需要上下文对象命中，或原问题中出现对应对象词。
+- 普通查信息场景只有在原问题出现“下、相连、父、子、所属”等关系表达时，才额外补充
+  关系候选。
+- 存在结构化 `subnet` 时，即使原问题没有关系词，也会补充兼容的 `subnet_relation`；
+  设备类型与该关系能力不兼容时不会生成。
+
+## 候选打分与排序
+
+分数用于排列已经通过硬过滤的 `CapabilityCandidate`，不用于判断能力是否存在。当前没有
+负分项。
+
+`subnet`、`time`、`alarm`、非 count 聚合、恢复策略、拒答原因和 `invalid_values`
+不直接加减分。其中恢复策略和拒答信息主要指导最终 LLM 表达，`invalid_values` 用于
+禁止继承失败值。
+
+```text
+match_score =
+    候选基础 priority
+  + 主查询骨架匹配          160
+  + 设备标准类型精确匹配    120
+  + 子部件标准类型精确匹配  100
+  + KPI 名称精确匹配         60
+  + 属性名称精确匹配         40
+  + 逻辑表或元数据提示命中   30
+```
+
+| 加分项 | 判断规则 |
+|---|---|
+| 基础 `priority` | 设备候选使用设备 priority；子部件候选使用设备与子部件 priority 之和；特殊能力使用自身 priority |
+| 主骨架 `+160` | 候选 `capability_type` 等于 `resolve_primary_capability_type(context)` |
+| 设备对象 `+120` | `context.device_types` 与候选标准 `device_types` 存在精确交集 |
+| 子部件对象 `+100` | `context.subcomponent_types` 与候选标准 `subcomponent_types` 存在精确交集 |
+| KPI `+60` | 上下文存在 KPI，且与候选 `metrics` 存在精确交集 |
+| 属性 `+40` | 上下文存在属性，且与候选 `properties` 存在精确交集 |
+| 元数据 `+30` | 任一 `table_hints` 是表名、表描述、列名或列描述拼接文本的子串 |
+
+设备和子部件别名用于找到能力卡，但对象加分只比较候选中的标准类型。例如“服务器设备”
+可以召回服务器能力卡，但不会获得标准设备类型精确匹配的 `+120`。元数据无论命中多少
+个提示词都只加一次 `+30`。
+
+示例：查询“网络设备光模块接收功率趋势”，并命中网络光模块元数据：
+
+```text
+网络设备光模块 subcomponent_metric 候选
+= 网络设备 priority 95
++ 光模块 priority 10
++ 主骨架 160
++ 设备类型 120
++ 子部件类型 100
++ KPI 60
++ 元数据 30
+= 575
+```
+
+排序规则依次为：
+
+1. `match_score` 从高到低。
+2. 候选 `priority` 从高到低。
+3. `capability_id` 字典序，保证同分结果稳定。
+
+排序后执行多样性裁剪。同一 `(capability_type, 第一个设备类型, 第一个子部件类型)` 分组
+最多保留 2 个候选，最终默认选择 Top 12。
+
+## 候选能力字段
+
+`CapabilityCandidate` 是能力卡动态生成的推荐边界：
+
+| 字段 | 含义 |
+|---|---|
+| `capability_id` | 动态候选稳定标识，例如 `server:网卡:subcomponent_info` |
+| `capability_type` | 六类骨架或特殊能力类型 |
+| `domain` | 业务域 |
+| `device_types` | 候选允许的标准设备类型 |
+| `subcomponent_types` | 候选允许的标准子部件或关联对象类型 |
+| `locators` | 候选允许继承的定位类型 |
+| `properties` | 通用信息候选或特殊能力可查询的属性 |
+| `metrics` | 指标候选匹配后的 KPI 名称；非指标候选为空 |
+| `table_hints` | 内部打分字段，不传给 LLM |
+| `examples` | 与当前骨架匹配的表达示例 |
+| `priority` | 内部排序字段，不传给 LLM |
+
+`RankedCapability.match_score` 同样只在代码内部排序，不传给 LLM。候选数组顺序本身代表
+优先级。LLM 最终收到 `capability_id`、`capability_type`、业务域、对象、定位方式、属性、
+指标和示例。
+
+## 子网范围推荐
+
+当 `RecommendationContext.subnet` 存在时：
+
+- 延续原设备或子部件对象的推荐必须自然继承有效子网范围。
+- 同时有 `path` 和 `name` 时，推荐表达为类似“根子网下127网段的存储设备列表”。
+- `name` 已经包含在完整 `path` 中时避免重复表达。
+- 子网范围不参与主路由、硬过滤或打分，也不会让 `subnet_relation` 压过原对象主候选。
+- 只有 `resource_query` 或 `relation_query` 可以把子网本身作为主要查询对象。
+- `path` 或 `name` 位于 `invalid_values` 时，LLM 不得继续继承对应值。
+
+示例上下文：
+
+```json
+{
+  "intention": "查信息",
+  "question": "查询根子网下127网段的存储设备列表",
+  "device_types": ["存储设备"],
+  "subnet": {
+    "path": "根子网",
+    "name": "127网段"
+  }
+}
+```
+
+该上下文主路由仍为 `device_info`，会召回存储设备信息候选并补充 `subnet_relation` 候选。
+相关推荐应保留“根子网下127网段”的范围，而不是退化为无范围的“查询存储设备列表”。
 
 重要边界：
 
@@ -117,7 +407,27 @@ from question_recommendation import (
 )
 ```
 
-## Basic 兜底
+可直接检查确定性召回和分数，无需调用 LLM：
+
+```python
+ranked = recommend_capabilities(context, limit=12)
+for item in ranked:
+    print(item.match_score, item.candidate.capability_id)
+```
+
+## 恢复策略与 Basic 兜底
+
+恢复策略由 `refusal_rules.py` 根据共享 `ErrorInfo.key` 确定。它不会改变候选打分公式，
+主要用于指导 LLM 如何组织最终推荐。
+
+| 策略 | 推荐表达方向 |
+|---|---|
+| `basic` | 先定位、再收敛；优先低成本和范围更宽的问题 |
+| `clarify` | 补齐对象、指标、时间或查询条件 |
+| `disambiguate` | 明确业务域、父对象、设备类型或查询方向 |
+| `remove_invalid` | 避开 `invalid_values`，不重新继承失败参数 |
+| `reframe` | 推荐更简单、拆分后或改变查询路径的问题 |
+| `adjust_scope` | 保留原方向并调整对象或时间范围 |
 
 `recovery_strategy == "basic"` 时：
 

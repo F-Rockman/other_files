@@ -197,7 +197,7 @@ def _adjacent_candidates(
                 continue
             candidates.extend(_profile_candidates(context, profile, capability_type, relax=True))
 
-    if context.intention == "查信息":
+    if context.intention == "查信息" or context.subnet:
         candidates.extend(_relation_candidates(context))
     return candidates
 
@@ -356,9 +356,11 @@ def _special_candidates(
 
 
 def _relation_candidates(context: RecommendationContext) -> List[CapabilityCandidate]:
-    """普通信息场景下仅在原问题明确关系方向时补充关系候选。"""
+    """在结构化子网或原问题明确关系方向时补充关系候选。"""
     text = context.question
-    if not any(word in text for word in ("下", "相连", "父", "子", "所属")):
+    if not context.subnet and not any(
+        word in text for word in ("下", "相连", "父", "子", "所属")
+    ):
         return []
     return _special_candidates(context, load_special_capabilities(), RELATION_QUERY)
 
