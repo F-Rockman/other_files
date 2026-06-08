@@ -4,7 +4,7 @@
       "profile_id": "network_device",
       "domain": "网络",
       "device_types": ["网络设备"],
-      "aliases": ["路由器","交换机","AC"],
+      "aliases": ["路由器","交换机","AC","WAC","防火墙","FATAP"],
       "locators": ["IP","NAME"],
       "properties": ["名称","IP地址","SN","状态","型号","子网","厂商","软件版本"],
       "metrics": ["CPU利用率","响应时间","带宽利用率"],
@@ -212,7 +212,7 @@
     },
     {
       "profile_id": "fc_switch",
-      "domain": "FC",
+      "domain": "存储",
       "device_types": ["FC交换机"],
       "locators": ["IP","NAME"],
       "properties": ["名称","IP地址","状态","型号","厂商","子网"],
@@ -255,15 +255,15 @@
       "priority": 88
     },
     {
-      "profile_id": "ap",
-      "domain": "网络",
-      "device_types": ["AP"],
-      "aliases": ["无线接入点"],
+      "profile_id": "fitap",
+      "domain": "无线",
+      "device_types": ["FITAP"],
+      "aliases": ["AP","无线接入点"],
       "locators": ["IP","MAC","NAME"],
       "properties": ["名称","IP地址","MAC地址","状态","软件版本"],
       "metrics": ["CPU利用率","内存利用率","当前移动终端数"],
-      "table_hints": ["AP","无线接入点"],
-      "examples": ["查询当前AP列表","查询AP数量","查询AP当前移动终端数"],
+      "table_hints": ["FITAP","AP","无线接入点"],
+      "examples": ["查询当前FITAP列表","查询FITAP数量","查询FITAP当前移动终端数"],
       "priority": 88
     },
     {
@@ -304,7 +304,6 @@
     {
       "capability_id": "subnet_resource",
       "capability_type": "resource_query",
-      "domain": "网络",
       "objects": ["子网"],
       "properties": ["名称","备注"],
       "table_hints": ["子网","subnet"],
@@ -314,11 +313,10 @@
     {
       "capability_id": "subnet_relation",
       "capability_type": "relation_query",
-      "domain": "网络",
-      "device_types": ["网络设备","服务器","服务器设备","存储设备","终端设备","终端"],
+      "device_types": ["网络设备","存储设备","FC交换机","服务器","OLT","ONU","FITAP","终端设备"],
       "objects": ["子网"],
       "table_hints": ["子网","subnet"],
-      "examples": ["查询子网的直接下级子网","查询子网下的网络设备列表"],
+      "examples": ["查询子网的直接下级子网","查询子网下的网络设备列表","查询子网下的存储设备列表","查询子网下的服务器列表","查询子网下的OLT列表","查询子网下的FITAP列表","查询子网下的终端设备列表"],
       "priority": 88
     },
     {

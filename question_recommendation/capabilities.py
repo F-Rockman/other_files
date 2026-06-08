@@ -143,16 +143,31 @@ def _empty_intention_basic_candidates(
     if context.recovery_strategy != BASIC or context.intention or not context.question:
         return None
 
-    matched_profiles = [
-        profile
-        for profile in profiles
-        if _contains_any(context.question, profile.device_types + profile.aliases)
-    ]
+    matched_profiles = _profiles_matching_text(context.question, profiles)
+    matched_device_values = _specific_terms_in_text(
+        context.question,
+        [
+            term
+            for profile in profiles
+            for term in profile.device_types + profile.aliases
+        ],
+    )
+    matched_subcomponent_terms = set(
+        _specific_terms_in_text(
+            context.question,
+            [
+                value
+                for profile in profiles
+                for spec in profile.subcomponents
+                for value in spec.types + spec.aliases
+            ],
+        )
+    )
     matched_subcomponents = [
         (profile, spec)
         for profile in profiles
         for spec in profile.subcomponents
-        if _contains_any(context.question, spec.types + spec.aliases)
+        if matched_subcomponent_terms.intersection(spec.types + spec.aliases)
     ]
     matched_special = [
         spec
@@ -165,11 +180,7 @@ def _empty_intention_basic_candidates(
     if matched_special:
         special_context = RecommendationContext(
             question=context.question,
-            device_types=[
-                device_type
-                for profile in matched_profiles
-                for device_type in profile.device_types
-            ],
+            device_types=matched_device_values,
             subcomponent_types=[
                 object_type
                 for spec in matched_special
@@ -180,7 +191,7 @@ def _empty_intention_basic_candidates(
             candidate
             for spec in matched_special
             for candidate in _special_candidates(
-                special_context, [spec], spec.capability_type
+                special_context, [spec], spec.capability_type, profiles
             )
         ]
         if candidates:
@@ -259,7 +270,7 @@ def _primary_candidates(
 ) -> List[CapabilityCandidate]:
     """生成主查询骨架对应的设备或特殊能力候选。"""
     if primary_type in {ALARM_QUERY, LINK_QUERY, RESOURCE_QUERY, RELATION_QUERY}:
-        return _special_candidates(context, special_capabilities, primary_type)
+        return _special_candidates(context, special_capabilities, primary_type, profiles)
     return [
         candidate
         for profile in profiles
@@ -290,7 +301,7 @@ def _adjacent_candidates(
             candidates.extend(_profile_candidates(context, profile, capability_type, relax=True))
 
     if context.intention == "查信息" or context.subnet:
-        candidates.extend(_relation_candidates(context))
+        candidates.extend(_relation_candidates(context, profiles))
     return candidates
 
 
@@ -424,19 +435,24 @@ def _special_candidates(
     context: RecommendationContext,
     special_capabilities: Sequence[SpecialCapabilitySpec],
     primary_type: str,
+    profiles: Sequence[DeviceCapabilityProfile],
 ) -> List[CapabilityCandidate]:
-    """生成当前特殊查询类型允许的候选能力。"""
+    """生成特殊查询候选，并通过设备能力卡解析设备别名。"""
     result = []
     for spec in special_capabilities:
-        if spec.capability_type != primary_type or not _special_matches_context(spec, context):
+        if spec.capability_type != primary_type or not _special_matches_context(
+            spec, context, profiles
+        ):
             continue
+        matched_device_types = _matched_special_device_types(
+            context.device_types, spec.device_types, profiles
+        )
         result.append(
             CapabilityCandidate(
                 capability_id=spec.capability_id,
                 capability_type=spec.capability_type,
                 domain=spec.domain,
-                device_types=_matched_values(context.device_types, spec.device_types)
-                or spec.device_types,
+                device_types=matched_device_types or spec.device_types,
                 subcomponent_types=spec.objects,
                 properties=spec.properties,
                 table_hints=spec.table_hints,
@@ -447,23 +463,32 @@ def _special_candidates(
     return result
 
 
-def _relation_candidates(context: RecommendationContext) -> List[CapabilityCandidate]:
+def _relation_candidates(
+    context: RecommendationContext,
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> List[CapabilityCandidate]:
     """在结构化子网或原问题明确关系方向时补充关系候选。"""
     text = context.question
     if not context.subnet and not any(
         word in text for word in ("下", "相连", "父", "子", "所属")
     ):
         return []
-    return _special_candidates(context, load_special_capabilities(), RELATION_QUERY)
+    return _special_candidates(
+        context, load_special_capabilities(), RELATION_QUERY, profiles
+    )
 
 
 def _special_matches_context(
     spec: SpecialCapabilitySpec,
     context: RecommendationContext,
+    profiles: Sequence[DeviceCapabilityProfile],
 ) -> bool:
     """判断特殊能力是否与当前设备、对象和问题文本相关。"""
+    matched_device_types = _matched_special_device_types(
+        context.device_types, spec.device_types, profiles
+    )
     if spec.device_types and context.device_types:
-        if not set(spec.device_types).intersection(context.device_types):
+        if not matched_device_types:
             return False
     if spec.objects and context.subcomponent_types:
         if not set(spec.objects).intersection(context.subcomponent_types):
@@ -471,11 +496,31 @@ def _special_matches_context(
     if spec.capability_type == RESOURCE_QUERY:
         return _is_subnet_context(context)
     if spec.capability_type == RELATION_QUERY:
-        words = set(spec.device_types + spec.objects)
-        return bool(words.intersection(context.device_types + context.subcomponent_types)) or any(
-            word and word in context.question for word in words
+        return bool(
+            matched_device_types
+            or set(spec.objects).intersection(context.subcomponent_types)
+            or any(word and word in context.question for word in spec.objects)
         )
     return True
+
+
+def _matched_special_device_types(
+    values: Sequence[str],
+    supported: Sequence[str],
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> List[str]:
+    """返回能够通过标准类型或设备能力卡别名命中特殊能力的原始设备类型。"""
+    supported_set = set(supported)
+    return [
+        value
+        for value in values
+        if value in supported_set
+        or any(
+            profile.matches(value)
+            and supported_set.intersection(profile.device_types)
+            for profile in profiles
+        )
+    ]
 
 
 def _rank_candidate(
@@ -597,11 +642,6 @@ def _examples_for_type(examples: Sequence[str], capability_type: str) -> List[st
     return result
 
 
-def _matched_values(values: Sequence[str], supported: Sequence[str]) -> List[str]:
-    """按原顺序返回输入和支持集合的交集。"""
-    return [item for item in values if item in supported]
-
-
 def _dedupe_candidates(
     candidates: Iterable[CapabilityCandidate],
 ) -> List[CapabilityCandidate]:
@@ -623,3 +663,48 @@ def _slug(values: Sequence[str]) -> str:
 def _contains_any(text: str, values: Sequence[str]) -> bool:
     """判断文本是否精确包含任一非空能力卡对象词。"""
     return any(value and value in text for value in values)
+
+
+def _profiles_matching_text(
+    text: str,
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> List[DeviceCapabilityProfile]:
+    """按文本中未被更长对象词覆盖的设备类型或别名匹配能力卡。"""
+    matched_terms = set(
+        _specific_terms_in_text(
+            text,
+            [
+                term
+                for profile in profiles
+                for term in profile.device_types + profile.aliases
+            ],
+        )
+    )
+    return [
+        profile
+        for profile in profiles
+        if matched_terms.intersection(profile.device_types + profile.aliases)
+    ]
+
+
+def _specific_terms_in_text(text: str, terms: Sequence[str]) -> List[str]:
+    """返回文本中的明确对象词，并移除被更长对象词完整覆盖的短词。"""
+    matches: List[Tuple[str, int, int]] = []
+    for term in dict.fromkeys(item for item in terms if item):
+        start = text.find(term)
+        while start >= 0:
+            matches.append((term, start, start + len(term)))
+            start = text.find(term, start + 1)
+
+    result: List[str] = []
+    for term, start, end in matches:
+        if any(
+            other_start <= start
+            and other_end >= end
+            and len(other) > len(term)
+            for other, other_start, other_end in matches
+        ):
+            continue
+        if term not in result:
+            result.append(term)
+    return result

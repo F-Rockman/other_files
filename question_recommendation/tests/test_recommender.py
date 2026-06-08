@@ -241,6 +241,20 @@ def test_capability_configuration_is_valid():
     assert not removed_fields.intersection(specials[0].to_dict())
 
 
+def test_device_profiles_reflect_cross_domain_device_classification():
+    profiles = {profile.profile_id: profile for profile in load_device_capability_profiles()}
+    assert profiles["fc_switch"].domain == "存储"
+    assert {"WAC", "防火墙", "FATAP"}.issubset(profiles["network_device"].aliases)
+    assert "ap" not in profiles
+    assert profiles["fitap"].domain == "无线"
+    assert profiles["fitap"].device_types == ["FITAP"]
+    assert {"AP", "无线接入点"}.issubset(profiles["fitap"].aliases)
+    assert all(
+        "PON设备" in profiles[profile_id].aliases
+        for profile_id in ("olt", "onu")
+    )
+
+
 @pytest.mark.parametrize(
     ("context", "expected"),
     [
@@ -470,6 +484,60 @@ def test_subnet_scope_does_not_add_incompatible_relation_candidate():
         subnet=SubnetScope(path="根子网", name="127网段"),
     )
     assert "subnet_relation" not in _candidate_ids(context)
+
+
+def test_subnet_special_capabilities_have_no_fixed_domain():
+    subnet_capabilities = [
+        spec
+        for spec in load_special_capabilities()
+        if spec.capability_id in {"subnet_resource", "subnet_relation"}
+    ]
+    assert len(subnet_capabilities) == 2
+    assert all(not spec.domain for spec in subnet_capabilities)
+    assert all("domain" not in spec.to_dict() for spec in subnet_capabilities)
+    resource = next(
+        item
+        for item in recommend_capabilities(
+            RecommendationContext(intention="查信息", device_types=["子网"])
+        )
+        if item.candidate.capability_id == "subnet_resource"
+    )
+    assert "domain" not in resource.to_dict()
+
+
+@pytest.mark.parametrize(
+    "device_type",
+    [
+        "网络设备",
+        "路由器",
+        "WAC",
+        "防火墙",
+        "FATAP",
+        "存储设备",
+        "FC交换机",
+        "服务器",
+        "OLT",
+        "ONU",
+        "PON设备",
+        "FITAP",
+        "AP",
+        "终端设备",
+        "终端",
+    ],
+)
+def test_subnet_relation_supports_cross_domain_device_types_and_aliases(device_type):
+    context = RecommendationContext(
+        intention="查信息",
+        device_types=[device_type],
+        subnet=SubnetScope(path="根子网", name="生产网"),
+    )
+    ranked = recommend_capabilities(context)
+    relation = next(
+        item.candidate
+        for item in ranked
+        if item.candidate.capability_id == "subnet_relation"
+    )
+    assert relation.device_types == [device_type]
 
 
 def test_unsupported_metric_filters_metric_candidate():
@@ -917,6 +985,46 @@ def test_empty_intention_basic_object_matching_ignores_refusal_message():
     assert _candidate_ids(context) == ["alarm_query"]
 
 
+def test_empty_intention_basic_prefers_fc_switch_over_shorter_switch_alias():
+    ranked = recommend_capabilities(_empty_intention_basic_context("查询FC交换机列表"))
+    assert {item.candidate.capability_id for item in ranked} == {
+        "fc_switch:device_info",
+        "fc_switch:device_count",
+    }
+    assert all(item.candidate.domain == "存储" for item in ranked)
+
+
+def test_empty_intention_basic_keeps_separate_explicit_device_objects():
+    ids = set(
+        _candidate_ids(_empty_intention_basic_context("查询服务器和网络设备列表"))
+    )
+    assert {"server:device_info", "network_device:device_info"}.issubset(ids)
+
+
+@pytest.mark.parametrize(
+    ("question", "expected_ids"),
+    [
+        (
+            "查询FATAP列表",
+            {"network_device:device_info", "network_device:device_count"},
+        ),
+        ("查询FITAP列表", {"fitap:device_info", "fitap:device_count"}),
+        ("查询AP列表", {"fitap:device_info", "fitap:device_count"}),
+        (
+            "查询PON设备列表",
+            {
+                "olt:device_info",
+                "olt:device_count",
+                "onu:device_info",
+                "onu:device_count",
+            },
+        ),
+    ],
+)
+def test_empty_intention_basic_uses_specific_device_classification(question, expected_ids):
+    assert set(_candidate_ids(_empty_intention_basic_context(question))) == expected_ids
+
+
 def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "yaml", SimpleNamespace(safe_load=lambda stream: json.load(stream)))
     (tmp_path / "network_interface.logical.yaml").write_text(
@@ -1017,6 +1125,14 @@ def test_prompt_constrains_empty_intention_basic_to_matched_objects():
     assert "不得重新扩展到候选之外的设备类型" in prompt
     assert "优先推荐列表、数量或基础信息" in prompt
     assert "不要据此推断指标、趋势、聚合、排序或新的正式意图" in prompt
+
+
+def test_prompt_treats_subnet_as_cross_domain_scope():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "子网是跨领域资源范围" in prompt
+    assert "网络、存储、服务器、PON、无线和终端对象" in prompt
+    assert "不得默认将子网归为网络业务域" in prompt
+    assert "不得把用户明确的设备类型改写为网络设备" in prompt
 
 
 def test_structurally_valid_llm_result_is_returned_without_content_filtering():

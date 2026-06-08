@@ -120,6 +120,8 @@ result = recommend_questions_chat(
 - `subnet={"path": "根子网", "name": "127网段"}` 表示设备或子部件查询的有效范围。
 - `device_types=["子网"]` 或 `subcomponent_types=["子网"]` 表示查询对象本身是子网。
 - 子网范围不会写入设备类型、子部件类型或定位条件，也不会把设备查询改路由成子网查询。
+- 子网不属于网络业务域，是可包含网络、存储、服务器、PON、无线和终端对象的跨领域
+  资源范围。
 
 `build_recommendation_context(...)` 只接受共享 `query_errors.ErrorInfo`。错误分类依赖稳定
 `ErrorInfo.key`，不会从拒答文案猜测类型或提取无效值。
@@ -223,7 +225,7 @@ result = recommend_questions_chat(
 |---|---|
 | `capability_id` | 特殊能力稳定标识 |
 | `capability_type` | 特殊能力类型 |
-| `domain` | 业务域 |
+| `domain` | 业务域；子网等跨领域特殊能力可以为空 |
 | `device_types` | 支持的设备类型；有明确设备类型时用于硬过滤 |
 | `objects` | 支持的关联对象，候选中映射为 `subcomponent_types` |
 | `properties` | 特殊对象可查询的属性 |
@@ -233,6 +235,11 @@ result = recommend_questions_chat(
 
 能力卡有意不包含 `filter_fields`、`group_by_fields`、指标操作或结果形态。当前推荐模块
 没有足够结构化输入来可靠约束这些内容，因此不在能力卡中提前建模。
+
+设备类型和别名由设备能力卡统一维护，特殊能力只声明支持的标准设备类型，并通过设备
+能力卡解析别名。例如 FATAP 命中网络设备能力，AP/无线接入点命中 FITAP，PON设备同时
+命中 OLT 和 ONU。FC交换机属于存储领域。空意图 Basic 从原问题识别对象时优先使用最长、
+最具体的对象词，避免“FC交换机”同时误命中泛化的“交换机”。
 
 `properties` 和 `metrics` 是两套独立能力。同一个业务词可以同时出现，例如“容量利用率”
 既可以作为设备属性，也可以作为采集指标；最终使用哪一类由上游 `intention` 和六类骨架
@@ -373,6 +380,8 @@ match_score =
 - 子网范围不参与主路由、硬过滤或打分，也不会让 `subnet_relation` 压过原对象主候选。
 - 只有 `resource_query` 或 `relation_query` 可以把子网本身作为主要查询对象。
 - `path` 或 `name` 位于 `invalid_values` 时，LLM 不得继续继承对应值。
+- `subnet_resource` 和 `subnet_relation` 不携带固定业务域；子网关系支持网络、存储、
+  服务器、PON、无线和终端对象，并保留用户明确的具体设备类型。
 
 示例上下文：
 
