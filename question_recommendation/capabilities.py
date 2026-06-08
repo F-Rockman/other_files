@@ -100,13 +100,18 @@ def recommend_capabilities(
     available_special = (
         list(special_capabilities) if special_capabilities else load_special_capabilities()
     )
-    matched_profiles = _matching_profiles(context, available_profiles)
-
-    primary_type = resolve_primary_capability_type(context)
-    candidates = _primary_candidates(
-        context, matched_profiles, available_special, primary_type
+    object_directed_candidates = _empty_intention_basic_candidates(
+        context, available_profiles, available_special
     )
-    candidates.extend(_adjacent_candidates(context, matched_profiles, primary_type))
+    if object_directed_candidates is not None:
+        candidates = object_directed_candidates
+    else:
+        matched_profiles = _matching_profiles(context, available_profiles)
+        primary_type = resolve_primary_capability_type(context)
+        candidates = _primary_candidates(
+            context, matched_profiles, available_special, primary_type
+        )
+        candidates.extend(_adjacent_candidates(context, matched_profiles, primary_type))
     candidates = _dedupe_candidates(candidates)
     if not candidates and context.recovery_strategy == BASIC:
         candidates = _global_basic_fallback_candidates(available_profiles)
@@ -123,6 +128,93 @@ def recommend_capabilities(
         )
     )
     return _select_diverse(ranked, limit)
+
+
+def _empty_intention_basic_candidates(
+    context: RecommendationContext,
+    profiles: Sequence[DeviceCapabilityProfile],
+    special_capabilities: Sequence[SpecialCapabilitySpec],
+) -> Optional[List[CapabilityCandidate]]:
+    """
+    按空意图 Basic 原问题中的明确业务对象收敛基础候选。
+
+    返回 ``None`` 表示没有识别到对象方向，应继续使用原有召回流程。
+    """
+    if context.recovery_strategy != BASIC or context.intention or not context.question:
+        return None
+
+    matched_profiles = [
+        profile
+        for profile in profiles
+        if _contains_any(context.question, profile.device_types + profile.aliases)
+    ]
+    matched_subcomponents = [
+        (profile, spec)
+        for profile in profiles
+        for spec in profile.subcomponents
+        if _contains_any(context.question, spec.types + spec.aliases)
+    ]
+    matched_special = [
+        spec
+        for spec in special_capabilities
+        if _contains_any(context.question, spec.objects)
+    ]
+    if not matched_profiles and not matched_subcomponents and not matched_special:
+        return None
+
+    if matched_special:
+        special_context = RecommendationContext(
+            question=context.question,
+            device_types=[
+                device_type
+                for profile in matched_profiles
+                for device_type in profile.device_types
+            ],
+            subcomponent_types=[
+                object_type
+                for spec in matched_special
+                for object_type in spec.objects
+            ],
+        )
+        candidates = [
+            candidate
+            for spec in matched_special
+            for candidate in _special_candidates(
+                special_context, [spec], spec.capability_type
+            )
+        ]
+        if candidates:
+            return candidates
+
+    if matched_profiles and matched_subcomponents:
+        profile_ids = {profile.profile_id for profile in matched_profiles}
+        matched_subcomponents = [
+            (profile, spec)
+            for profile, spec in matched_subcomponents
+            if profile.profile_id in profile_ids
+        ]
+
+    if matched_subcomponents:
+        return [
+            candidate
+            for profile, spec in matched_subcomponents
+            for capability_type in (SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT)
+            for candidate in [
+                _subcomponent_candidate(
+                    context, profile, spec, capability_type, relax=True
+                )
+            ]
+            if candidate
+        ]
+
+    return [
+        candidate
+        for profile in matched_profiles
+        for capability_type in (DEVICE_INFO, DEVICE_COUNT)
+        for candidate in _profile_candidates(
+            context, profile, capability_type, relax=True
+        )
+    ]
 
 
 def _load_capability_document() -> Dict[str, Any]:
@@ -526,3 +618,8 @@ def _dedupe_candidates(
 def _slug(values: Sequence[str]) -> str:
     """用首个标准类型生成稳定候选标识片段。"""
     return values[0] if values else "subcomponent"
+
+
+def _contains_any(text: str, values: Sequence[str]) -> bool:
+    """判断文本是否精确包含任一非空能力卡对象词。"""
+    return any(value and value in text for value in values)

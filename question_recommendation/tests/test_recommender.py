@@ -192,6 +192,14 @@ def _candidate_ids(context, **kwargs):
     return [item.candidate.capability_id for item in recommend_capabilities(context, **kwargs)]
 
 
+def _empty_intention_basic_context(question, llm_refuse_message=""):
+    return build_recommendation_context(
+        {"question": question},
+        refuse_info=ErrorCode.INTENT_REJECT_OUT_OF_SCOPE_QUERY.to_info(),
+        llm_refuse_message=llm_refuse_message,
+    )
+
+
 def test_capability_configuration_is_valid():
     profiles = load_device_capability_profiles()
     specials = load_special_capabilities()
@@ -861,6 +869,54 @@ def test_basic_without_compatible_candidate_falls_back_to_global_device_basics()
     assert all(item.capability_type in {DEVICE_INFO, DEVICE_COUNT} for item in candidates)
 
 
+def test_empty_intention_basic_device_object_only_recalls_device_basics():
+    context = _empty_intention_basic_context("查询名称为的网络设备")
+    assert set(_candidate_ids(context)) == {
+        "network_device:device_info",
+        "network_device:device_count",
+    }
+
+
+def test_empty_intention_basic_special_object_only_recalls_special_capability():
+    context = _empty_intention_basic_context("查询名称的告警")
+    assert _candidate_ids(context) == ["alarm_query"]
+
+
+def test_empty_intention_basic_device_constrains_special_capability():
+    context = _empty_intention_basic_context("查询服务器告警")
+    ranked = recommend_capabilities(context)
+    assert [item.candidate.capability_id for item in ranked] == ["alarm_query"]
+    assert ranked[0].candidate.device_types == ["服务器"]
+
+
+def test_empty_intention_basic_subcomponent_recalls_compatible_parent_basics():
+    context = _empty_intention_basic_context("查询光模块信息")
+    assert set(_candidate_ids(context)) == {
+        "network_device:光模块:subcomponent_info",
+        "network_device:光模块:subcomponent_count",
+        "server:光模块:subcomponent_info",
+        "server:光模块:subcomponent_count",
+    }
+
+
+@pytest.mark.parametrize("question", ["查询名称为", "查询状态"])
+def test_empty_intention_basic_attribute_words_keep_global_fallback(question):
+    candidates = [
+        item.candidate for item in recommend_capabilities(_empty_intention_basic_context(question))
+    ]
+    assert len(candidates) > 2
+    assert all(item.capability_type in {DEVICE_INFO, DEVICE_COUNT} for item in candidates)
+    assert len({tuple(item.device_types) for item in candidates}) > 1
+
+
+def test_empty_intention_basic_object_matching_ignores_refusal_message():
+    context = _empty_intention_basic_context(
+        "查询名称的告警",
+        llm_refuse_message="网络设备名称缺失",
+    )
+    assert _candidate_ids(context) == ["alarm_query"]
+
+
 def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "yaml", SimpleNamespace(safe_load=lambda stream: json.load(stream)))
     (tmp_path / "network_interface.logical.yaml").write_text(
@@ -952,6 +1008,15 @@ def test_basic_prompt_keeps_full_context_and_invalid_values():
     assert '"refusal_detail": "当前条件无法直接查询CPU利用率"' in prompt
     assert '"invalid_values": [' in prompt and '"无效设备"' in prompt
     assert "network_device:device_metric" in prompt
+
+
+def test_prompt_constrains_empty_intention_basic_to_matched_objects():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "当 intention 为空时" in prompt
+    assert "已根据 question 中明确出现的业务对象" in prompt
+    assert "不得重新扩展到候选之外的设备类型" in prompt
+    assert "优先推荐列表、数量或基础信息" in prompt
+    assert "不要据此推断指标、趋势、聚合、排序或新的正式意图" in prompt
 
 
 def test_structurally_valid_llm_result_is_returned_without_content_filtering():
