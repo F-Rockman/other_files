@@ -672,13 +672,19 @@ def test_prompt_requires_valid_subnet_scope_inheritance():
 
 
 def test_prompt_requires_user_friendly_actionable_explanation():
-    assert "直接展示给用户的友好下一步建议" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "不责备用户" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "不复述 invalid_values" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "80 个中文字符以内" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "先定位，再收敛" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "basic 是通用 error 兜底策略" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "必须输出正好 3 条推荐" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "直接展示给用户的完整、友好推荐说明" in prompt
+    assert "不限制字数" in prompt
+    assert "先说明当前提问是什么" in prompt
+    assert "说明当前问题" in prompt
+    assert "再说明推荐按什么方向进行" in prompt
+    assert "推荐方向必须与 recommends 中实际给出的问题一致" in prompt
+    assert "80 个中文字符以内" not in prompt
+    assert "不责备用户" in prompt
+    assert "不复述 invalid_values" in prompt
+    assert "先定位，再收敛" in prompt
+    assert "basic 是通用 error 兜底策略" in prompt
+    assert "必须输出正好 3 条推荐" in prompt
     for strategy in (
         "clarify",
         "disambiguate",
@@ -686,7 +692,7 @@ def test_prompt_requires_user_friendly_actionable_explanation():
         "reframe",
         "adjust_scope",
     ):
-        assert f"- {strategy}：" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+        assert f"- {strategy}：" in prompt
 
 
 def test_prompt_explains_missing_field_as_device_capability():
