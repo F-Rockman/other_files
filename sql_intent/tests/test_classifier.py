@@ -77,6 +77,21 @@ class TestPromptConstant:
         assert "不是另一个独立查询结果" in SQL_INTENT_SYSTEM_PROMPT
         assert "作为 WHERE/HAVING/LIMIT/ORDER BY 的条件、阈值、过滤、排序不算独立意图" in SQL_INTENT_SYSTEM_PROMPT
 
+    def test_special_character_filter_value_rule_present(self):
+        assert "包含特殊字符的过滤值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询设备名称为<script></script>的设备" in SQL_INTENT_SYSTEM_PROMPT
+        assert "字面量过滤值，不是代码生成或动作执行" in SQL_INTENT_SYSTEM_PROMPT
+        assert "将其整体视为普通数据值并 accept" in SQL_INTENT_SYSTEM_PROMPT
+        assert '"执行<script></script>"才属于动作执行，应 reject' in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_entity_inventory_query_does_not_require_time_range(self):
+        assert "时间范围不是所有查询的必填条件" in SQL_INTENT_SYSTEM_PROMPT
+        assert "实体存量查询不强制要求时间范围" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询MAC地址XXXX的终端总数" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不能因缺少时间范围而 reject" in SQL_INTENT_SYSTEM_PROMPT
+        assert "事件或时序数据" in SQL_INTENT_SYSTEM_PROMPT
+        assert "实体存量、当前状态、列表、数量或属性查询不得仅因缺少时间范围而 reject" in SQL_INTENT_SYSTEM_PROMPT
+
     def test_multi_intent_sql_structure_rule_present(self):
         assert "同一对象+不同SQL结构类型" in SQL_INTENT_SYSTEM_PROMPT
         assert "无法在单一 SELECT 中并列输出" in SQL_INTENT_SYSTEM_PROMPT
