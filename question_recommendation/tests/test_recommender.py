@@ -190,6 +190,13 @@ def test_capability_configuration_is_valid():
     assert len(profile_ids) == len(set(profile_ids))
     assert all(profile.domain and profile.device_types for profile in profiles)
     assert all(profile.locators for profile in profiles)
+    assert all(isinstance(metric, str) for profile in profiles for metric in profile.metrics)
+    assert all(
+        isinstance(metric, str)
+        for profile in profiles
+        for spec in profile.subcomponents
+        for metric in spec.metrics
+    )
     assert not any("诊断" in question for profile in profiles for question in profile.examples)
     assert not any(
         "诊断" in question
@@ -204,6 +211,16 @@ def test_capability_configuration_is_valid():
         "resource_query",
         "relation_query",
     }
+    removed_fields = {
+        "filter_fields",
+        "group_by_fields",
+        "allowed_operations",
+        "result_forms",
+        "parent_device_type",
+        "match_reasons",
+    }
+    assert not removed_fields.intersection(profiles[0].to_dict())
+    assert not removed_fields.intersection(specials[0].to_dict())
 
 
 @pytest.mark.parametrize(
@@ -284,12 +301,11 @@ def test_server_nic_and_network_port_are_separate_capabilities():
     assert not any("端口" in item for item in server_ids)
 
 
-def test_serial_number_is_property_and_filter_but_not_locator():
+def test_serial_number_is_property_but_not_locator():
     profiles = load_device_capability_profiles()
     for profile_id in ("server", "storage_device"):
         profile = next(item for item in profiles if item.profile_id == profile_id)
         assert "序列号" in profile.properties
-        assert "序列号" in profile.filter_fields
         assert "SERIAL" not in profile.locators
 
 
@@ -304,68 +320,44 @@ def test_storage_resources_use_subcomponent_skeleton(subcomponent):
     assert f"storage_device:{subcomponent}:subcomponent_info" in _candidate_ids(context)
 
 
-def test_fan_metrics_only_support_trend():
-    trend = RecommendationContext(
-        intention="查指标",
-        question="查询服务器风扇转速趋势",
-        device_types=["服务器"],
-        subcomponent_types=["风扇"],
-        kpis=["风扇转速"],
+@pytest.mark.parametrize(
+    "context",
+    [
+        RecommendationContext(
+            intention="查指标",
+            question="查询服务器风扇转速",
+            device_types=["服务器"],
+            subcomponent_types=["风扇"],
+            kpis=["风扇转速"],
+        ),
+        RecommendationContext(
+            intention="查指标",
+            question="查询服务器风扇转速平均值",
+            device_types=["服务器"],
+            subcomponent_types=["风扇"],
+            kpis=["风扇转速"],
+            aggregations=["avg"],
+        ),
+        RecommendationContext(
+            intention="查指标",
+            question="查询存储设备总容量趋势",
+            device_types=["存储设备"],
+            kpis=["总容量"],
+        ),
+        RecommendationContext(
+            intention="查指标",
+            question="查询CPU利用率最高的服务器",
+            device_types=["服务器"],
+            kpis=["CPU利用率"],
+            aggregations=["top_n"],
+        ),
+    ],
+)
+def test_metric_query_form_does_not_filter_named_metric(context):
+    assert any(
+        item.candidate.capability_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC}
+        for item in recommend_capabilities(context)
     )
-    average = RecommendationContext(
-        intention="查指标",
-        question="查询服务器风扇转速平均值",
-        device_types=["服务器"],
-        subcomponent_types=["风扇"],
-        kpis=["风扇转速"],
-        aggregations=["avg"],
-    )
-    current = RecommendationContext(
-        intention="查指标",
-        question="查询服务器风扇转速",
-        device_types=["服务器"],
-        subcomponent_types=["风扇"],
-        kpis=["风扇转速"],
-    )
-    assert "server:风扇:subcomponent_metric" in _candidate_ids(trend)
-    assert "server:风扇:subcomponent_metric" not in _candidate_ids(average)
-    assert "server:风扇:subcomponent_metric" not in _candidate_ids(current)
-
-
-def test_storage_total_capacity_only_supports_current_value():
-    current = RecommendationContext(
-        intention="查指标",
-        question="查询存储设备总容量",
-        device_types=["存储设备"],
-        kpis=["总容量"],
-    )
-    trend = RecommendationContext(
-        intention="查指标",
-        question="查询存储设备总容量趋势",
-        device_types=["存储设备"],
-        kpis=["总容量"],
-    )
-    assert "storage_device:device_metric" in _candidate_ids(current)
-    assert "storage_device:device_metric" not in _candidate_ids(trend)
-
-
-def test_topn_requires_explicit_n_and_direction():
-    incomplete = RecommendationContext(
-        intention="查指标",
-        question="查询CPU利用率最高的服务器",
-        device_types=["服务器"],
-        kpis=["CPU利用率"],
-        aggregations=["top_n"],
-    )
-    complete = RecommendationContext(
-        intention="查指标",
-        question="查询CPU利用率最高的Top5服务器",
-        device_types=["服务器"],
-        kpis=["CPU利用率"],
-        aggregations=["top_n"],
-    )
-    assert "server:device_metric" not in _candidate_ids(incomplete)
-    assert "server:device_metric" in _candidate_ids(complete)
 
 
 @pytest.mark.parametrize(
@@ -402,6 +394,30 @@ def test_unsupported_metric_filters_metric_candidate():
         kpis=["CPU利用率"],
     )
     assert "network_device:光模块:subcomponent_metric" not in _candidate_ids(context)
+
+
+def test_property_match_adds_score_and_property_miss_does_not_filter():
+    matched = recommend_capabilities(
+        RecommendationContext(
+            intention="查信息",
+            device_types=["网络设备"],
+            properties=["状态"],
+        )
+    )
+    missed = recommend_capabilities(
+        RecommendationContext(
+            intention="查信息",
+            device_types=["网络设备"],
+            properties=["不存在属性"],
+        )
+    )
+    matched_info = next(
+        item for item in matched if item.candidate.capability_id == "network_device:device_info"
+    )
+    missed_info = next(
+        item for item in missed if item.candidate.capability_id == "network_device:device_info"
+    )
+    assert matched_info.match_score > missed_info.match_score
 
 
 def test_metric_not_found_removes_kpi_from_context():
@@ -477,6 +493,17 @@ def test_prompt_contains_minimal_context_and_ambiguity_rules():
     assert "诊断、异常原因分析" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "description_cn 明确提供的枚举" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "不能扩大候选能力" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "metrics：该对象可查询的 KPI 名称" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    for removed in (
+        "filter_fields",
+        "group_by_fields",
+        "allowed_operations",
+        "result_forms",
+        "parent_device_type",
+        "match_score",
+        "match_reasons",
+    ):
+        assert removed not in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "{recommendation_context_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
 
 
@@ -699,7 +726,7 @@ def test_basic_subcomponent_uses_normal_recall_and_keeps_metric_context():
         item.to_dict() for item in normal_ranked
     ]
     assert basic_ranked[0].candidate.capability_type == SUBCOMPONENT_METRIC
-    assert basic_ranked[0].candidate.metrics[0].name == "接收功率"
+    assert basic_ranked[0].candidate.metrics[0] == "接收功率"
 
 
 @pytest.mark.parametrize(
@@ -783,6 +810,9 @@ def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monk
     assert "network_device:接口:subcomponent_info" in prompt
     assert '"table_name": "network_interface"' in prompt
     assert "candidate_templates" not in prompt
+    assert '"match_score"' not in prompt
+    assert '"table_hints"' not in prompt
+    assert '"priority"' not in prompt
 
 
 def test_basic_prompt_keeps_full_context_and_invalid_values():

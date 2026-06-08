@@ -1,7 +1,6 @@
 """六类查询骨架、设备能力规格和特殊能力的确定性召回算法。"""
 
 import json
-import re
 from dataclasses import dataclass
 from importlib import resources
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -10,7 +9,6 @@ from .models import (
     CapabilityCandidate,
     DeviceCapabilityProfile,
     MetadataTable,
-    MetricSpec,
     RecommendationContext,
     SpecialCapabilitySpec,
     SubcomponentCapabilitySpec,
@@ -31,23 +29,20 @@ RESOURCE_QUERY = "resource_query"
 RELATION_QUERY = "relation_query"
 
 COUNT_AGGREGATIONS = {"count", "count_distinct"}
-METRIC_AGGREGATIONS = {"avg", "min", "max", "sum"}
-INFORMATION_TYPES = {DEVICE_INFO, DEVICE_COUNT, SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT}
 
 
 @dataclass
 class RankedCapability:
-    """包含动态候选能力、确定性分数和可解释匹配原因的排序结果。"""
+    """包含动态候选能力和内部确定性分数的排序结果。"""
 
     candidate: CapabilityCandidate
     match_score: int
-    match_reasons: List[str]
 
     def to_dict(self) -> Dict[str, Any]:
-        """将候选能力、匹配分数和原因合并为 Prompt 输入字典。"""
+        """生成精简 Prompt 候选，不暴露内部排序字段和元数据提示。"""
         data = self.candidate.to_dict()
-        data["match_score"] = self.match_score
-        data["match_reasons"] = self.match_reasons
+        data.pop("table_hints", None)
+        data.pop("priority", None)
         return data
 
 
@@ -257,12 +252,9 @@ def _device_candidate(
     """生成设备信息、数量或指标候选。"""
     if not relax and not _locators_compatible(context, profile.locators):
         return None
-    metrics = _matching_metrics(context, profile.metrics, capability_type, relax)
+    metrics = _matching_metrics(context, profile.metrics, capability_type)
     if capability_type == DEVICE_METRIC and not metrics:
         return None
-    if not relax and capability_type == DEVICE_INFO:
-        if context.properties and not set(context.properties).intersection(profile.properties):
-            return None
 
     return CapabilityCandidate(
         capability_id=f"{profile.profile_id}:{capability_type}",
@@ -271,11 +263,7 @@ def _device_candidate(
         device_types=profile.device_types,
         locators=profile.locators,
         properties=profile.properties if capability_type == DEVICE_INFO else [],
-        filter_fields=profile.filter_fields if capability_type in INFORMATION_TYPES else [],
-        group_by_fields=profile.group_by_fields if capability_type == DEVICE_COUNT else [],
         metrics=metrics,
-        allowed_operations=_allowed_operations(metrics, context),
-        result_forms=_result_forms(capability_type),
         table_hints=profile.table_hints,
         examples=_examples_for_type(profile.examples, capability_type),
         priority=profile.priority,
@@ -292,12 +280,9 @@ def _subcomponent_candidate(
     """生成设备子部件信息、数量或指标候选。"""
     if not relax and not _locators_compatible(context, profile.locators):
         return None
-    metrics = _matching_metrics(context, spec.metrics, capability_type, relax)
+    metrics = _matching_metrics(context, spec.metrics, capability_type)
     if capability_type == SUBCOMPONENT_METRIC and not metrics:
         return None
-    if not relax and capability_type == SUBCOMPONENT_INFO:
-        if context.properties and not set(context.properties).intersection(spec.properties):
-            return None
 
     return CapabilityCandidate(
         capability_id=f"{profile.profile_id}:{_slug(spec.types)}:{capability_type}",
@@ -305,14 +290,9 @@ def _subcomponent_candidate(
         domain=profile.domain,
         device_types=profile.device_types,
         subcomponent_types=spec.types,
-        parent_device_type=profile.device_types[0] if profile.device_types else "",
         locators=profile.locators,
         properties=spec.properties if capability_type == SUBCOMPONENT_INFO else [],
-        filter_fields=spec.filter_fields if capability_type in INFORMATION_TYPES else [],
-        group_by_fields=spec.group_by_fields if capability_type == SUBCOMPONENT_COUNT else [],
         metrics=metrics,
-        allowed_operations=_allowed_operations(metrics, context),
-        result_forms=_result_forms(capability_type),
         table_hints=profile.table_hints + spec.table_hints,
         examples=_examples_for_type(spec.examples, capability_type),
         priority=profile.priority + spec.priority,
@@ -335,61 +315,17 @@ def _matching_subcomponents(
 
 def _matching_metrics(
     context: RecommendationContext,
-    metrics: Sequence[MetricSpec],
+    metrics: Sequence[str],
     capability_type: str,
-    relax: bool,
-) -> List[MetricSpec]:
-    """按 KPI 名称和操作约束过滤指标规格。"""
+) -> List[str]:
+    """按 KPI 标准名称过滤指标能力。"""
     if capability_type not in {DEVICE_METRIC, SUBCOMPONENT_METRIC}:
         return []
-    matched = [
+    return [
         metric
         for metric in metrics
-        if not context.kpis or any(metric.matches(kpi) for kpi in context.kpis)
+        if not context.kpis or metric in context.kpis
     ]
-    if not relax:
-        matched = [metric for metric in matched if _metric_supports_context(metric, context)]
-    return [_visible_metric(metric, context) for metric in matched]
-
-
-def _metric_supports_context(metric: MetricSpec, context: RecommendationContext) -> bool:
-    """判断指标是否支持上下文明确要求的聚合或 TopN 口径。"""
-    requested = set(context.aggregations) - COUNT_AGGREGATIONS
-    if "趋势" in context.question and not metric.supports_trend:
-        return False
-    requested_aggregations = requested.intersection(METRIC_AGGREGATIONS)
-    if not requested_aggregations.issubset(set(metric.aggregations)):
-        return False
-    if "top_n" in requested:
-        return bool(metric.ranking_modes) and _question_has_explicit_topn(context.question)
-    if not requested_aggregations and "趋势" not in context.question:
-        return metric.supports_current
-    return True
-
-
-def _visible_metric(metric: MetricSpec, context: RecommendationContext) -> MetricSpec:
-    """隐藏当前问题未明确提供 N 和方向时不可主动使用的 TopN 口径。"""
-    data = metric.to_dict()
-    if not _question_has_explicit_topn(context.question):
-        data["ranking_modes"] = []
-    return MetricSpec.from_dict(data)
-
-
-def _allowed_operations(
-    metrics: Sequence[MetricSpec],
-    context: RecommendationContext,
-) -> List[str]:
-    """汇总候选指标允许的当前值、趋势、聚合、比较和排名操作。"""
-    operations: List[str] = []
-    for metric in metrics:
-        if metric.supports_current:
-            operations.append("current")
-        if metric.supports_trend:
-            operations.append("trend")
-        operations.extend(metric.aggregations)
-        operations.extend(metric.comparisons)
-        operations.extend(f"top_n_{item}" for item in metric.ranking_modes)
-    return _dedupe(operations)
 
 
 def _special_candidates(
@@ -411,10 +347,6 @@ def _special_candidates(
                 or spec.device_types,
                 subcomponent_types=spec.objects,
                 properties=spec.properties,
-                filter_fields=spec.filter_fields,
-                group_by_fields=spec.group_by_fields,
-                allowed_operations=spec.aggregations,
-                result_forms=spec.result_forms,
                 table_hints=spec.table_hints,
                 examples=spec.examples,
                 priority=spec.priority,
@@ -459,29 +391,20 @@ def _rank_candidate(
 ) -> RankedCapability:
     """计算动态候选与上下文的确定性相关分数。"""
     score = candidate.priority
-    reasons: List[str] = []
     primary_type = resolve_primary_capability_type(context)
     if candidate.capability_type == primary_type:
         score += 160
-        reasons.append("主查询骨架匹配")
     if set(context.device_types).intersection(candidate.device_types):
         score += 120
-        reasons.append("设备对象匹配")
     if set(context.subcomponent_types).intersection(candidate.subcomponent_types):
         score += 100
-        reasons.append("子部件对象匹配")
-    if context.kpis and any(
-        metric.matches(kpi) for metric in candidate.metrics for kpi in context.kpis
-    ):
+    if context.kpis and set(context.kpis).intersection(candidate.metrics):
         score += 60
-        reasons.append("指标匹配")
     if context.properties and set(context.properties).intersection(candidate.properties):
         score += 40
-        reasons.append("属性匹配")
     if _metadata_matches(candidate.table_hints, context.tables, metadata_tables):
         score += 30
-        reasons.append("逻辑表或元数据相关")
-    return RankedCapability(candidate=candidate, match_score=score, match_reasons=reasons)
+    return RankedCapability(candidate=candidate, match_score=score)
 
 
 def _metadata_matches(
@@ -538,29 +461,9 @@ def _locators_compatible(context: RecommendationContext, locators: Sequence[str]
     return not identifier_types or bool(identifier_types.intersection(locators))
 
 
-def _question_has_explicit_topn(question: str) -> bool:
-    """判断原始问题是否同时明确 TopN 数值和最高或最低方向。"""
-    text = str(question or "")
-    has_n = bool(re.search(r"(?:top\s*|前)\d+", text, re.IGNORECASE))
-    has_direction = any(word in text for word in ("最高", "最低", "最多", "最少"))
-    return has_n and has_direction
-
-
 def _is_subnet_context(context: RecommendationContext) -> bool:
     """判断上下文是否明确查询子网资源。"""
     return "子网" in context.device_types or "子网" in context.subcomponent_types
-
-
-def _result_forms(capability_type: str) -> List[str]:
-    """返回六类查询骨架的稳定结果形态。"""
-    return {
-        DEVICE_INFO: ["设备列表", "设备基础信息", "设备属性信息"],
-        DEVICE_COUNT: ["设备数量", "设备分组数量"],
-        DEVICE_METRIC: ["设备指标"],
-        SUBCOMPONENT_INFO: ["子部件列表", "子部件基础信息", "子部件属性信息"],
-        SUBCOMPONENT_COUNT: ["子部件数量", "每台设备子部件数量"],
-        SUBCOMPONENT_METRIC: ["子部件指标"],
-    }.get(capability_type, [])
 
 
 def _examples_for_type(examples: Sequence[str], capability_type: str) -> List[str]:
@@ -615,15 +518,6 @@ def _dedupe_candidates(
         if candidate.capability_id and candidate.capability_id not in seen:
             seen.add(candidate.capability_id)
             result.append(candidate)
-    return result
-
-
-def _dedupe(values: Iterable[str]) -> List[str]:
-    """按输入顺序去重字符串。"""
-    result = []
-    for item in values:
-        if item and item not in result:
-            result.append(item)
     return result
 
 

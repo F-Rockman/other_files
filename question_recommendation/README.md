@@ -60,7 +60,7 @@ result = recommend_questions_chat(
 | 字段 | 用途 |
 |---|---|
 | `intention` | 路由查信息、查指标、查告警或查链路能力 |
-| `question` | 保持原查询方向，并判断明确出现的趋势、TopN 数值和方向 |
+| `question` | 保持原查询方向和自然表达 |
 | `device_types` | 匹配设备规格和限定子部件父对象 |
 | `subcomponent_types` | 匹配主要子部件对象 |
 | `identifiers` | 仍有效、允许继承的 IP、MAC、名称等定位条件 |
@@ -87,28 +87,26 @@ result = recommend_questions_chat(
 | `subcomponent_count` | 查信息、有子部件、有 count 或 count_distinct |
 | `subcomponent_metric` | 查指标、有子部件 |
 
-过滤、分组、聚合、比较、排序、TopN 和时间是候选能力允许组合的操作，不单独建卡。
+过滤、分组、聚合、排序、TopN 和时间不单独建卡，也不由推荐能力卡判断支持范围。
 告警、链路、子网资源和对象关系保留为特殊能力。
 
 ## 设备能力规格
 
 内置规格位于 `data/device_capability_profiles.json`：
 
-- `device_profiles` 定义业务域、设备类型、别名、定位方式、属性、过滤、分组、KPI、
-  子部件和逻辑表提示。
+- `device_profiles` 定义业务域、设备类型、别名、定位方式、属性、KPI、子部件和逻辑表
+  提示。
 - `subcomponents` 嵌套在所属设备规格中；设备与子部件兼容关系以此为唯一事实来源。
-- 每个 KPI 独立声明是否支持当前值、趋势、聚合、比较和排名口径。
+- `metrics` 是该对象可查询的 KPI 名称列表，只判断指标是否存在。
 - `special_capabilities` 定义告警、链路、子网资源和关系能力。
 - `examples` 只指导 LLM 表达，不是固定输出模板，也不是当前环境事实。
 
 重要边界：
 
-- 序列号是属性和过滤字段，不是设备定位方式。
+- 序列号是属性，不是设备定位方式。
 - 服务器只有网卡，不提供服务器端口能力。
 - 存储池、LUN、文件系统是存储设备子部件。
-- 风扇转速和风扇转速百分比只支持趋势。
-- 存储总容量只支持当前值。
-- TopN 必须由 KPI 支持对应排名口径，且原问题明确给出 N 与排序方向。
+- 推荐模块只判断指标名称是否存在，不判断趋势、瞬时值、聚合或排序形式是否可执行。
 
 ```python
 from question_recommendation import (

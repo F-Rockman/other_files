@@ -198,53 +198,13 @@ class RecommendationContext:
 
 
 @dataclass
-class MetricSpec:
-    """一个 KPI 及其允许的查询操作。"""
-
-    name: str = ""
-    aliases: List[str] = field(default_factory=list)
-    supports_current: bool = False
-    supports_trend: bool = False
-    aggregations: List[str] = field(default_factory=list)
-    comparisons: List[str] = field(default_factory=list)
-    ranking_modes: List[str] = field(default_factory=list)
-
-    @classmethod
-    def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "MetricSpec":
-        """从配置字典构造 KPI 规格。"""
-        if isinstance(data, cls):
-            return data
-        if not isinstance(data, Mapping):
-            return cls()
-        return cls(
-            name=str(data.get("name", "") or "").strip(),
-            aliases=_as_list(data.get("aliases")),
-            supports_current=bool(data.get("supports_current", False)),
-            supports_trend=bool(data.get("supports_trend", False)),
-            aggregations=_as_list(data.get("aggregations")),
-            comparisons=_as_list(data.get("comparisons")),
-            ranking_modes=_as_list(data.get("ranking_modes")),
-        )
-
-    def matches(self, value: str) -> bool:
-        """判断输入 KPI 是否命中名称或别名。"""
-        return str(value or "").strip() in {self.name, *self.aliases}
-
-    def to_dict(self) -> Dict[str, Any]:
-        """将 KPI 规格转换为紧凑字典。"""
-        return _compact_dict(asdict(self))
-
-
-@dataclass
 class SubcomponentCapabilitySpec:
     """设备下一个同能力子部件族的能力规格。"""
 
     types: List[str] = field(default_factory=list)
     aliases: List[str] = field(default_factory=list)
     properties: List[str] = field(default_factory=list)
-    filter_fields: List[str] = field(default_factory=list)
-    group_by_fields: List[str] = field(default_factory=list)
-    metrics: List[MetricSpec] = field(default_factory=list)
+    metrics: List[str] = field(default_factory=list)
     table_hints: List[str] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
     priority: int = 0
@@ -262,13 +222,7 @@ class SubcomponentCapabilitySpec:
             types=_as_list(data.get("types")),
             aliases=_as_list(data.get("aliases")),
             properties=_as_list(data.get("properties")),
-            filter_fields=_as_list(data.get("filter_fields")),
-            group_by_fields=_as_list(data.get("group_by_fields")),
-            metrics=[
-                MetricSpec.from_dict(item)
-                for item in data.get("metrics", [])
-                if isinstance(item, (MetricSpec, Mapping))
-            ],
+            metrics=_as_list(data.get("metrics")),
             table_hints=_as_list(data.get("table_hints")),
             examples=_as_list(data.get("examples")),
             priority=_as_int(data.get("priority")),
@@ -293,9 +247,7 @@ class DeviceCapabilityProfile:
     aliases: List[str] = field(default_factory=list)
     locators: List[str] = field(default_factory=list)
     properties: List[str] = field(default_factory=list)
-    filter_fields: List[str] = field(default_factory=list)
-    group_by_fields: List[str] = field(default_factory=list)
-    metrics: List[MetricSpec] = field(default_factory=list)
+    metrics: List[str] = field(default_factory=list)
     subcomponents: List[SubcomponentCapabilitySpec] = field(default_factory=list)
     table_hints: List[str] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
@@ -315,13 +267,7 @@ class DeviceCapabilityProfile:
             aliases=_as_list(data.get("aliases")),
             locators=_as_list(data.get("locators")),
             properties=_as_list(data.get("properties")),
-            filter_fields=_as_list(data.get("filter_fields")),
-            group_by_fields=_as_list(data.get("group_by_fields")),
-            metrics=[
-                MetricSpec.from_dict(item)
-                for item in data.get("metrics", [])
-                if isinstance(item, (MetricSpec, Mapping))
-            ],
+            metrics=_as_list(data.get("metrics")),
             subcomponents=[
                 SubcomponentCapabilitySpec.from_dict(item)
                 for item in data.get("subcomponents", [])
@@ -351,10 +297,6 @@ class SpecialCapabilitySpec:
     device_types: List[str] = field(default_factory=list)
     objects: List[str] = field(default_factory=list)
     properties: List[str] = field(default_factory=list)
-    filter_fields: List[str] = field(default_factory=list)
-    group_by_fields: List[str] = field(default_factory=list)
-    aggregations: List[str] = field(default_factory=list)
-    result_forms: List[str] = field(default_factory=list)
     table_hints: List[str] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
     priority: int = 0
@@ -373,10 +315,6 @@ class SpecialCapabilitySpec:
             device_types=_as_list(data.get("device_types")),
             objects=_as_list(data.get("objects")),
             properties=_as_list(data.get("properties")),
-            filter_fields=_as_list(data.get("filter_fields")),
-            group_by_fields=_as_list(data.get("group_by_fields")),
-            aggregations=_as_list(data.get("aggregations")),
-            result_forms=_as_list(data.get("result_forms")),
             table_hints=_as_list(data.get("table_hints")),
             examples=_as_list(data.get("examples")),
             priority=_as_int(data.get("priority")),
@@ -396,14 +334,9 @@ class CapabilityCandidate:
     domain: str = ""
     device_types: List[str] = field(default_factory=list)
     subcomponent_types: List[str] = field(default_factory=list)
-    parent_device_type: str = ""
     locators: List[str] = field(default_factory=list)
     properties: List[str] = field(default_factory=list)
-    filter_fields: List[str] = field(default_factory=list)
-    group_by_fields: List[str] = field(default_factory=list)
-    metrics: List[MetricSpec] = field(default_factory=list)
-    allowed_operations: List[str] = field(default_factory=list)
-    result_forms: List[str] = field(default_factory=list)
+    metrics: List[str] = field(default_factory=list)
     table_hints: List[str] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
     priority: int = 0

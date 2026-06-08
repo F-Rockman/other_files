@@ -4,81 +4,53 @@
       "profile_id": "network_device",
       "domain": "网络",
       "device_types": ["网络设备"],
-      "aliases": ["路由器", "交换机", "AC"],
-      "locators": ["IP", "NAME"],
-      "properties": ["名称", "IP地址", "SN", "状态", "型号", "子网", "厂商", "软件版本"],
-      "filter_fields": ["状态", "IP地址", "型号", "子网", "厂商", "软件版本"],
-      "group_by_fields": ["状态", "型号", "子网", "厂商"],
-      "metrics": [
-        {"name": "CPU利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "响应时间", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "带宽利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-      ],
+      "aliases": ["路由器","交换机","AC"],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","SN","状态","型号","子网","厂商","软件版本"],
+      "metrics": ["CPU利用率","响应时间","带宽利用率"],
       "subcomponents": [
         {
           "types": ["接口"],
           "aliases": ["端口"],
-          "properties": ["名称", "状态", "型号", "位置", "接口名称", "端口类型"],
-          "filter_fields": ["状态", "型号", "位置", "接口名称", "端口类型"],
-          "group_by_fields": ["状态", "端口类型"],
-          "metrics": [
-            {"name": "接收速率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "发送速率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "带宽利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-          ],
-          "table_hints": ["网络设备接口", "网络设备端口", "interface", "port"],
-          "examples": ["查询网络设备接口列表", "查询网络设备接口数量", "查询网络设备接口带宽利用率趋势"],
+          "properties": ["名称","状态","型号","位置","接口名称","端口类型"],
+          "metrics": ["接收速率","发送速率","带宽利用率"],
+          "table_hints": ["网络设备接口","网络设备端口","interface","port"],
+          "examples": ["查询网络设备接口列表","查询网络设备接口数量","查询网络设备接口带宽利用率趋势"],
           "priority": 8
         },
         {
           "types": ["单板"],
-          "properties": ["名称", "状态", "型号", "位置", "温度"],
-          "filter_fields": ["状态", "型号", "位置"],
-          "group_by_fields": ["状态", "型号"],
-          "metrics": [
-            {"name": "单板CPU利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "单板内存利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "温度", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-          ],
-          "table_hints": ["网络设备单板", "board"],
-          "examples": ["查询网络设备单板列表", "查询网络设备单板CPU利用率趋势"],
+          "properties": ["名称","状态","型号","位置","温度"],
+          "metrics": ["单板CPU利用率","单板内存利用率","温度"],
+          "table_hints": ["网络设备单板","board"],
+          "examples": ["查询网络设备单板列表","查询网络设备单板CPU利用率趋势"],
           "priority": 5
         },
         {
           "types": ["光模块"],
-          "properties": ["名称", "状态", "型号", "位置", "温度", "接收功率", "发送功率"],
-          "filter_fields": ["状态", "型号", "位置"],
-          "group_by_fields": ["状态", "型号"],
-          "metrics": [
-            {"name": "发送功率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "接收功率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "温度", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-          ],
-          "table_hints": ["网络设备光模块", "网络光模块", "network_optical_module"],
-          "examples": ["查询网络设备光模块列表", "查询网络设备光模块接收功率趋势"],
+          "properties": ["名称","状态","型号","位置","温度","接收功率","发送功率"],
+          "metrics": ["发送功率","接收功率","温度"],
+          "table_hints": ["网络设备光模块","网络光模块","network_optical_module"],
+          "examples": ["查询网络设备光模块列表","查询网络设备光模块接收功率趋势"],
           "priority": 10
         },
         {
           "types": ["机框"],
-          "properties": ["名称", "状态", "型号", "位置"],
-          "filter_fields": ["状态", "型号", "位置"],
-          "group_by_fields": ["状态", "型号"],
-          "table_hints": ["网络设备机框", "chassis"],
-          "examples": ["查询网络设备机框列表", "查询网络设备机框数量"],
+          "properties": ["名称","状态","型号","位置"],
+          "table_hints": ["网络设备机框","chassis"],
+          "examples": ["查询网络设备机框列表","查询网络设备机框数量"],
           "priority": 2
         },
         {
           "types": ["远端模块"],
-          "properties": ["名称", "状态", "型号", "位置"],
-          "filter_fields": ["状态", "型号", "位置"],
-          "group_by_fields": ["状态", "型号"],
-          "table_hints": ["网络设备远端模块", "remote_module"],
+          "properties": ["名称","状态","型号","位置"],
+          "table_hints": ["网络设备远端模块","remote_module"],
           "examples": ["查询网络设备远端模块列表"],
           "priority": 1
         }
       ],
-      "table_hints": ["网络设备", "network_device"],
-      "examples": ["查询当前网络设备列表", "查询网络设备数量", "查询网络设备CPU利用率趋势"],
+      "table_hints": ["网络设备","network_device"],
+      "examples": ["查询当前网络设备列表","查询网络设备数量","查询网络设备CPU利用率趋势"],
       "priority": 95
     },
     {
@@ -86,274 +58,176 @@
       "domain": "服务器",
       "device_types": ["服务器"],
       "aliases": ["服务器设备"],
-      "locators": ["IP", "NAME"],
-      "properties": ["名称", "IP地址", "序列号", "型号", "厂商", "健康状态", "运行状态"],
-      "filter_fields": ["序列号", "型号", "厂商", "健康状态", "运行状态"],
-      "group_by_fields": ["型号", "厂商", "健康状态", "运行状态"],
-      "metrics": [
-        {"name": "CPU利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "内存利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "磁盘利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "IO响应时间", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "吞吐量", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "设备功率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "进风口温度", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-      ],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","序列号","型号","厂商","健康状态","运行状态"],
+      "metrics": ["CPU利用率","内存利用率","磁盘利用率","IO响应时间","IOPS","吞吐量","设备功率","进风口温度"],
       "subcomponents": [
         {
           "types": ["处理器"],
-          "properties": ["名称", "型号", "健康状态", "运行状态", "温度"],
-          "filter_fields": ["型号", "健康状态", "运行状态"],
-          "group_by_fields": ["型号", "健康状态"],
-          "metrics": [{"name": "CPU温度", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}],
-          "table_hints": ["服务器处理器", "processor"],
-          "examples": ["查询服务器处理器列表", "查询服务器处理器CPU温度趋势"]
+          "properties": ["名称","型号","健康状态","运行状态","温度"],
+          "metrics": ["CPU温度"],
+          "table_hints": ["服务器处理器","processor"],
+          "examples": ["查询服务器处理器列表","查询服务器处理器CPU温度趋势"]
         },
         {
           "types": ["硬盘"],
-          "properties": ["名称", "型号", "健康状态", "运行状态", "容量", "剩余寿命"],
-          "filter_fields": ["型号", "健康状态", "运行状态", "容量"],
-          "group_by_fields": ["型号", "健康状态", "运行状态"],
-          "table_hints": ["服务器硬盘", "server_disk"],
-          "examples": ["查询服务器硬盘列表", "查询服务器硬盘数量"],
+          "properties": ["名称","型号","健康状态","运行状态","容量","剩余寿命"],
+          "table_hints": ["服务器硬盘","server_disk"],
+          "examples": ["查询服务器硬盘列表","查询服务器硬盘数量"],
           "priority": 3
         },
         {
           "types": ["内存"],
-          "properties": ["名称", "型号", "健康状态", "运行状态", "容量"],
-          "filter_fields": ["型号", "健康状态", "运行状态", "容量"],
-          "group_by_fields": ["型号", "健康状态"],
-          "table_hints": ["服务器内存", "server_memory"],
-          "examples": ["查询服务器内存列表", "查询服务器内存数量"]
+          "properties": ["名称","型号","健康状态","运行状态","容量"],
+          "table_hints": ["服务器内存","server_memory"],
+          "examples": ["查询服务器内存列表","查询服务器内存数量"]
         },
         {
           "types": ["电源"],
-          "properties": ["名称", "型号", "健康状态", "运行状态", "功率"],
-          "filter_fields": ["型号", "健康状态", "运行状态"],
-          "group_by_fields": ["型号", "健康状态"],
-          "metrics": [{"name": "电源功率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}],
-          "table_hints": ["服务器电源", "server_power"],
-          "examples": ["查询服务器电源列表", "查询服务器电源功率趋势"],
+          "properties": ["名称","型号","健康状态","运行状态","功率"],
+          "metrics": ["电源功率"],
+          "table_hints": ["服务器电源","server_power"],
+          "examples": ["查询服务器电源列表","查询服务器电源功率趋势"],
           "priority": 2
         },
         {
           "types": ["风扇"],
-          "properties": ["名称", "型号", "健康状态", "运行状态", "转速"],
-          "filter_fields": ["型号", "健康状态", "运行状态"],
-          "group_by_fields": ["型号", "健康状态"],
-          "metrics": [
-            {"name": "风扇转速", "supports_trend": true},
-            {"name": "风扇转速百分比", "supports_trend": true}
-          ],
-          "table_hints": ["服务器风扇", "server_fan"],
-          "examples": ["查询服务器风扇列表", "查询服务器风扇转速趋势"],
+          "properties": ["名称","型号","健康状态","运行状态","转速"],
+          "metrics": ["风扇转速","风扇转速百分比"],
+          "table_hints": ["服务器风扇","server_fan"],
+          "examples": ["查询服务器风扇列表","查询服务器风扇转速趋势"],
           "priority": 3
         },
         {
           "types": ["网卡"],
-          "properties": ["名称", "型号", "健康状态", "运行状态", "MAC地址", "端口状态"],
-          "filter_fields": ["名称", "型号", "健康状态", "运行状态", "端口状态"],
-          "group_by_fields": ["型号", "健康状态", "端口状态"],
-          "metrics": [
-            {"name": "入流量", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "出流量", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "带宽利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "丢包率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "错包率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-          ],
-          "table_hints": ["服务器网卡", "server_nic"],
-          "examples": ["查询服务器网卡列表", "查询服务器网卡数量", "查询服务器网卡入流量趋势"],
+          "properties": ["名称","型号","健康状态","运行状态","MAC地址","端口状态"],
+          "metrics": ["入流量","出流量","带宽利用率","丢包率","错包率"],
+          "table_hints": ["服务器网卡","server_nic"],
+          "examples": ["查询服务器网卡列表","查询服务器网卡数量","查询服务器网卡入流量趋势"],
           "priority": 5
         },
         {
           "types": ["光模块"],
-          "properties": ["名称", "型号", "健康状态", "运行状态"],
-          "filter_fields": ["型号", "健康状态", "运行状态"],
-          "group_by_fields": ["型号", "健康状态"],
-          "table_hints": ["服务器光模块", "server_optical_module"],
-          "examples": ["查询服务器光模块列表", "查询服务器光模块数量"],
+          "properties": ["名称","型号","健康状态","运行状态"],
+          "table_hints": ["服务器光模块","server_optical_module"],
+          "examples": ["查询服务器光模块列表","查询服务器光模块数量"],
           "priority": 6
         }
       ],
-      "table_hints": ["服务器", "服务器设备", "server"],
-      "examples": ["查询当前服务器列表", "查询服务器数量", "查询服务器CPU利用率趋势"],
+      "table_hints": ["服务器","服务器设备","server"],
+      "examples": ["查询当前服务器列表","查询服务器数量","查询服务器CPU利用率趋势"],
       "priority": 94
     },
     {
       "profile_id": "storage_device",
       "domain": "存储",
       "device_types": ["存储设备"],
-      "locators": ["IP", "NAME"],
-      "properties": ["名称", "IP地址", "序列号", "状态", "型号", "厂商", "子网", "健康状态", "总容量", "已用容量", "可用容量", "容量利用率"],
-      "filter_fields": ["序列号", "状态", "型号", "厂商", "子网", "健康状态", "总容量", "已用容量", "可用容量", "容量利用率"],
-      "group_by_fields": ["状态", "型号", "厂商", "健康状态"],
-      "metrics": [
-        {"name": "CPU利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "读IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "写IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "IO响应时间", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "端口利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "总容量", "supports_current": true},
-        {"name": "已用容量", "supports_current": true, "supports_trend": true},
-        {"name": "可用容量", "supports_current": true, "supports_trend": true},
-        {"name": "容量利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-      ],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","序列号","状态","型号","厂商","子网","健康状态","总容量","已用容量","可用容量","容量利用率"],
+      "metrics": ["CPU利用率","读IOPS","写IOPS","IO响应时间","端口利用率","总容量","已用容量","可用容量","容量利用率"],
       "subcomponents": [
         {
           "types": ["存储池"],
-          "properties": ["名称", "健康状态", "类型", "总容量", "已用容量", "可用容量", "容量利用率", "已分配容量"],
-          "filter_fields": ["健康状态", "类型", "总容量", "已用容量", "可用容量", "容量利用率"],
-          "group_by_fields": ["健康状态", "类型"],
-          "metrics": [
-            {"name": "容量利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "读写带宽", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "读IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "写IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "IO响应时间", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-          ],
-          "table_hints": ["存储池", "storage_pool"],
-          "examples": ["查询存储设备存储池列表", "查询存储池容量利用率趋势"],
+          "properties": ["名称","健康状态","类型","总容量","已用容量","可用容量","容量利用率","已分配容量"],
+          "metrics": ["容量利用率","读写带宽","读IOPS","写IOPS","IO响应时间"],
+          "table_hints": ["存储池","storage_pool"],
+          "examples": ["查询存储设备存储池列表","查询存储池容量利用率趋势"],
           "priority": 6
         },
         {
           "types": ["LUN"],
-          "properties": ["名称", "健康状态", "类型", "总容量", "已用容量", "可用容量", "容量利用率", "已分配容量"],
-          "filter_fields": ["健康状态", "类型", "总容量", "已用容量", "可用容量", "容量利用率"],
-          "group_by_fields": ["健康状态", "类型"],
-          "metrics": [
-            {"name": "容量利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "读写带宽", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "读IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "写IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "IO响应时间", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-          ],
-          "table_hints": ["LUN", "storage_lun"],
-          "examples": ["查询存储设备LUN列表", "查询LUN的IO响应时间趋势"],
+          "properties": ["名称","健康状态","类型","总容量","已用容量","可用容量","容量利用率","已分配容量"],
+          "metrics": ["容量利用率","读写带宽","读IOPS","写IOPS","IO响应时间"],
+          "table_hints": ["LUN","storage_lun"],
+          "examples": ["查询存储设备LUN列表","查询LUN的IO响应时间趋势"],
           "priority": 5
         },
         {
           "types": ["文件系统"],
-          "properties": ["名称", "健康状态", "类型", "总容量", "已用容量", "可用容量", "容量利用率", "已分配容量"],
-          "filter_fields": ["健康状态", "类型", "总容量", "已用容量", "可用容量", "容量利用率"],
-          "group_by_fields": ["健康状态", "类型"],
-          "metrics": [
-            {"name": "容量利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "读写带宽", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "读IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "写IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "IO响应时间", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-          ],
-          "table_hints": ["文件系统", "file_system"],
-          "examples": ["查询存储设备文件系统列表", "查询文件系统容量利用率趋势"],
+          "properties": ["名称","健康状态","类型","总容量","已用容量","可用容量","容量利用率","已分配容量"],
+          "metrics": ["容量利用率","读写带宽","读IOPS","写IOPS","IO响应时间"],
+          "table_hints": ["文件系统","file_system"],
+          "examples": ["查询存储设备文件系统列表","查询文件系统容量利用率趋势"],
           "priority": 5
         },
         {
           "types": ["控制器"],
-          "properties": ["名称", "健康状态", "运行状态", "型号", "角色"],
-          "filter_fields": ["健康状态", "运行状态", "型号", "角色"],
-          "group_by_fields": ["健康状态", "运行状态", "型号"],
-          "metrics": [{"name": "CPU利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}],
-          "table_hints": ["存储控制器", "storage_controller"],
-          "examples": ["查询存储设备控制器列表", "查询存储控制器CPU利用率趋势"]
+          "properties": ["名称","健康状态","运行状态","型号","角色"],
+          "metrics": ["CPU利用率"],
+          "table_hints": ["存储控制器","storage_controller"],
+          "examples": ["查询存储设备控制器列表","查询存储控制器CPU利用率趋势"]
         },
         {
           "types": ["硬盘"],
-          "properties": ["名称", "健康状态", "运行状态", "型号", "位置", "槽位号", "厂商", "容量", "温度", "固件版本", "剩余寿命"],
-          "filter_fields": ["健康状态", "运行状态", "型号", "位置", "槽位号", "厂商", "容量"],
-          "group_by_fields": ["健康状态", "运行状态", "型号", "厂商"],
-          "metrics": [
-            {"name": "读IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "写IOPS", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "IO响应时间", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-          ],
-          "table_hints": ["存储硬盘", "storage_disk"],
-          "examples": ["查询存储设备硬盘列表", "查询存储硬盘读IOPS趋势"],
+          "properties": ["名称","健康状态","运行状态","型号","位置","槽位号","厂商","容量","温度","固件版本","剩余寿命"],
+          "metrics": ["读IOPS","写IOPS","IO响应时间"],
+          "table_hints": ["存储硬盘","storage_disk"],
+          "examples": ["查询存储设备硬盘列表","查询存储硬盘读IOPS趋势"],
           "priority": 3
         },
         {
           "types": ["硬盘池"],
           "aliases": ["硬盘域"],
-          "properties": ["名称", "健康状态", "运行状态", "类型", "容量"],
-          "filter_fields": ["健康状态", "运行状态", "类型"],
-          "group_by_fields": ["健康状态", "类型"],
-          "table_hints": ["硬盘池", "硬盘域", "disk_pool"],
+          "properties": ["名称","健康状态","运行状态","类型","容量"],
+          "table_hints": ["硬盘池","硬盘域","disk_pool"],
           "examples": ["查询存储设备硬盘池列表"]
         },
         {
           "types": ["机框"],
-          "properties": ["名称", "健康状态", "运行状态", "型号", "位置"],
-          "filter_fields": ["健康状态", "运行状态", "型号", "位置"],
-          "group_by_fields": ["健康状态", "型号"],
-          "table_hints": ["存储机框", "storage_chassis"],
+          "properties": ["名称","健康状态","运行状态","型号","位置"],
+          "table_hints": ["存储机框","storage_chassis"],
           "examples": ["查询存储设备机框列表"]
         },
         {
           "types": ["风扇"],
-          "properties": ["名称", "健康状态", "运行状态", "型号", "位置", "转速"],
-          "filter_fields": ["健康状态", "运行状态", "型号", "位置"],
-          "group_by_fields": ["健康状态", "型号"],
-          "table_hints": ["存储风扇", "storage_fan"],
+          "properties": ["名称","健康状态","运行状态","型号","位置","转速"],
+          "table_hints": ["存储风扇","storage_fan"],
           "examples": ["查询存储设备风扇列表"]
         },
         {
           "types": ["电源"],
-          "properties": ["名称", "健康状态", "运行状态", "型号", "位置", "功率"],
-          "filter_fields": ["健康状态", "运行状态", "型号", "位置"],
-          "group_by_fields": ["健康状态", "型号"],
-          "table_hints": ["存储电源", "storage_power"],
+          "properties": ["名称","健康状态","运行状态","型号","位置","功率"],
+          "table_hints": ["存储电源","storage_power"],
           "examples": ["查询存储设备电源列表"]
         },
         {
           "types": ["端口"],
           "aliases": ["以太网端口"],
-          "properties": ["名称", "健康状态", "运行状态", "端口类型", "MAC地址", "位置"],
-          "filter_fields": ["健康状态", "运行状态", "端口类型", "位置"],
-          "group_by_fields": ["健康状态", "端口类型"],
-          "metrics": [{"name": "端口利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}],
-          "table_hints": ["存储端口", "以太网端口", "storage_port"],
-          "examples": ["查询存储设备端口列表", "查询存储设备端口利用率趋势"],
+          "properties": ["名称","健康状态","运行状态","端口类型","MAC地址","位置"],
+          "metrics": ["端口利用率"],
+          "table_hints": ["存储端口","以太网端口","storage_port"],
+          "examples": ["查询存储设备端口列表","查询存储设备端口利用率趋势"],
           "priority": 2
         },
         {
           "types": ["BBU"],
-          "properties": ["名称", "健康状态", "运行状态", "型号", "位置"],
-          "filter_fields": ["健康状态", "运行状态", "型号", "位置"],
-          "group_by_fields": ["健康状态", "型号"],
-          "table_hints": ["BBU", "storage_bbu"],
+          "properties": ["名称","健康状态","运行状态","型号","位置"],
+          "table_hints": ["BBU","storage_bbu"],
           "examples": ["查询存储设备BBU列表"]
         }
       ],
-      "table_hints": ["存储设备", "storage_device"],
-      "examples": ["查询当前存储设备列表", "查询存储设备数量", "查询存储设备容量利用率趋势"],
+      "table_hints": ["存储设备","storage_device"],
+      "examples": ["查询当前存储设备列表","查询存储设备数量","查询存储设备容量利用率趋势"],
       "priority": 95
     },
     {
       "profile_id": "fc_switch",
       "domain": "FC",
       "device_types": ["FC交换机"],
-      "locators": ["IP", "NAME"],
-      "properties": ["名称", "IP地址", "状态", "型号", "厂商", "子网"],
-      "filter_fields": ["状态", "IP地址", "型号", "厂商", "子网"],
-      "group_by_fields": ["状态", "型号", "厂商"],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","状态","型号","厂商","子网"],
       "subcomponents": [
         {
           "types": ["端口"],
-          "properties": ["名称", "状态", "端口类型", "MAC地址", "速率"],
-          "filter_fields": ["状态", "端口类型"],
-          "group_by_fields": ["状态", "端口类型"],
-          "metrics": [
-            {"name": "端口利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "接收速率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-            {"name": "发送速率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-          ],
-          "table_hints": ["FC交换机端口", "fc_port"],
-          "examples": ["查询FC交换机端口列表", "查询FC交换机端口利用率趋势"],
+          "properties": ["名称","状态","端口类型","MAC地址","速率"],
+          "metrics": ["端口利用率","接收速率","发送速率"],
+          "table_hints": ["FC交换机端口","fc_port"],
+          "examples": ["查询FC交换机端口列表","查询FC交换机端口利用率趋势"],
           "priority": 5
         }
       ],
-      "table_hints": ["FC交换机", "fc_switch"],
-      "examples": ["查询当前FC交换机列表", "查询FC交换机数量"],
+      "table_hints": ["FC交换机","fc_switch"],
+      "examples": ["查询当前FC交换机列表","查询FC交换机数量"],
       "priority": 86
     },
     {
@@ -361,16 +235,11 @@
       "domain": "PON",
       "device_types": ["OLT"],
       "aliases": ["PON设备"],
-      "locators": ["IP", "NAME"],
-      "properties": ["名称", "IP地址", "状态", "ESN", "型号"],
-      "filter_fields": ["状态", "IP地址", "ESN", "型号"],
-      "group_by_fields": ["状态", "型号"],
-      "metrics": [
-        {"name": "CPU利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "内存利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-      ],
-      "table_hints": ["OLT", "PON设备"],
-      "examples": ["查询当前OLT列表", "查询OLT数量", "查询OLT CPU利用率趋势"],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","状态","ESN","型号"],
+      "metrics": ["CPU利用率","内存利用率"],
+      "table_hints": ["OLT","PON设备"],
+      "examples": ["查询当前OLT列表","查询OLT数量","查询OLT CPU利用率趋势"],
       "priority": 89
     },
     {
@@ -378,17 +247,11 @@
       "domain": "PON",
       "device_types": ["ONU"],
       "aliases": ["PON设备"],
-      "locators": ["IP", "NAME"],
-      "properties": ["名称", "IP地址", "状态", "ESN", "型号", "所属OLT"],
-      "filter_fields": ["状态", "IP地址", "ESN", "型号", "所属OLT"],
-      "group_by_fields": ["状态", "型号", "所属OLT"],
-      "metrics": [
-        {"name": "内存利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "接收光功率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "不可达比率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-      ],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","状态","ESN","型号","所属OLT"],
+      "metrics": ["内存利用率","接收光功率","不可达比率"],
       "table_hints": ["ONU"],
-      "examples": ["查询当前ONU列表", "查询ONU数量", "查询ONU接收光功率趋势"],
+      "examples": ["查询当前ONU列表","查询ONU数量","查询ONU接收光功率趋势"],
       "priority": 88
     },
     {
@@ -396,17 +259,11 @@
       "domain": "网络",
       "device_types": ["AP"],
       "aliases": ["无线接入点"],
-      "locators": ["IP", "MAC", "NAME"],
-      "properties": ["名称", "IP地址", "MAC地址", "状态", "软件版本"],
-      "filter_fields": ["状态", "IP地址", "MAC地址", "软件版本"],
-      "group_by_fields": ["状态", "软件版本"],
-      "metrics": [
-        {"name": "CPU利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "内存利用率", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]},
-        {"name": "当前移动终端数", "supports_current": true, "supports_trend": true, "aggregations": ["avg", "min", "max"], "comparisons": ["gt", "lt"], "ranking_modes": ["avg", "max"]}
-      ],
-      "table_hints": ["AP", "无线接入点"],
-      "examples": ["查询当前AP列表", "查询AP数量", "查询AP当前移动终端数"],
+      "locators": ["IP","MAC","NAME"],
+      "properties": ["名称","IP地址","MAC地址","状态","软件版本"],
+      "metrics": ["CPU利用率","内存利用率","当前移动终端数"],
+      "table_hints": ["AP","无线接入点"],
+      "examples": ["查询当前AP列表","查询AP数量","查询AP当前移动终端数"],
       "priority": 88
     },
     {
@@ -414,12 +271,10 @@
       "domain": "终端",
       "device_types": ["终端设备"],
       "aliases": ["终端"],
-      "locators": ["IP", "MAC", "NAME"],
-      "properties": ["名称", "IP地址", "MAC地址", "类型", "厂商", "状态", "接入类型", "接入设备", "接入端口", "接入VLAN", "接入位置"],
-      "filter_fields": ["名称", "IP地址", "MAC地址", "类型", "厂商", "状态", "接入类型", "接入设备", "接入端口", "接入VLAN"],
-      "group_by_fields": ["类型", "厂商", "状态", "接入类型", "接入设备"],
-      "table_hints": ["终端设备", "terminal"],
-      "examples": ["查询当前终端设备列表", "查询终端设备数量", "查询终端设备接入位置"],
+      "locators": ["IP","MAC","NAME"],
+      "properties": ["名称","IP地址","MAC地址","类型","厂商","状态","接入类型","接入设备","接入端口","接入VLAN","接入位置"],
+      "table_hints": ["终端设备","terminal"],
+      "examples": ["查询当前终端设备列表","查询终端设备数量","查询终端设备接入位置"],
       "priority": 87
     }
   ],
@@ -428,15 +283,11 @@
       "capability_id": "alarm_query",
       "capability_type": "alarm_query",
       "domain": "通用告警",
-      "device_types": ["网络设备", "服务器", "服务器设备", "存储设备", "FC交换机", "OLT", "ONU", "PON设备"],
+      "device_types": ["网络设备","服务器","服务器设备","存储设备","FC交换机","OLT","ONU","PON设备"],
       "objects": ["告警"],
-      "properties": ["告警名称", "告警级别", "告警状态"],
-      "filter_fields": ["告警名称", "告警级别", "告警状态"],
-      "group_by_fields": ["告警级别", "告警状态"],
-      "aggregations": ["count", "top_n", "trend"],
-      "result_forms": ["告警列表", "告警数量", "告警统计", "告警趋势", "告警排名"],
-      "table_hints": ["告警", "alarm"],
-      "examples": ["查询今天的告警总数", "查询近七天各告警级别的告警数量", "查询服务器告警列表"],
+      "properties": ["告警名称","告警级别","告警状态"],
+      "table_hints": ["告警","alarm"],
+      "examples": ["查询今天的告警总数","查询近七天各告警级别的告警数量","查询服务器告警列表"],
       "priority": 92
     },
     {
@@ -445,12 +296,9 @@
       "domain": "网络",
       "device_types": ["网络设备"],
       "objects": ["链路"],
-      "properties": ["链路状态", "A端网元名称", "Z端网元名称"],
-      "filter_fields": ["链路状态", "A端网元名称", "Z端网元名称"],
-      "aggregations": ["count"],
-      "result_forms": ["链路列表", "链路数量", "对端关系"],
-      "table_hints": ["链路", "拓扑", "link"],
-      "examples": ["查询两台网络设备之间的链路", "查询网络设备接口相连的对端设备"],
+      "properties": ["链路状态","A端网元名称","Z端网元名称"],
+      "table_hints": ["链路","拓扑","link"],
+      "examples": ["查询两台网络设备之间的链路","查询网络设备接口相连的对端设备"],
       "priority": 95
     },
     {
@@ -458,24 +306,19 @@
       "capability_type": "resource_query",
       "domain": "网络",
       "objects": ["子网"],
-      "properties": ["名称", "备注"],
-      "filter_fields": ["名称"],
-      "aggregations": ["count"],
-      "result_forms": ["子网列表", "子网数量", "子网基础信息"],
-      "table_hints": ["子网", "subnet"],
-      "examples": ["查询当前子网列表", "查询全部子网数量", "查询子网基础信息"],
+      "properties": ["名称","备注"],
+      "table_hints": ["子网","subnet"],
+      "examples": ["查询当前子网列表","查询全部子网数量","查询子网基础信息"],
       "priority": 90
     },
     {
       "capability_id": "subnet_relation",
       "capability_type": "relation_query",
       "domain": "网络",
-      "device_types": ["网络设备", "服务器", "服务器设备", "存储设备", "终端设备", "终端"],
+      "device_types": ["网络设备","服务器","服务器设备","存储设备","终端设备","终端"],
       "objects": ["子网"],
-      "aggregations": ["count"],
-      "result_forms": ["下级子网", "父子网关系", "子网内设备列表", "子网内设备数量"],
-      "table_hints": ["子网", "subnet"],
-      "examples": ["查询子网的直接下级子网", "查询子网下的网络设备列表"],
+      "table_hints": ["子网","subnet"],
+      "examples": ["查询子网的直接下级子网","查询子网下的网络设备列表"],
       "priority": 88
     },
     {
@@ -484,10 +327,8 @@
       "domain": "PON",
       "device_types": ["OLT"],
       "objects": ["ONU"],
-      "aggregations": ["count"],
-      "result_forms": ["OLT下ONU列表", "OLT下ONU数量"],
-      "table_hints": ["OLT", "ONU"],
-      "examples": ["查询OLT下的ONU列表", "查询OLT下的ONU数量"],
+      "table_hints": ["OLT","ONU"],
+      "examples": ["查询OLT下的ONU列表","查询OLT下的ONU数量"],
       "priority": 92
     }
   ]
