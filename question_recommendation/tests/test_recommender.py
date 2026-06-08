@@ -498,6 +498,35 @@ def test_prompt_requires_user_friendly_actionable_explanation():
         assert f"- {strategy}：" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
 
 
+def test_prompt_explains_missing_field_as_device_capability():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "明确设备的字段不存在场景" in prompt
+    assert "recommendation_context.device_types 非空" in prompt
+    assert "refusal_message 或 refusal_detail" in prompt
+    assert '“{对象}没有“{名称}”属性”' in prompt
+    assert '“{对象}没有“{名称}”指标”' in prompt
+    assert '“该类型{设备类型}没有该字段”' in prompt
+    assert "必须保留父子关系" in prompt
+    assert "后半句必须提供下一步建议" in prompt
+
+
+def test_prompt_forbids_unsupported_query_wording_for_missing_field():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert '禁止使用“不支持查询该字段”' in prompt
+    assert '“不支持查询该指标”' in prompt
+    assert '“暂不支持该查询”' in prompt
+    assert "只有异常原因明确表示字段、属性或指标不存在时才使用本规则" in prompt
+    assert "未找到匹配字段" in prompt
+    assert "不能推断为该设备类型没有字段" in prompt
+
+
+def test_prompt_missing_field_examples_cover_device_and_subcomponent():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "网络设备没有“CPU利用率”指标" in prompt
+    assert "服务器的风扇没有“状态”属性" in prompt
+    assert "该类型网络设备没有该字段" in prompt
+
+
 def test_refuse_info_requires_shared_error_info():
     try:
         build_recommendation_context({}, refuse_info={"key": "intent_reject_non_query_intent"})
