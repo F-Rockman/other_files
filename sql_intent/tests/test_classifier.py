@@ -72,6 +72,15 @@ class TestPromptConstant:
         assert "如果通过，则不需要reason" in SQL_INTENT_SYSTEM_PROMPT
         assert "意图被拒答的说明，20字以内" in SQL_INTENT_SYSTEM_PROMPT
 
+    def test_latest_single_intent_defaults_present(self):
+        assert "聚合过滤/次数阈值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询CPU利用率大于5的设备，需要过滤出次数大于等于3次的设备" in SQL_INTENT_SYSTEM_PROMPT
+        assert "次数大于等于3是按设备 GROUP BY 后的 HAVING 过滤" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询设备A的性能指标A" in SQL_INTENT_SYSTEM_PROMPT
+        assert "默认查询两小时" in SQL_INTENT_SYSTEM_PROMPT
+        assert "默认查询趋势" in SQL_INTENT_SYSTEM_PROMPT
+        assert SQL_INTENT_SYSTEM_PROMPT.rstrip().endswith("/no_think")
+
     def test_multi_intent_sql_structure_rule_present(self):
         assert "同一对象+不同SQL结构类型" in SQL_INTENT_SYSTEM_PROMPT
         assert "无法在单一 SELECT 中并列输出" in SQL_INTENT_SYSTEM_PROMPT
