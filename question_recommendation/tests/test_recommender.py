@@ -501,12 +501,17 @@ def test_prompt_requires_user_friendly_actionable_explanation():
 def test_prompt_explains_missing_field_as_device_capability():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "明确设备的字段不存在场景" in prompt
-    assert "recommendation_context.device_types 非空" in prompt
+    assert "recommendation_context.device_types 恰好包含一个设备类型" in prompt
     assert "refusal_message 或 refusal_detail" in prompt
+    assert "必须逐字使用 recommendation_context.device_types[0]" in prompt
+    assert "candidate_capabilities.device_types" in prompt
+    assert "标准类型、父类或更泛化名称替换" in prompt
     assert '“{对象}没有“{名称}”属性”' in prompt
     assert '“{对象}没有“{名称}”指标”' in prompt
     assert '“该类型{设备类型}没有该字段”' in prompt
     assert "必须保留父子关系" in prompt
+    assert '“{recommendation_context.device_types[0]}的{明确子部件}”' in prompt
+    assert "包含多个设备类型时，不使用确定性的“该类型没有" in prompt
     assert "后半句必须提供下一步建议" in prompt
 
 
@@ -525,6 +530,8 @@ def test_prompt_missing_field_examples_cover_device_and_subcomponent():
     assert "网络设备没有“CPU利用率”指标" in prompt
     assert "服务器的风扇没有“状态”属性" in prompt
     assert "该类型网络设备没有该字段" in prompt
+    assert '输入 device_types=["闪存存储"] 时，正确：闪存存储没有“状态”属性' in prompt
+    assert '输入 device_types=["闪存存储"] 时，错误：存储设备没有“状态”属性' in prompt
 
 
 def test_refuse_info_requires_shared_error_info():
