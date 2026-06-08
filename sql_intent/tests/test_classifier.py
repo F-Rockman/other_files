@@ -81,6 +81,20 @@ class TestPromptConstant:
         assert "默认查询趋势" in SQL_INTENT_SYSTEM_PROMPT
         assert SQL_INTENT_SYSTEM_PROMPT.rstrip().endswith("/no_think")
 
+    def test_time_range_is_optional_for_all_queries(self):
+        assert "时间范围对所有查询均为可选条件" in SQL_INTENT_SYSTEM_PROMPT
+        assert "用户未提供时间范围时，不能仅因缺少时间范围而拒答" in SQL_INTENT_SYSTEM_PROMPT
+        assert "仅当用户明确提供了时间范围时，才执行未来数据校验" in SQL_INTENT_SYSTEM_PROMPT
+        assert "缺少时间范围不能作为条件不完整的拒答理由" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询MAC地址XXXX的终端总数" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询设备A的告警数量" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_special_character_filter_value_rule_present(self):
+        assert "包含特殊字符的过滤值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询设备名称为<script></script>的设备" in SQL_INTENT_SYSTEM_PROMPT
+        assert "字面量过滤值，不是代码生成或动作执行" in SQL_INTENT_SYSTEM_PROMPT
+        assert '"执行<script></script>"才属于动作执行，应拒答' in SQL_INTENT_SYSTEM_PROMPT
+
     def test_multi_intent_sql_structure_rule_present(self):
         assert "同一对象+不同SQL结构类型" in SQL_INTENT_SYSTEM_PROMPT
         assert "无法在单一 SELECT 中并列输出" in SQL_INTENT_SYSTEM_PROMPT
