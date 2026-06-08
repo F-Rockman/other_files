@@ -695,40 +695,71 @@ def test_prompt_requires_user_friendly_actionable_explanation():
         assert f"- {strategy}：" in prompt
 
 
-def test_prompt_explains_missing_field_as_device_capability():
+def test_prompt_preserves_object_context_in_unmatched_scenarios():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "明确设备的字段不存在场景" in prompt
+    assert "未匹配场景的委婉表达" in prompt
     assert "recommendation_context.device_types 恰好包含一个设备类型" in prompt
     assert "refusal_message 或 refusal_detail" in prompt
-    assert "必须逐字使用 recommendation_context.device_types[0]" in prompt
+    assert "逐字使用" in prompt
+    assert "recommendation_context.device_types[0]" in prompt
     assert "candidate_capabilities.device_types" in prompt
     assert "标准类型、父类或更泛化名称替换" in prompt
-    assert '“{对象}没有“{名称}”属性”' in prompt
-    assert '“{对象}没有“{名称}”指标”' in prompt
-    assert '“该类型{设备类型}没有该字段”' in prompt
     assert "必须保留父子关系" in prompt
     assert '“{recommendation_context.device_types[0]}的{明确子部件}”' in prompt
-    assert "包含多个设备类型时，不使用确定性的“该类型没有" in prompt
-    assert "后半句必须提供下一步建议" in prompt
+    assert "包含多个设备类型时，不得将未匹配问题归因于" in prompt
+    assert "没有明确设备类型时，不得虚构设备类型或业务对象" in prompt
+    assert "不得复述 invalid_values" in prompt
+    assert "位于 invalid_values 时不得点名复述" in prompt
+    assert "设备类型不是设备定位值，可以按上述规则保留" in prompt
+    assert "后半段必须结合 recommends 中实际问题说明推荐方向" in prompt
 
 
-def test_prompt_forbids_unsupported_query_wording_for_missing_field():
+def test_prompt_uses_polite_wording_for_unmatched_scenarios():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert '禁止使用“不支持查询该字段”' in prompt
-    assert '“不支持查询该指标”' in prompt
-    assert '“暂不支持该查询”' in prompt
-    assert "只有异常原因明确表示字段、属性或指标不存在时才使用本规则" in prompt
-    assert "未找到匹配字段" in prompt
-    assert "不能推断为该设备类型没有字段" in prompt
+    assert "当前环境暂未匹配到对应的{设备类型}" in prompt
+    assert "当前可查询的{对象}信息中，暂未匹配到“{属性}”相关内容" in prompt
+    assert "当前环境中暂未采集到{对象}的“{指标}”相关数据" in prompt
+    assert "当前查询涉及多个设备类型，暂未匹配到相关信息" in prompt
+    assert "当前条件暂未匹配到合适的业务取值" in prompt
+    assert "当前环境暂未识别到相关对象之间的可用关联" in prompt
+    assert "当前查询条件下暂未查询到相关数据" in prompt
 
 
-def test_prompt_missing_field_examples_cover_device_and_subcomponent():
+def test_prompt_forbids_direct_negative_wording():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "网络设备没有“CPU利用率”指标" in prompt
-    assert "服务器的风扇没有“状态”属性" in prompt
-    assert "该类型网络设备没有该字段" in prompt
-    assert '输入 device_types=["闪存存储"] 时，正确：闪存存储没有“状态”属性' in prompt
-    assert '输入 device_types=["闪存存储"] 时，错误：存储设备没有“状态”属性' in prompt
+    assert "禁止在面向用户的 explain 中使用" in prompt
+    for wording in (
+        "设备不存在",
+        "字段不存在",
+        "{对象}没有该属性",
+        "{对象}没有该指标",
+        "不支持查询该字段",
+        "不支持查询该指标",
+        "暂不支持该查询",
+    ):
+        assert f"“{wording}”" in prompt
+
+
+def test_prompt_polite_examples_cover_device_subcomponent_and_multiple_types():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "暂未采集到网络设备的" in prompt
+    assert "当前可查询的服务器风扇信息中暂未匹配到" in prompt
+    assert "当前可查询的闪存存储信息中暂未匹配到" in prompt
+    assert "不得将“闪存存储”改写为“存储设备”" in prompt
+    assert "当前提问涉及多个设备类型，暂未匹配到相关信息" in prompt
+
+
+def test_prompt_allows_only_unique_similar_metadata_replacement():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "唯一相似查询项替换" in prompt
+    assert "只有一个冲突属性或指标时才继续" in prompt
+    assert "metadata_tables.columns[].column_description" in prompt
+    assert "一个唯一、明确相似的业务描述" in prompt
+    assert "多个相似项无法明确区分" in prompt
+    assert "仅替换唯一冲突属性或指标" in prompt
+    assert "相似替换最多占一条推荐" in prompt
+    assert "物理列名、表名或“字段”概念" in prompt
+    assert "除唯一相似查询项替换外，三条都必须在候选能力边界内" in prompt
 
 
 def test_refuse_info_requires_shared_error_info():
