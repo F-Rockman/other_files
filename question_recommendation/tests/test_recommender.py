@@ -671,6 +671,29 @@ def test_prompt_requires_valid_subnet_scope_inheritance():
     assert "只有 resource_query 或 relation_query 候选才能把子网本身作为主要查询对象" in prompt
 
 
+def test_prompt_preserves_explicit_list_and_count_forms():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "明确结果形态继承" in prompt
+    assert "必须由你根据原始 question 判断" in prompt
+    assert "不得依赖 recommendation_context.aggregations" in prompt
+    assert "列表”“有哪些”“全部" in prompt
+    assert "数量”“总数”“多少”“几个" in prompt
+    assert "明确要求列表时，三条推荐都必须保持列表形态" in prompt
+    assert "明确要求数量时" in prompt
+    assert "三条推荐都必须保持数量或数量统计形态" in prompt
+    assert "同一形态的三条推荐仍必须具有业务语义差异" in prompt
+
+
+def test_prompt_explicit_form_respects_error_recovery_and_unspecified_behavior():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "列表或数量形态本身仍然有效" in prompt
+    assert "恢复策略优先，允许调整形态" in prompt
+    assert "没有明确要求列表或数量时，不主动推断或强制选择形态" in prompt
+    assert "继续按现有候选顺序、" in prompt
+    assert "恢复策略和推荐多样性规则生成问题" in prompt
+    assert "指标、趋势、聚合和 TopN 等其他表达继续遵守既有规则" in prompt
+
+
 def test_prompt_requires_user_friendly_actionable_explanation():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "直接展示给用户的完整、友好推荐说明" in prompt
