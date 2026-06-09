@@ -646,8 +646,8 @@ def test_prompt_contains_minimal_context_and_ambiguity_rules():
     assert "candidate_templates" not in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "诊断、异常原因分析" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "description_cn 明确提供的枚举" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "不能扩大候选能力" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "metrics：该对象可查询的 KPI 名称" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "不能借此扩展候选中的" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "properties、metrics：没有可用实时元数据时" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     for removed in (
         "filter_fields",
         "group_by_fields",
@@ -804,7 +804,34 @@ def test_prompt_allows_only_unique_similar_metadata_replacement():
     assert "仅替换唯一冲突属性或指标" in prompt
     assert "相似替换最多占一条推荐" in prompt
     assert "物理列名、表名或“字段”概念" in prompt
-    assert "除唯一相似查询项替换外，三条都必须在候选能力边界内" in prompt
+    assert "其余推荐继续遵守对象、父子关系和查询能力方向边界" in prompt
+
+
+def test_prompt_uses_realtime_metadata_as_final_field_source():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "实时元数据字段优先级" in prompt
+    assert "至少存在一个非空 columns[].column_description" in prompt
+    assert "具体属性和指标必须来自与当前候选对象明确相关的" in prompt
+    assert "实时元数据中不存在的属性或指标不得出现在推荐问题中" in prompt
+    assert "实时元数据中存在、但 candidate_capabilities.properties 或 metrics 未声明" in prompt
+    assert "或指标可以用于推荐" in prompt
+
+
+def test_prompt_metadata_cannot_expand_object_or_capability_direction():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "不能扩展设备类型、业务域、子部件与父子" in prompt
+    assert "不能创建候选中没有的告警、链路、关系或其他查询能力方向" in prompt
+    assert "对象、父子关系和查询能力方向都必须在候选能力边界内" in prompt
+
+
+def test_prompt_metadata_fallback_and_safe_field_expression():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "不得使用 column_name、表名或物理字段名" in prompt
+    assert "只能使用 table_description 与当前候选对象明确相关的表中字段" in prompt
+    assert "没有适合当前候选对象的属性或指标时" in prompt
+    assert "列表、数量、" in prompt
+    assert "所有 column_description 均为空时" in prompt
+    assert "回退使用 candidate_capabilities.properties 和 metrics" in prompt
 
 
 def test_refuse_info_requires_shared_error_info():
