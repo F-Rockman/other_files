@@ -152,7 +152,7 @@ def _empty_intention_basic_candidates(
             for term in profile.device_types + profile.aliases
         ],
     )
-    matched_subcomponent_terms = set(
+    matched_subcomponent_terms = _normalized_set(
         _specific_terms_in_text(
             context.question,
             [
@@ -167,7 +167,9 @@ def _empty_intention_basic_candidates(
         (profile, spec)
         for profile in profiles
         for spec in profile.subcomponents
-        if matched_subcomponent_terms.intersection(spec.types + spec.aliases)
+        if matched_subcomponent_terms.intersection(
+            _normalized_set(spec.types + spec.aliases)
+        )
     ]
     matched_special = [
         spec
@@ -421,13 +423,14 @@ def _matching_metrics(
     metrics: Sequence[str],
     capability_type: str,
 ) -> List[str]:
-    """按 KPI 标准名称过滤指标能力。"""
+    """忽略大小写按 KPI 标准名称过滤指标能力，并保留能力卡原始名称。"""
     if capability_type not in {DEVICE_METRIC, SUBCOMPONENT_METRIC}:
         return []
+    normalized_kpis = _normalized_set(context.kpis)
     return [
         metric
         for metric in metrics
-        if not context.kpis or metric in context.kpis
+        if not normalized_kpis or _normalize_match_value(metric) in normalized_kpis
     ]
 
 
@@ -440,9 +443,9 @@ def _special_candidates(
     """生成特殊查询候选，并通过设备能力卡解析设备别名。"""
     result = []
     for spec in special_capabilities:
-        if spec.capability_type != primary_type or not _special_matches_context(
-            spec, context, profiles
-        ):
+        if not _values_equal(
+            spec.capability_type, primary_type
+        ) or not _special_matches_context(spec, context, profiles):
             continue
         matched_device_types = _matched_special_device_types(
             context.device_types, spec.device_types, profiles
@@ -491,15 +494,15 @@ def _special_matches_context(
         if not matched_device_types:
             return False
     if spec.objects and context.subcomponent_types:
-        if not set(spec.objects).intersection(context.subcomponent_types):
+        if not _has_overlap(spec.objects, context.subcomponent_types):
             return False
-    if spec.capability_type == RESOURCE_QUERY:
+    if _values_equal(spec.capability_type, RESOURCE_QUERY):
         return _is_subnet_context(context)
-    if spec.capability_type == RELATION_QUERY:
+    if _values_equal(spec.capability_type, RELATION_QUERY):
         return bool(
             matched_device_types
-            or set(spec.objects).intersection(context.subcomponent_types)
-            or any(word and word in context.question for word in spec.objects)
+            or _has_overlap(spec.objects, context.subcomponent_types)
+            or _contains_any(context.question, spec.objects)
         )
     return True
 
@@ -510,14 +513,14 @@ def _matched_special_device_types(
     profiles: Sequence[DeviceCapabilityProfile],
 ) -> List[str]:
     """返回能够通过标准类型或设备能力卡别名命中特殊能力的原始设备类型。"""
-    supported_set = set(supported)
+    supported_set = _normalized_set(supported)
     return [
         value
         for value in values
-        if value in supported_set
+        if _normalize_match_value(value) in supported_set
         or any(
             profile.matches(value)
-            and supported_set.intersection(profile.device_types)
+            and supported_set.intersection(_normalized_set(profile.device_types))
             for profile in profiles
         )
     ]
@@ -531,15 +534,15 @@ def _rank_candidate(
     """计算动态候选与上下文的确定性相关分数。"""
     score = candidate.priority
     primary_type = resolve_primary_capability_type(context)
-    if candidate.capability_type == primary_type:
+    if _values_equal(candidate.capability_type, primary_type):
         score += 160
-    if set(context.device_types).intersection(candidate.device_types):
+    if _has_overlap(context.device_types, candidate.device_types):
         score += 120
-    if set(context.subcomponent_types).intersection(candidate.subcomponent_types):
+    if _has_overlap(context.subcomponent_types, candidate.subcomponent_types):
         score += 100
-    if context.kpis and set(context.kpis).intersection(candidate.metrics):
+    if context.kpis and _has_overlap(context.kpis, candidate.metrics):
         score += 60
-    if context.properties and set(context.properties).intersection(candidate.properties):
+    if context.properties and _has_overlap(context.properties, candidate.properties):
         score += 40
     if _metadata_matches(candidate.table_hints, context.tables, metadata_tables):
         score += 30
@@ -552,23 +555,28 @@ def _metadata_matches(
     metadata_tables: Sequence[MetadataTable],
 ) -> bool:
     """判断候选表提示是否命中逻辑表名、表描述或字段描述。"""
-    flattened = " ".join(
-        list(table_names)
-        + [
-            text
-            for table in metadata_tables
-            for text in (table.table_name, table.table_description)
-            if text
-        ]
-        + [
-            text
-            for table in metadata_tables
-            for column in table.columns
-            for text in (column.column_name, column.column_description)
-            if text
-        ]
+    flattened = _normalize_match_value(
+        " ".join(
+            list(table_names)
+            + [
+                text
+                for table in metadata_tables
+                for text in (table.table_name, table.table_description)
+                if text
+            ]
+            + [
+                text
+                for table in metadata_tables
+                for column in table.columns
+                for text in (column.column_name, column.column_description)
+                if text
+            ]
+        )
     )
-    return any(hint and hint in flattened for hint in hints)
+    return any(
+        normalized_hint and normalized_hint in flattened
+        for normalized_hint in (_normalize_match_value(hint) for hint in hints)
+    )
 
 
 def _select_diverse(
@@ -595,30 +603,33 @@ def _select_diverse(
 
 
 def _locators_compatible(context: RecommendationContext, locators: Sequence[str]) -> bool:
-    """判断仍有效的定位参数是否被设备规格支持。"""
-    identifier_types = {item.id_type for item in context.identifiers}
-    return not identifier_types or bool(identifier_types.intersection(locators))
+    """忽略大小写判断仍有效的定位参数是否被设备规格支持。"""
+    identifier_types = _normalized_set(item.id_type for item in context.identifiers)
+    return not identifier_types or bool(
+        identifier_types.intersection(_normalized_set(locators))
+    )
 
 
 def _is_subnet_context(context: RecommendationContext) -> bool:
     """判断上下文是否明确查询子网资源。"""
-    return "子网" in context.device_types or "子网" in context.subcomponent_types
+    return _normalize_match_value("子网") in _normalized_set(
+        context.device_types + context.subcomponent_types
+    )
 
 
 def _examples_for_type(examples: Sequence[str], capability_type: str) -> List[str]:
     """只保留与当前六类骨架一致的表达示例，避免 Basic 被指标示例干扰。"""
     result = []
     for example in examples:
-        is_count = any(word in example for word in ("数量", "总数"))
-        is_metric = any(
-            word in example
-            for word in (
+        is_count = _contains_any(example, ("数量", "总数"))
+        is_metric = _contains_any(
+            example,
+            (
                 "趋势",
                 "平均",
                 "最大",
                 "最小",
                 "Top",
-                "TOP",
                 "利用率",
                 "IOPS",
                 "响应时间",
@@ -631,7 +642,7 @@ def _examples_for_type(examples: Sequence[str], capability_type: str) -> List[st
                 "光功率",
                 "不可达比率",
                 "当前移动终端数",
-            )
+            ),
         )
         if capability_type in {DEVICE_COUNT, SUBCOMPONENT_COUNT} and is_count:
             result.append(example)
@@ -661,8 +672,12 @@ def _slug(values: Sequence[str]) -> str:
 
 
 def _contains_any(text: str, values: Sequence[str]) -> bool:
-    """判断文本是否精确包含任一非空能力卡对象词。"""
-    return any(value and value in text for value in values)
+    """忽略大小写判断文本是否包含任一非空能力卡字段值。"""
+    normalized_text = _normalize_match_value(text)
+    return any(
+        normalized_value and normalized_value in normalized_text
+        for normalized_value in (_normalize_match_value(value) for value in values)
+    )
 
 
 def _profiles_matching_text(
@@ -670,7 +685,7 @@ def _profiles_matching_text(
     profiles: Sequence[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
     """按文本中未被更长对象词覆盖的设备类型或别名匹配能力卡。"""
-    matched_terms = set(
+    matched_terms = _normalized_set(
         _specific_terms_in_text(
             text,
             [
@@ -683,18 +698,26 @@ def _profiles_matching_text(
     return [
         profile
         for profile in profiles
-        if matched_terms.intersection(profile.device_types + profile.aliases)
+        if matched_terms.intersection(
+            _normalized_set(profile.device_types + profile.aliases)
+        )
     ]
 
 
 def _specific_terms_in_text(text: str, terms: Sequence[str]) -> List[str]:
-    """返回文本中的明确对象词，并移除被更长对象词完整覆盖的短词。"""
+    """忽略大小写返回明确对象词，并移除被更长对象词完整覆盖的短词。"""
+    normalized_text = _normalize_match_value(text)
     matches: List[Tuple[str, int, int]] = []
-    for term in dict.fromkeys(item for item in terms if item):
-        start = text.find(term)
+    unique_terms = {}
+    for term in terms:
+        normalized_term = _normalize_match_value(term)
+        if normalized_term and normalized_term not in unique_terms:
+            unique_terms[normalized_term] = term
+    for normalized_term, term in unique_terms.items():
+        start = normalized_text.find(normalized_term)
         while start >= 0:
-            matches.append((term, start, start + len(term)))
-            start = text.find(term, start + 1)
+            matches.append((term, start, start + len(normalized_term)))
+            start = normalized_text.find(normalized_term, start + 1)
 
     result: List[str] = []
     for term, start, end in matches:
@@ -708,3 +731,27 @@ def _specific_terms_in_text(text: str, terms: Sequence[str]) -> List[str]:
         if term not in result:
             result.append(term)
     return result
+
+
+def _normalize_match_value(value: Any) -> str:
+    """规范能力卡匹配文本，忽略首尾空白与大小写但保留原始展示值。"""
+    return str(value or "").strip().casefold()
+
+
+def _normalized_set(values: Iterable[Any]) -> set:
+    """返回去除空值并忽略大小写的能力卡字段集合。"""
+    return {
+        normalized
+        for normalized in (_normalize_match_value(value) for value in values)
+        if normalized
+    }
+
+
+def _has_overlap(left: Iterable[Any], right: Iterable[Any]) -> bool:
+    """忽略大小写判断两组能力卡字段值是否存在交集。"""
+    return bool(_normalized_set(left).intersection(_normalized_set(right)))
+
+
+def _values_equal(left: Any, right: Any) -> bool:
+    """忽略大小写判断两个能力卡字段值是否相等。"""
+    return _normalize_match_value(left) == _normalize_match_value(right)

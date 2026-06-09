@@ -18,6 +18,7 @@ from question_recommendation import (
     SUBCOMPONENT_COUNT,
     SUBCOMPONENT_INFO,
     SUBCOMPONENT_METRIC,
+    Identifier,
     LogicalMetadataError,
     MetadataColumn,
     MetadataTable,
@@ -521,6 +522,11 @@ def test_subnet_special_capabilities_have_no_fixed_domain():
         "PON设备",
         "FITAP",
         "AP",
+        "olt",
+        "fitap",
+        "ap",
+        "fatap",
+        "fc交换机",
         "终端设备",
         "终端",
     ],
@@ -550,6 +556,37 @@ def test_unsupported_metric_filters_metric_candidate():
     assert "network_device:光模块:subcomponent_metric" not in _candidate_ids(context)
 
 
+def test_capability_metric_matching_ignores_case_and_keeps_standard_name():
+    context = RecommendationContext(
+        intention="查指标",
+        device_types=["网络设备"],
+        kpis=["cpu利用率"],
+    )
+    metric = next(
+        item
+        for item in recommend_capabilities(context)
+        if item.candidate.capability_id == "network_device:device_metric"
+    )
+    assert metric.candidate.metrics == ["CPU利用率"]
+
+
+def test_capability_device_subcomponent_and_locator_matching_ignore_case():
+    device_ids = _candidate_ids(
+        RecommendationContext(intention="查信息", device_types=["fitap"])
+    )
+    assert "fitap:device_info" in device_ids
+
+    subcomponent_ids = _candidate_ids(
+        RecommendationContext(
+            intention="查信息",
+            device_types=["存储设备"],
+            subcomponent_types=["bbu"],
+            identifiers=[Identifier(value="10.0.0.1", id_type="ip")],
+        )
+    )
+    assert "storage_device:BBU:subcomponent_info" in subcomponent_ids
+
+
 def test_property_match_adds_score_and_property_miss_does_not_filter():
     matched = recommend_capabilities(
         RecommendationContext(
@@ -572,6 +609,30 @@ def test_property_match_adds_score_and_property_miss_does_not_filter():
         item for item in missed if item.candidate.capability_id == "network_device:device_info"
     )
     assert matched_info.match_score > missed_info.match_score
+
+
+def test_capability_property_score_matching_ignores_case():
+    upper = recommend_capabilities(
+        RecommendationContext(
+            intention="查信息",
+            device_types=["网络设备"],
+            properties=["IP地址"],
+        )
+    )
+    lower = recommend_capabilities(
+        RecommendationContext(
+            intention="查信息",
+            device_types=["网络设备"],
+            properties=["ip地址"],
+        )
+    )
+    upper_info = next(
+        item for item in upper if item.candidate.capability_id == "network_device:device_info"
+    )
+    lower_info = next(
+        item for item in lower if item.candidate.capability_id == "network_device:device_info"
+    )
+    assert lower_info.match_score == upper_info.match_score
 
 
 def test_metric_not_found_removes_kpi_from_context():
@@ -627,6 +688,34 @@ def test_table_names_can_affect_score_without_loaded_metadata():
     server = next(item for item in ranked if item.candidate.capability_id == "server:光模块:subcomponent_info")
     network = next(item for item in ranked if item.candidate.capability_id == "network_device:光模块:subcomponent_info")
     assert server.match_score > network.match_score
+
+
+def test_capability_table_hint_matching_ignores_case():
+    lower = recommend_capabilities(
+        RecommendationContext(
+            intention="查信息",
+            subcomponent_types=["光模块"],
+            tables=["server_optical_module"],
+        )
+    )
+    upper = recommend_capabilities(
+        RecommendationContext(
+            intention="查信息",
+            subcomponent_types=["光模块"],
+            tables=["SERVER_OPTICAL_MODULE"],
+        )
+    )
+    lower_server = next(
+        item
+        for item in lower
+        if item.candidate.capability_id == "server:光模块:subcomponent_info"
+    )
+    upper_server = next(
+        item
+        for item in upper
+        if item.candidate.capability_id == "server:光模块:subcomponent_info"
+    )
+    assert upper_server.match_score == lower_server.match_score
 
 
 def test_top_twelve_selection_is_stable():
@@ -1132,6 +1221,13 @@ def test_empty_intention_basic_keeps_separate_explicit_device_objects():
 )
 def test_empty_intention_basic_uses_specific_device_classification(question, expected_ids):
     assert set(_candidate_ids(_empty_intention_basic_context(question))) == expected_ids
+
+
+def test_empty_intention_basic_object_matching_ignores_case():
+    assert set(_candidate_ids(_empty_intention_basic_context("查询fitap列表"))) == {
+        "fitap:device_info",
+        "fitap:device_count",
+    }
 
 
 def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monkeypatch):

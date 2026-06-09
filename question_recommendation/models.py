@@ -42,6 +42,11 @@ def _known_fields(cls: type) -> set:
     return {item.name for item in fields(cls)}
 
 
+def _casefold_text(value: Any) -> str:
+    """规范文本大小写，仅用于能力卡字段匹配，不改变原始展示值。"""
+    return str(value or "").strip().casefold()
+
+
 @dataclass
 class Identifier:
     """
@@ -263,8 +268,11 @@ class SubcomponentCapabilitySpec:
         )
 
     def matches(self, value: str) -> bool:
-        """判断输入对象是否命中子部件标准类型或别名。"""
-        return str(value or "").strip() in {*self.types, *self.aliases}
+        """忽略大小写判断输入对象是否命中子部件标准类型或别名。"""
+        normalized = _casefold_text(value)
+        return bool(normalized) and normalized in {
+            _casefold_text(item) for item in self.types + self.aliases
+        }
 
     def to_dict(self) -> Dict[str, Any]:
         """将子部件规格转换为紧凑字典。"""
@@ -313,8 +321,11 @@ class DeviceCapabilityProfile:
         )
 
     def matches(self, value: str) -> bool:
-        """判断输入设备类型是否命中标准类型或别名。"""
-        return str(value or "").strip() in {*self.device_types, *self.aliases}
+        """忽略大小写判断输入设备类型是否命中标准类型或别名。"""
+        normalized = _casefold_text(value)
+        return bool(normalized) and normalized in {
+            _casefold_text(item) for item in self.device_types + self.aliases
+        }
 
     def to_dict(self) -> Dict[str, Any]:
         """将设备能力规格转换为紧凑字典。"""
