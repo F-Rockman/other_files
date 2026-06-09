@@ -678,20 +678,42 @@ def test_prompt_preserves_explicit_list_and_count_forms():
     assert "不得依赖 recommendation_context.aggregations" in prompt
     assert "列表”“有哪些”“全部" in prompt
     assert "数量”“总数”“多少”“几个" in prompt
-    assert "明确要求列表时，三条推荐都必须保持列表形态" in prompt
-    assert "明确要求数量时" in prompt
-    assert "三条推荐都必须保持数量或数量统计形态" in prompt
+    assert "明确要求列表" in prompt
+    assert "三条推荐都必须保持" in prompt
+    assert "列表形态" in prompt
+    assert "明确要求数量" in prompt
+    assert "数量或数量统计形态" in prompt
     assert "同一形态的三条推荐仍必须具有业务语义差异" in prompt
 
 
 def test_prompt_explicit_form_respects_error_recovery_and_unspecified_behavior():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "recovery_strategy 字段不存在或为空字符串" in prompt
+    assert "recovery_strategy 为非空字符串" in prompt
     assert "列表或数量形态本身仍然有效" in prompt
-    assert "恢复策略优先，允许调整形态" in prompt
+    assert "恢复策略才优先于形态" in prompt
+    assert "refusal_message 或" in prompt
+    assert "refusal_detail 明确表明该形态或其必要条件" in prompt
+    assert "不适合继续使用时" in prompt
     assert "没有明确要求列表或数量时，不主动推断或强制选择形态" in prompt
     assert "继续按现有候选顺序、" in prompt
     assert "恢复策略和推荐多样性规则生成问题" in prompt
     assert "指标、趋势、聚合和 TopN 等其他表达继续遵守既有规则" in prompt
+
+
+def test_prompt_does_not_use_undefined_normal_or_error_scenes():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "normal 场景" not in prompt
+    assert "error 场景" not in prompt
+
+
+def test_prompt_defines_recovery_state_from_existing_context_field_only():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "只使用 recommendation_context.recovery_strategy 判断是否需要失败恢复" in prompt
+    assert "当前没有失败恢复要求" in prompt
+    assert "当前需要严格按该恢复策略处理" in prompt
+    assert "不能自行改变" in prompt
+    assert "不能覆盖 recovery_strategy" in prompt
 
 
 def test_prompt_requires_user_friendly_actionable_explanation():
@@ -706,7 +728,7 @@ def test_prompt_requires_user_friendly_actionable_explanation():
     assert "不责备用户" in prompt
     assert "不复述 invalid_values" in prompt
     assert "先定位，再收敛" in prompt
-    assert "basic 是通用 error 兜底策略" in prompt
+    assert "basic 是无法进一步细分失败类型时使用的通用兜底策略" in prompt
     assert "必须输出正好 3 条推荐" in prompt
     for strategy in (
         "clarify",
