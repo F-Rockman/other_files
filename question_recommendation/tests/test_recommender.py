@@ -556,6 +556,135 @@ def test_unsupported_metric_filters_metric_candidate():
     assert "network_device:光模块:subcomponent_metric" not in _candidate_ids(context)
 
 
+@pytest.mark.parametrize("recovery_strategy", ["clarify", "disambiguate"])
+def test_recovery_question_network_direction_relaxes_ambiguous_kpi(recovery_strategy):
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查指标",
+            question="查询网络CUP",
+            kpis=["CUP"],
+            recovery_strategy=recovery_strategy,
+        )
+    )
+    assert [item.candidate.capability_id for item in ranked] == [
+        "network_device:device_metric",
+        "network_device:device_count",
+        "network_device:device_info",
+    ]
+    assert all(item.candidate.domain == "网络" for item in ranked)
+    metric = ranked[0].candidate
+    assert "CPU利用率" in metric.metrics
+    assert "CUP" not in metric.metrics
+
+
+@pytest.mark.parametrize(
+    ("question", "expected_domains", "expected_metric_ids"),
+    [
+        ("查询存储CUP", {"存储"}, {"storage_device:device_metric"}),
+        ("查询服务器CUP", {"服务器"}, {"server:device_metric"}),
+        ("查询PON CUP", {"PON"}, {"olt:device_metric", "onu:device_metric"}),
+    ],
+)
+def test_recovery_question_direction_uses_capability_domains(
+    question,
+    expected_domains,
+    expected_metric_ids,
+):
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查指标",
+            question=question,
+            kpis=["CUP"],
+            recovery_strategy="disambiguate",
+        )
+    )
+    assert {item.candidate.domain for item in ranked} == expected_domains
+    assert {
+        item.candidate.capability_id
+        for item in ranked
+        if item.candidate.capability_type == DEVICE_METRIC
+    } == expected_metric_ids
+
+
+def test_recovery_question_direction_keeps_multiple_explicit_domains():
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查指标",
+            question="查询网络和服务器CUP",
+            kpis=["CUP"],
+            recovery_strategy="disambiguate",
+        )
+    )
+    assert {item.candidate.domain for item in ranked} == {"网络", "服务器"}
+
+
+def test_recovery_question_direction_keeps_domain_subcomponent_relation():
+    ids = set(
+        _candidate_ids(
+            RecommendationContext(
+                intention="查指标",
+                question="查询网络光模块CUP",
+                kpis=["CUP"],
+                recovery_strategy="disambiguate",
+            )
+        )
+    )
+    assert ids == {
+        "network_device:光模块:subcomponent_metric",
+        "network_device:光模块:subcomponent_info",
+        "network_device:光模块:subcomponent_count",
+    }
+
+
+def test_recovery_question_direction_does_not_override_structured_object():
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查信息",
+            question="查询网络设备信息",
+            device_types=["服务器"],
+            recovery_strategy="disambiguate",
+        )
+    )
+    assert ranked
+    assert all(item.candidate.domain == "服务器" for item in ranked)
+
+
+def test_question_direction_does_not_change_non_recovery_recall():
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查指标",
+            question="查询网络CUP",
+            kpis=["CUP"],
+        )
+    )
+    assert not any(item.candidate.capability_type == DEVICE_METRIC for item in ranked)
+    assert len({item.candidate.domain for item in ranked}) > 1
+
+
+def test_recovery_without_question_direction_keeps_global_recall():
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查信息",
+            question="查询设备信息",
+            recovery_strategy="disambiguate",
+        )
+    )
+    assert len({item.candidate.domain for item in ranked}) > 1
+
+
+def test_kpi_relaxation_is_limited_to_clarify_and_disambiguate():
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查指标",
+            question="查询网络CUP",
+            kpis=["CUP"],
+            recovery_strategy="reframe",
+        )
+    )
+    assert not any(item.candidate.capability_type == DEVICE_METRIC for item in ranked)
+    assert all(item.candidate.domain == "网络" for item in ranked)
+
+
 def test_capability_metric_matching_ignores_case_and_keeps_standard_name():
     context = RecommendationContext(
         intention="查指标",
@@ -1155,6 +1284,29 @@ def test_empty_intention_basic_device_constrains_special_capability():
     assert ranked[0].candidate.device_types == ["服务器"]
 
 
+def test_empty_intention_basic_domain_constrains_special_capability():
+    ranked = recommend_capabilities(_empty_intention_basic_context("查询网络告警"))
+    assert [item.candidate.capability_id for item in ranked] == ["alarm_query"]
+    assert ranked[0].candidate.device_types == ["网络设备"]
+
+
+def test_recovery_question_direction_constrains_special_capability():
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查告警",
+            question="查询网络告警",
+            recovery_strategy="disambiguate",
+        )
+    )
+    assert ranked[0].candidate.capability_id == "alarm_query"
+    assert ranked[0].candidate.device_types == ["网络设备"]
+    assert all(
+        not item.candidate.device_types
+        or item.candidate.device_types == ["网络设备"]
+        for item in ranked
+    )
+
+
 def test_empty_intention_basic_subcomponent_recalls_compatible_parent_basics():
     context = _empty_intention_basic_context("查询光模块信息")
     assert set(_candidate_ids(context)) == {
@@ -1330,6 +1482,17 @@ def test_prompt_constrains_empty_intention_basic_to_matched_objects():
     assert "不得重新扩展到候选之外的设备类型" in prompt
     assert "优先推荐列表、数量或基础信息" in prompt
     assert "不要据此推断指标、趋势、聚合、排序或新的正式意图" in prompt
+
+
+def test_prompt_constrains_recovery_question_business_direction():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "拒答业务方向" in prompt
+    assert "没有 device_types 和 subcomponent_types 时" in prompt
+    assert "不得重新扩展到其他业务域、设备或子部件" in prompt
+    assert "原问题中的方向词不等于明确设备类型" in prompt
+    assert "不得继续继承原问题中无法匹配的 KPI" in prompt
+    assert "搭配同一业务方向的信息、列表和数量候选" in prompt
+    assert "必须以结构化对象为准" in prompt
 
 
 def test_prompt_treats_subnet_as_cross_domain_scope():

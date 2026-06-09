@@ -1,7 +1,7 @@
 """六类查询骨架、设备能力规格和特殊能力的确定性召回算法。"""
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from importlib import resources
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -13,7 +13,7 @@ from .models import (
     SpecialCapabilitySpec,
     SubcomponentCapabilitySpec,
 )
-from .refusal_rules import BASIC
+from .refusal_rules import BASIC, CLARIFY, DISAMBIGUATE
 
 
 DEVICE_INFO = "device_info"
@@ -29,6 +29,7 @@ RESOURCE_QUERY = "resource_query"
 RELATION_QUERY = "relation_query"
 
 COUNT_AGGREGATIONS = {"count", "count_distinct"}
+KPI_RELAXING_RECOVERY_STRATEGIES = {CLARIFY, DISAMBIGUATE}
 
 
 @dataclass
@@ -106,12 +107,18 @@ def recommend_capabilities(
     if object_directed_candidates is not None:
         candidates = object_directed_candidates
     else:
-        matched_profiles = _matching_profiles(context, available_profiles)
-        primary_type = resolve_primary_capability_type(context)
-        candidates = _primary_candidates(
-            context, matched_profiles, available_special, primary_type
+        direction_candidates = _recovery_question_direction_candidates(
+            context, available_profiles, available_special
         )
-        candidates.extend(_adjacent_candidates(context, matched_profiles, primary_type))
+        if direction_candidates is not None:
+            candidates = direction_candidates
+        else:
+            matched_profiles = _matching_profiles(context, available_profiles)
+            primary_type = resolve_primary_capability_type(context)
+            candidates = _primary_candidates(
+                context, matched_profiles, available_special, primary_type
+            )
+            candidates.extend(_adjacent_candidates(context, matched_profiles, primary_type))
     candidates = _dedupe_candidates(candidates)
     if not candidates and context.recovery_strategy == BASIC:
         candidates = _global_basic_fallback_candidates(available_profiles)
@@ -143,7 +150,7 @@ def _empty_intention_basic_candidates(
     if context.recovery_strategy != BASIC or context.intention or not context.question:
         return None
 
-    matched_profiles = _profiles_matching_text(context.question, profiles)
+    matched_profiles = _profiles_matching_question_direction(context.question, profiles)
     matched_device_values = _specific_terms_in_text(
         context.question,
         [
@@ -152,25 +159,7 @@ def _empty_intention_basic_candidates(
             for term in profile.device_types + profile.aliases
         ],
     )
-    matched_subcomponent_terms = _normalized_set(
-        _specific_terms_in_text(
-            context.question,
-            [
-                value
-                for profile in profiles
-                for spec in profile.subcomponents
-                for value in spec.types + spec.aliases
-            ],
-        )
-    )
-    matched_subcomponents = [
-        (profile, spec)
-        for profile in profiles
-        for spec in profile.subcomponents
-        if matched_subcomponent_terms.intersection(
-            _normalized_set(spec.types + spec.aliases)
-        )
-    ]
+    matched_subcomponents = _subcomponents_matching_text(context.question, profiles)
     matched_special = [
         spec
         for spec in special_capabilities
@@ -180,6 +169,12 @@ def _empty_intention_basic_candidates(
         return None
 
     if matched_special:
+        if not matched_device_values:
+            matched_device_values = [
+                device_type
+                for profile in matched_profiles
+                for device_type in profile.device_types
+            ]
         special_context = RecommendationContext(
             question=context.question,
             device_types=matched_device_values,
@@ -228,6 +223,76 @@ def _empty_intention_basic_candidates(
             context, profile, capability_type, relax=True
         )
     ]
+
+
+def _recovery_question_direction_candidates(
+    context: RecommendationContext,
+    profiles: Sequence[DeviceCapabilityProfile],
+    special_capabilities: Sequence[SpecialCapabilitySpec],
+) -> Optional[List[CapabilityCandidate]]:
+    """
+    在拒答且无结构化对象时，按原问题中的能力卡领域或对象收敛候选。
+
+    返回 ``None`` 表示问题中没有识别到能力卡已有方向，应继续使用原有全局召回。
+    """
+    if (
+        not context.recovery_strategy
+        or context.device_types
+        or context.subcomponent_types
+        or not context.question
+    ):
+        return None
+
+    matched_profiles = _profiles_matching_question_direction(context.question, profiles)
+    matched_subcomponents = _subcomponents_matching_text(context.question, profiles)
+    if matched_profiles and matched_subcomponents:
+        profile_ids = {profile.profile_id for profile in matched_profiles}
+        matched_subcomponents = [
+            (profile, spec)
+            for profile, spec in matched_subcomponents
+            if profile.profile_id in profile_ids
+        ]
+    elif matched_subcomponents:
+        matched_profiles = _dedupe_profiles(
+            profile for profile, _ in matched_subcomponents
+        )
+
+    if not matched_profiles:
+        return None
+
+    direction_context = replace(
+        context,
+        device_types=[
+            device_type
+            for profile in matched_profiles
+            for device_type in profile.device_types
+        ],
+        subcomponent_types=[
+            subcomponent_type
+            for _, spec in matched_subcomponents
+            for subcomponent_type in spec.types
+        ],
+    )
+    primary_type = resolve_primary_capability_type(direction_context)
+    candidates = _primary_candidates(
+        direction_context, matched_profiles, special_capabilities, primary_type
+    )
+    candidates.extend(
+        _adjacent_candidates(direction_context, matched_profiles, primary_type)
+    )
+
+    if (
+        primary_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC}
+        and context.recovery_strategy in KPI_RELAXING_RECOVERY_STRATEGIES
+        and not any(candidate.capability_type == primary_type for candidate in candidates)
+    ):
+        relaxed_context = replace(direction_context, kpis=[])
+        candidates.extend(
+            _primary_candidates(
+                relaxed_context, matched_profiles, special_capabilities, primary_type
+            )
+        )
+    return candidates
 
 
 def _load_capability_document() -> Dict[str, Any]:
@@ -702,6 +767,62 @@ def _profiles_matching_text(
             _normalized_set(profile.device_types + profile.aliases)
         )
     ]
+
+
+def _profiles_matching_question_direction(
+    text: str,
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> List[DeviceCapabilityProfile]:
+    """按原问题中能力卡已有的业务域、设备类型或别名匹配设备规格。"""
+    object_profile_ids = {
+        profile.profile_id for profile in _profiles_matching_text(text, profiles)
+    }
+    matched_domains = _normalized_set(
+        _specific_terms_in_text(text, [profile.domain for profile in profiles])
+    )
+    return [
+        profile
+        for profile in profiles
+        if profile.profile_id in object_profile_ids
+        or _normalize_match_value(profile.domain) in matched_domains
+    ]
+
+
+def _subcomponents_matching_text(
+    text: str,
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
+    """按原问题中能力卡已有的子部件类型或别名匹配父设备与子部件规格。"""
+    matched_terms = _normalized_set(
+        _specific_terms_in_text(
+            text,
+            [
+                value
+                for profile in profiles
+                for spec in profile.subcomponents
+                for value in spec.types + spec.aliases
+            ],
+        )
+    )
+    return [
+        (profile, spec)
+        for profile in profiles
+        for spec in profile.subcomponents
+        if matched_terms.intersection(_normalized_set(spec.types + spec.aliases))
+    ]
+
+
+def _dedupe_profiles(
+    profiles: Iterable[DeviceCapabilityProfile],
+) -> List[DeviceCapabilityProfile]:
+    """按能力卡标识去重并保留首次出现的设备规格。"""
+    result: List[DeviceCapabilityProfile] = []
+    seen = set()
+    for profile in profiles:
+        if profile.profile_id and profile.profile_id not in seen:
+            seen.add(profile.profile_id)
+            result.append(profile)
+    return result
 
 
 def _specific_terms_in_text(text: str, terms: Sequence[str]) -> List[str]:
