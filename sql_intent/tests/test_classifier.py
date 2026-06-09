@@ -89,6 +89,14 @@ class TestPromptConstant:
         assert "查询MAC地址XXXX的终端总数" in SQL_INTENT_SYSTEM_PROMPT
         assert "查询设备A的告警数量" in SQL_INTENT_SYSTEM_PROMPT
 
+    def test_specific_entity_identifier_is_optional(self):
+        assert "具体实体标识对所有查询均为可选条件" in SQL_INTENT_SYSTEM_PROMPT
+        assert "默认查询符合已知对象类型和其他条件的全部实体" in SQL_INTENT_SYSTEM_PROMPT
+        assert "未提供具体实体标识" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询交换机的出厂日期" in SQL_INTENT_SYSTEM_PROMPT
+        assert "默认查询全部交换机及其出厂日期" in SQL_INTENT_SYSTEM_PROMPT
+        assert "缺少设备名称、IP、MAC、ID 等具体实体标识不能作为条件不完整的拒答理由" in SQL_INTENT_SYSTEM_PROMPT
+
     def test_special_character_filter_value_rule_present(self):
         assert "包含特殊字符的过滤值" in SQL_INTENT_SYSTEM_PROMPT
         assert "查询设备名称为<script></script>的设备" in SQL_INTENT_SYSTEM_PROMPT
