@@ -1,7 +1,9 @@
 """最小化上下文、六类能力规格和推荐调用器单元测试。"""
 
+import ast
 import json
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -326,6 +328,42 @@ def test_capability_configuration_is_valid():
     }
     assert not removed_fields.intersection(profiles[0].to_dict())
     assert not removed_fields.intersection(specials[0].to_dict())
+
+
+def test_capabilities_comprehensions_only_express_simple_single_steps():
+    source_path = Path(__file__).resolve().parents[1] / "capabilities.py"
+    tree = ast.parse(source_path.read_text(encoding="utf-8"))
+    comprehension_types = (
+        ast.ListComp,
+        ast.SetComp,
+        ast.DictComp,
+        ast.GeneratorExp,
+    )
+
+    for node in ast.walk(tree):
+        if not isinstance(node, comprehension_types):
+            continue
+        assert len(node.generators) == 1, (
+            f"line {node.lineno}: comprehension must use exactly one for"
+        )
+        assert len(node.generators[0].ifs) <= 1, (
+            f"line {node.lineno}: comprehension may use at most one filter"
+        )
+        nested_nodes = list(ast.walk(node))
+        assert not any(
+            isinstance(item, comprehension_types) and item is not node
+            for item in nested_nodes
+        ), f"line {node.lineno}: nested comprehensions are not allowed"
+        assert not any(
+            isinstance(item, (ast.BoolOp, ast.IfExp))
+            for item in nested_nodes
+        ), f"line {node.lineno}: complex boolean or conditional logic is not allowed"
+        assert not any(
+            isinstance(item, ast.Call)
+            and isinstance(item.func, ast.Name)
+            and item.func.id in {"any", "all"}
+            for item in nested_nodes
+        ), f"line {node.lineno}: any/all logic must use an explicit helper"
 
 
 def test_device_profiles_reflect_cross_domain_device_classification():

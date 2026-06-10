@@ -124,10 +124,9 @@ def recommend_capabilities(
     if not candidates and context.recovery_strategy == BASIC:
         candidates = _global_basic_fallback_candidates(available_profiles)
 
-    ranked = [
-        _rank_candidate(context, candidate, metadata_tables)
-        for candidate in candidates
-    ]
+    ranked = []
+    for candidate in candidates:
+        ranked.append(_rank_candidate(context, candidate, metadata_tables))
     ranked.sort(
         key=lambda item: (
             -item.match_score,
@@ -152,78 +151,65 @@ def _empty_intention_basic_candidates(
         return None
 
     matched_profiles = _profiles_matching_question_direction(context.question, profiles)
-    matched_device_values = _specific_terms_in_text(
-        context.question,
-        [
-            term
-            for profile in profiles
-            for term in profile.device_types + profile.aliases
-        ],
-    )
+    device_terms = _profile_device_terms(profiles)
+    matched_device_values = _specific_terms_in_text(context.question, device_terms)
     matched_subcomponents = _subcomponents_matching_text(context.question, profiles)
-    matched_special = [
-        spec
-        for spec in special_capabilities
-        if _contains_any(context.question, spec.objects)
-    ]
+    matched_special = []
+    for spec in special_capabilities:
+        if _contains_any(context.question, spec.objects):
+            matched_special.append(spec)
     if not matched_profiles and not matched_subcomponents and not matched_special:
         return None
 
     if matched_special:
         if not matched_device_values:
-            matched_device_values = [
-                device_type
-                for profile in matched_profiles
-                for device_type in profile.device_types
-            ]
+            matched_device_values = _profile_standard_device_types(matched_profiles)
+        special_objects = []
+        for spec in matched_special:
+            special_objects.extend(spec.objects)
         special_context = RecommendationContext(
             question=context.question,
             devices=_device_conditions_for_types(matched_device_values),
-            subcomponent_types=[
-                object_type
-                for spec in matched_special
-                for object_type in spec.objects
-            ],
+            subcomponent_types=special_objects,
         )
-        candidates = [
-            candidate
-            for spec in matched_special
-            for candidate in _special_candidates(
-                special_context, [spec], spec.capability_type, profiles
+        candidates = []
+        for spec in matched_special:
+            candidates.extend(
+                _special_candidates(
+                    special_context, [spec], spec.capability_type, profiles
+                )
             )
-        ]
         if candidates:
             return candidates
 
     if matched_profiles and matched_subcomponents:
-        profile_ids = {profile.profile_id for profile in matched_profiles}
-        matched_subcomponents = [
-            (profile, spec)
-            for profile, spec in matched_subcomponents
-            if profile.profile_id in profile_ids
-        ]
+        profile_ids = _profile_ids(matched_profiles)
+        filtered_subcomponents = []
+        for profile, spec in matched_subcomponents:
+            if profile.profile_id in profile_ids:
+                filtered_subcomponents.append((profile, spec))
+        matched_subcomponents = filtered_subcomponents
 
     if matched_subcomponents:
-        return [
-            candidate
-            for profile, spec in matched_subcomponents
-            for capability_type in (SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT)
-            for candidate in [
-                _subcomponent_candidate(
+        candidates = []
+        for profile, spec in matched_subcomponents:
+            for capability_type in (SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT):
+                candidate = _subcomponent_candidate(
                     context, profile, spec, capability_type, relax=True
                 )
-            ]
-            if candidate
-        ]
+                if candidate:
+                    candidates.append(candidate)
+        return candidates
 
-    return [
-        candidate
-        for profile in matched_profiles
-        for capability_type in (DEVICE_INFO, DEVICE_COUNT)
-        for candidate in _profile_candidates(
-            context, profile, capability_type, relax=True
-        )
-    ]
+    candidates = []
+    for profile in matched_profiles:
+        for capability_type in (DEVICE_INFO, DEVICE_COUNT):
+            candidates.extend(
+                _profile_candidates(
+                    context, profile, capability_type, relax=True
+                )
+            )
+    return candidates
 
 
 def _recovery_question_direction_candidates(
@@ -247,32 +233,29 @@ def _recovery_question_direction_candidates(
     matched_profiles = _profiles_matching_question_direction(context.question, profiles)
     matched_subcomponents = _subcomponents_matching_text(context.question, profiles)
     if matched_profiles and matched_subcomponents:
-        profile_ids = {profile.profile_id for profile in matched_profiles}
-        matched_subcomponents = [
-            (profile, spec)
-            for profile, spec in matched_subcomponents
-            if profile.profile_id in profile_ids
-        ]
+        profile_ids = _profile_ids(matched_profiles)
+        filtered_subcomponents = []
+        for profile, spec in matched_subcomponents:
+            if profile.profile_id in profile_ids:
+                filtered_subcomponents.append((profile, spec))
+        matched_subcomponents = filtered_subcomponents
     elif matched_subcomponents:
-        matched_profiles = _dedupe_profiles(
-            profile for profile, _ in matched_subcomponents
-        )
+        parent_profiles = []
+        for profile, _ in matched_subcomponents:
+            parent_profiles.append(profile)
+        matched_profiles = _dedupe_profiles(parent_profiles)
 
     if not matched_profiles:
         return None
 
+    device_types = _profile_standard_device_types(matched_profiles)
+    subcomponent_types = []
+    for _, spec in matched_subcomponents:
+        subcomponent_types.extend(spec.types)
     direction_context = replace(
         context,
-        devices=_device_conditions_for_types(
-            device_type
-            for profile in matched_profiles
-            for device_type in profile.device_types
-        ),
-        subcomponent_types=[
-            subcomponent_type
-            for _, spec in matched_subcomponents
-            for subcomponent_type in spec.types
-        ],
+        devices=_device_conditions_for_types(device_types),
+        subcomponent_types=subcomponent_types,
     )
     primary_type = resolve_primary_capability_type(direction_context)
     candidates = _primary_candidates(
@@ -285,7 +268,7 @@ def _recovery_question_direction_candidates(
     if (
         primary_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC}
         and context.recovery_strategy in KPI_RELAXING_RECOVERY_STRATEGIES
-        and not any(candidate.capability_type == primary_type for candidate in candidates)
+        and not _contains_capability_type(candidates, primary_type)
     ):
         relaxed_context = replace(direction_context, kpis=[])
         candidates.extend(
@@ -313,21 +296,19 @@ def _matching_profiles(
     """按明确设备类型或子部件对象过滤设备规格。"""
     device_types = _context_device_types(context)
     if device_types:
-        return [
-            profile
-            for profile in profiles
-            if any(profile.matches(item) for item in device_types)
-        ]
+        matched = []
+        for profile in profiles:
+            if _profile_matches_any(profile, device_types):
+                matched.append(profile)
+        return matched
     if context.subcomponent_types:
-        return [
-            profile
-            for profile in profiles
-            if any(
-                spec.matches(item)
-                for spec in profile.subcomponents
-                for item in context.subcomponent_types
-            )
-        ]
+        matched = []
+        for profile in profiles:
+            if _profile_has_matching_subcomponent(
+                profile, context.subcomponent_types
+            ):
+                matched.append(profile)
+        return matched
     return list(profiles)
 
 
@@ -340,11 +321,10 @@ def _primary_candidates(
     """生成主查询骨架对应的设备或特殊能力候选。"""
     if primary_type in {ALARM_QUERY, LINK_QUERY, RESOURCE_QUERY, RELATION_QUERY}:
         return _special_candidates(context, special_capabilities, primary_type, profiles)
-    return [
-        candidate
-        for profile in profiles
-        for candidate in _profile_candidates(context, profile, primary_type)
-    ]
+    candidates = []
+    for profile in profiles:
+        candidates.extend(_profile_candidates(context, profile, primary_type))
+    return candidates
 
 
 def _adjacent_candidates(
@@ -407,12 +387,14 @@ def _profile_candidates(
         SUBCOMPONENT_METRIC,
     }:
         return []
-    return [
-        candidate
-        for spec in _matching_subcomponents(context, profile)
-        for candidate in [_subcomponent_candidate(context, profile, spec, capability_type, relax)]
-        if candidate
-    ]
+    candidates = []
+    for spec in _matching_subcomponents(context, profile):
+        candidate = _subcomponent_candidate(
+            context, profile, spec, capability_type, relax
+        )
+        if candidate:
+            candidates.append(candidate)
+    return candidates
 
 
 def _device_candidate(
@@ -478,11 +460,11 @@ def _matching_subcomponents(
     """返回与上下文对象匹配的嵌套子部件规格。"""
     if not context.subcomponent_types:
         return list(profile.subcomponents)
-    return [
-        spec
-        for spec in profile.subcomponents
-        if any(spec.matches(item) for item in context.subcomponent_types)
-    ]
+    matched = []
+    for spec in profile.subcomponents:
+        if _subcomponent_matches_any(spec, context.subcomponent_types):
+            matched.append(spec)
+    return matched
 
 
 def _matching_metrics(
@@ -494,10 +476,12 @@ def _matching_metrics(
     if capability_type not in {DEVICE_METRIC, SUBCOMPONENT_METRIC}:
         return []
     normalized_kpis = _normalized_set(context.kpis)
+    if not normalized_kpis:
+        return list(metrics)
     return [
         metric
         for metric in metrics
-        if not normalized_kpis or _normalize_match_value(metric) in normalized_kpis
+        if _normalize_match_value(metric) in normalized_kpis
     ]
 
 
@@ -538,9 +522,8 @@ def _relation_candidates(
     profiles: Sequence[DeviceCapabilityProfile],
 ) -> List[CapabilityCandidate]:
     """在结构化子网或原问题明确关系方向时补充关系候选。"""
-    text = context.question
-    if not context.subnet and not any(
-        word in text for word in ("下", "相连", "父", "子", "所属")
+    if not context.subnet and not _contains_any(
+        context.question, ("下", "相连", "父", "子", "所属")
     ):
         return []
     return _special_candidates(
@@ -582,16 +565,14 @@ def _matched_special_device_types(
 ) -> List[str]:
     """返回能够通过标准类型或设备能力卡别名命中特殊能力的原始设备类型。"""
     supported_set = _normalized_set(supported)
-    return [
-        value
-        for value in values
-        if _normalize_match_value(value) in supported_set
-        or any(
-            profile.matches(value)
-            and supported_set.intersection(_normalized_set(profile.device_types))
-            for profile in profiles
-        )
-    ]
+    matched = []
+    for value in values:
+        if _normalize_match_value(value) in supported_set:
+            matched.append(value)
+            continue
+        if _profile_alias_supported(value, supported_set, profiles):
+            matched.append(value)
+    return matched
 
 
 def _rank_candidate(
@@ -623,28 +604,19 @@ def _metadata_matches(
     metadata_tables: Sequence[MetadataTable],
 ) -> bool:
     """判断候选表提示是否命中逻辑表名、表描述或字段描述。"""
-    flattened = _normalize_match_value(
-        " ".join(
-            list(table_names)
-            + [
-                text
-                for table in metadata_tables
-                for text in (table.table_name, table.table_description)
-                if text
-            ]
-            + [
-                text
-                for table in metadata_tables
-                for column in table.columns
-                for text in (column.column_name, column.column_description)
-                if text
-            ]
-        )
-    )
-    return any(
-        normalized_hint and normalized_hint in flattened
-        for normalized_hint in (_normalize_match_value(hint) for hint in hints)
-    )
+    metadata_texts = list(table_names)
+    for table in metadata_tables:
+        _append_nonempty(metadata_texts, table.table_name)
+        _append_nonempty(metadata_texts, table.table_description)
+        for column in table.columns:
+            _append_nonempty(metadata_texts, column.column_name)
+            _append_nonempty(metadata_texts, column.column_description)
+    flattened = _normalize_match_value(" ".join(metadata_texts))
+    for hint in hints:
+        normalized_hint = _normalize_match_value(hint)
+        if normalized_hint and normalized_hint in flattened:
+            return True
+    return False
 
 
 def _select_diverse(
@@ -672,11 +644,13 @@ def _select_diverse(
 
 def _locators_compatible(context: RecommendationContext, locators: Sequence[str]) -> bool:
     """忽略大小写判断仍有效的定位参数是否被设备规格支持。"""
-    identifier_types = _normalized_set(
-        item.id_type for item in context.devices if item.device_id
-    )
-    return not identifier_types or bool(
-        identifier_types.intersection(_normalized_set(locators))
+    identifier_types = []
+    for item in context.devices:
+        if item.device_id:
+            identifier_types.append(item.id_type)
+    normalized_identifier_types = _normalized_set(identifier_types)
+    return not normalized_identifier_types or bool(
+        normalized_identifier_types.intersection(_normalized_set(locators))
     )
 
 
@@ -711,6 +685,97 @@ def _device_conditions_for_types(device_types: Iterable[str]) -> List[DeviceCond
             seen.add(normalized)
             result.append(DeviceCondition(device_type=text))
     return result
+
+
+def _profile_device_terms(
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> List[str]:
+    """按能力卡顺序展开所有标准设备类型和别名。"""
+    terms = []
+    for profile in profiles:
+        terms.extend(profile.device_types)
+        terms.extend(profile.aliases)
+    return terms
+
+
+def _profile_standard_device_types(
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> List[str]:
+    """按能力卡顺序展开所有标准设备类型。"""
+    device_types = []
+    for profile in profiles:
+        device_types.extend(profile.device_types)
+    return device_types
+
+
+def _profile_ids(profiles: Sequence[DeviceCapabilityProfile]) -> set:
+    """返回能力卡标识集合。"""
+    return {profile.profile_id for profile in profiles}
+
+
+def _contains_capability_type(
+    candidates: Sequence[CapabilityCandidate],
+    capability_type: str,
+) -> bool:
+    """判断候选列表是否包含指定能力骨架。"""
+    for candidate in candidates:
+        if candidate.capability_type == capability_type:
+            return True
+    return False
+
+
+def _profile_matches_any(
+    profile: DeviceCapabilityProfile,
+    device_types: Sequence[str],
+) -> bool:
+    """判断设备能力卡是否命中任一设备类型。"""
+    for device_type in device_types:
+        if profile.matches(device_type):
+            return True
+    return False
+
+
+def _profile_has_matching_subcomponent(
+    profile: DeviceCapabilityProfile,
+    subcomponent_types: Sequence[str],
+) -> bool:
+    """判断设备能力卡是否包含任一匹配的子部件。"""
+    for spec in profile.subcomponents:
+        if _subcomponent_matches_any(spec, subcomponent_types):
+            return True
+    return False
+
+
+def _subcomponent_matches_any(
+    spec: SubcomponentCapabilitySpec,
+    subcomponent_types: Sequence[str],
+) -> bool:
+    """判断子部件能力是否命中任一子部件类型。"""
+    for subcomponent_type in subcomponent_types:
+        if spec.matches(subcomponent_type):
+            return True
+    return False
+
+
+def _profile_alias_supported(
+    value: str,
+    supported: set,
+    profiles: Sequence[DeviceCapabilityProfile],
+) -> bool:
+    """判断设备别名是否能够映射到特殊能力支持的标准设备类型。"""
+    for profile in profiles:
+        if not profile.matches(value):
+            continue
+        profile_types = _normalized_set(profile.device_types)
+        if supported.intersection(profile_types):
+            return True
+    return False
+
+
+def _append_nonempty(values: List[str], value: str) -> None:
+    """将非空文本追加到元数据匹配文本列表。"""
+    if value:
+        values.append(value)
 
 
 def _examples_for_type(examples: Sequence[str], capability_type: str) -> List[str]:
@@ -770,10 +835,11 @@ def _slug(values: Sequence[str]) -> str:
 def _contains_any(text: str, values: Sequence[str]) -> bool:
     """忽略大小写判断文本是否包含任一非空能力卡字段值。"""
     normalized_text = _normalize_match_value(text)
-    return any(
-        normalized_value and normalized_value in normalized_text
-        for normalized_value in (_normalize_match_value(value) for value in values)
-    )
+    for value in values:
+        normalized_value = _normalize_match_value(value)
+        if normalized_value and normalized_value in normalized_text:
+            return True
+    return False
 
 
 def _profiles_matching_text(
@@ -782,22 +848,14 @@ def _profiles_matching_text(
 ) -> List[DeviceCapabilityProfile]:
     """按文本中未被更长对象词覆盖的设备类型或别名匹配能力卡。"""
     matched_terms = _normalized_set(
-        _specific_terms_in_text(
-            text,
-            [
-                term
-                for profile in profiles
-                for term in profile.device_types + profile.aliases
-            ],
-        )
+        _specific_terms_in_text(text, _profile_device_terms(profiles))
     )
-    return [
-        profile
-        for profile in profiles
-        if matched_terms.intersection(
-            _normalized_set(profile.device_types + profile.aliases)
-        )
-    ]
+    matched_profiles = []
+    for profile in profiles:
+        profile_terms = _normalized_set(profile.device_types + profile.aliases)
+        if matched_terms.intersection(profile_terms):
+            matched_profiles.append(profile)
+    return matched_profiles
 
 
 def _profiles_matching_question_direction(
@@ -805,18 +863,19 @@ def _profiles_matching_question_direction(
     profiles: Sequence[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
     """按原问题中能力卡已有的业务域、设备类型或别名匹配设备规格。"""
-    object_profile_ids = {
-        profile.profile_id for profile in _profiles_matching_text(text, profiles)
-    }
+    object_profile_ids = _profile_ids(_profiles_matching_text(text, profiles))
+    profile_domains = [profile.domain for profile in profiles]
     matched_domains = _normalized_set(
-        _specific_terms_in_text(text, [profile.domain for profile in profiles])
+        _specific_terms_in_text(text, profile_domains)
     )
-    return [
-        profile
-        for profile in profiles
-        if profile.profile_id in object_profile_ids
-        or _normalize_match_value(profile.domain) in matched_domains
-    ]
+    matched_profiles = []
+    for profile in profiles:
+        if profile.profile_id in object_profile_ids:
+            matched_profiles.append(profile)
+            continue
+        if _normalize_match_value(profile.domain) in matched_domains:
+            matched_profiles.append(profile)
+    return matched_profiles
 
 
 def _subcomponents_matching_text(
@@ -824,23 +883,21 @@ def _subcomponents_matching_text(
     profiles: Sequence[DeviceCapabilityProfile],
 ) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
     """按原问题中能力卡已有的子部件类型或别名匹配父设备与子部件规格。"""
+    subcomponent_terms = []
+    for profile in profiles:
+        for spec in profile.subcomponents:
+            subcomponent_terms.extend(spec.types)
+            subcomponent_terms.extend(spec.aliases)
     matched_terms = _normalized_set(
-        _specific_terms_in_text(
-            text,
-            [
-                value
-                for profile in profiles
-                for spec in profile.subcomponents
-                for value in spec.types + spec.aliases
-            ],
-        )
+        _specific_terms_in_text(text, subcomponent_terms)
     )
-    return [
-        (profile, spec)
-        for profile in profiles
-        for spec in profile.subcomponents
-        if matched_terms.intersection(_normalized_set(spec.types + spec.aliases))
-    ]
+    matched_subcomponents = []
+    for profile in profiles:
+        for spec in profile.subcomponents:
+            spec_terms = _normalized_set(spec.types + spec.aliases)
+            if matched_terms.intersection(spec_terms):
+                matched_subcomponents.append((profile, spec))
+    return matched_subcomponents
 
 
 def _dedupe_profiles(
@@ -873,16 +930,26 @@ def _specific_terms_in_text(text: str, terms: Sequence[str]) -> List[str]:
 
     result: List[str] = []
     for term, start, end in matches:
-        if any(
-            other_start <= start
-            and other_end >= end
-            and len(other) > len(term)
-            for other, other_start, other_end in matches
-        ):
+        if _is_covered_by_longer_term(term, start, end, matches):
             continue
         if term not in result:
             result.append(term)
     return result
+
+
+def _is_covered_by_longer_term(
+    term: str,
+    start: int,
+    end: int,
+    matches: Sequence[Tuple[str, int, int]],
+) -> bool:
+    """判断对象词是否被同位置范围内更长的对象词完整覆盖。"""
+    for other, other_start, other_end in matches:
+        if other_start > start or other_end < end:
+            continue
+        if len(other) > len(term):
+            return True
+    return False
 
 
 def _normalize_match_value(value: Any) -> str:
@@ -892,11 +959,12 @@ def _normalize_match_value(value: Any) -> str:
 
 def _normalized_set(values: Iterable[Any]) -> set:
     """返回去除空值并忽略大小写的能力卡字段集合。"""
-    return {
-        normalized
-        for normalized in (_normalize_match_value(value) for value in values)
-        if normalized
-    }
+    result = set()
+    for value in values:
+        normalized = _normalize_match_value(value)
+        if normalized:
+            result.add(normalized)
+    return result
 
 
 def _has_overlap(left: Iterable[Any], right: Iterable[Any]) -> bool:
