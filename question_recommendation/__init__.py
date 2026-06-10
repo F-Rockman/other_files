@@ -18,8 +18,8 @@ from .metadata_loader import LogicalMetadataError, load_logical_metadata
 from .models import (
     AlarmCondition,
     CapabilityCandidate,
+    DeviceCondition,
     DeviceCapabilityProfile,
-    Identifier,
     MetadataColumn,
     MetadataTable,
     RecommendationContext,
@@ -39,7 +39,7 @@ __all__ = [
     "QUESTION_RECOMMENDATION_PROMPT",
     "QUESTION_RECOMMENDATION_SYSTEM_PROMPT",
     "QUESTION_RECOMMENDATION_USER_TEMPLATE",
-    "Identifier",
+    "DeviceCondition",
     "AlarmCondition",
     "SubnetScope",
     "RecommendationContext",

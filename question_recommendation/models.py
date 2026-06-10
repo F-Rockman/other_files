@@ -48,34 +48,47 @@ def _casefold_text(value: Any) -> str:
 
 
 @dataclass
-class Identifier:
+class DeviceCondition:
     """
-    可继续继承到推荐问题中的对象定位条件。
+    上游识别出的单个设备条件。
+
+    四个字段保持与上游设备结构同构，使定位值、定位方式和设备类型始终保持
+    对应关系。定位值失效时可以清空定位信息，同时继续保留已识别的设备类型。
 
     Attributes:
-        value: IP、MAC、名称或其他定位值。
+        device_id: 设备名称、IP、MAC 或其他具体定位值。
         id_type: 定位值类型，推荐使用 IP、MAC、NAME、OTHER。
         match_mode: 匹配模式，推荐使用 EXACT、PREFIX、SUFFIX、FUZZY。
+        device_type: 该定位条件对应的原始设备类型。
     """
 
-    value: str = ""
+    device_id: str = ""
     id_type: str = ""
     match_mode: str = ""
+    device_type: str = ""
+
+    def __post_init__(self) -> None:
+        """统一清理设备条件文本，并规范定位类型与匹配模式大小写。"""
+        self.device_id = str(self.device_id or "").strip()
+        self.id_type = str(self.id_type or "").strip().upper()
+        self.match_mode = str(self.match_mode or "").strip().upper()
+        self.device_type = str(self.device_type or "").strip()
 
     @classmethod
-    def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "Identifier":
-        """从兼容字典构造定位条件，并统一标识类型与匹配模式的大小写。"""
+    def from_dict(cls, data: Optional[Mapping[str, Any]]) -> "DeviceCondition":
+        """从新设备结构构造条件，并统一标识类型与匹配模式的大小写。"""
         if isinstance(data, cls):
             return data
-        data = data or {}
+        data = data if isinstance(data, Mapping) else {}
         return cls(
-            value=str(data.get("value", data.get("device_id", "")) or "").strip(),
+            device_id=str(data.get("device_id", "") or "").strip(),
             id_type=str(data.get("id_type", "") or "").strip().upper(),
             match_mode=str(data.get("match_mode", "") or "").strip().upper(),
+            device_type=str(data.get("device_type", "") or "").strip(),
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """将定位条件转换为不包含空字段的字典。"""
+        """按上游字段名将设备条件转换为不包含空字段的字典。"""
         return _compact_dict(asdict(self))
 
 
@@ -149,9 +162,8 @@ class RecommendationContext:
     Attributes:
         intention: 查信息、查告警、查指标或查链路，用于能力过滤和排序。
         question: 用户原始问题，仅用于保持推荐方向和自然表达。
-        device_types: 明确设备类型，用于匹配设备对象和限定子部件父对象。
+        devices: 保留定位值、定位方式与设备类型对应关系的设备条件。
         subcomponent_types: 接口、光模块等子部件类型，存在时作为主要查询对象。
-        identifiers: 仍然有效、允许继承的对象定位条件。
         subnet: 仍然有效、允许继承的子网范围，不改变主要查询对象。
         properties: 用户查询的属性名称。
         kpis: 用户查询的性能指标名称。
@@ -167,9 +179,8 @@ class RecommendationContext:
 
     intention: str = ""
     question: str = ""
-    device_types: List[str] = field(default_factory=list)
+    devices: List[DeviceCondition] = field(default_factory=list)
     subcomponent_types: List[str] = field(default_factory=list)
-    identifiers: List[Identifier] = field(default_factory=list)
     subnet: Optional[SubnetScope] = None
     properties: List[str] = field(default_factory=list)
     kpis: List[str] = field(default_factory=list)
@@ -196,18 +207,22 @@ class RecommendationContext:
 
         known = _known_fields(cls)
         kwargs = {key: value for key, value in data.items() if key in known}
-        kwargs["device_types"] = _as_list(kwargs.get("device_types"))
         kwargs["subcomponent_types"] = _as_list(kwargs.get("subcomponent_types"))
         kwargs["properties"] = _as_list(kwargs.get("properties"))
         kwargs["kpis"] = _as_list(kwargs.get("kpis"))
         kwargs["aggregations"] = _as_list(kwargs.get("aggregations"))
         kwargs["tables"] = _as_list(kwargs.get("tables"))
         kwargs["invalid_values"] = _as_list(kwargs.get("invalid_values"))
-        kwargs["identifiers"] = [
-            Identifier.from_dict(item)
-            for item in kwargs.get("identifiers", [])
-            if isinstance(item, (Identifier, Mapping))
-        ]
+        raw_devices = kwargs.get("devices")
+        parsed_devices: List[DeviceCondition] = []
+        if isinstance(raw_devices, (list, tuple)):
+            for item in raw_devices:
+                if not isinstance(item, (DeviceCondition, Mapping)):
+                    continue
+                condition = DeviceCondition.from_dict(item)
+                if condition.device_id or condition.device_type:
+                    parsed_devices.append(condition)
+        kwargs["devices"] = parsed_devices
         kwargs["subnet"] = SubnetScope.from_dict(kwargs.get("subnet"))
         kwargs["alarm"] = AlarmCondition.from_dict(kwargs.get("alarm"))
         for key in (
@@ -229,6 +244,13 @@ class RecommendationContext:
     def to_dict(self) -> Dict[str, Any]:
         """将推荐上下文转换为不包含空字段的字典。"""
         data = asdict(self)
+        data["devices"] = []
+        for item in self.devices:
+            compact_device = item.to_dict()
+            if compact_device:
+                data["devices"].append(compact_device)
+        data["subnet"] = self.subnet.to_dict() if self.subnet else None
+        data["alarm"] = self.alarm.to_dict() if self.alarm else None
         return _compact_dict(data)
 
     def to_json(self) -> str:

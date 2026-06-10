@@ -5,7 +5,7 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 from query_errors import ErrorInfo
 
-from .models import AlarmCondition, Identifier, RecommendationContext, SubnetScope
+from .models import AlarmCondition, DeviceCondition, RecommendationContext, SubnetScope
 from .refusal_rules import (
     ALL_DEVICE_IDENTIFIERS,
     ALL_KPIS,
@@ -51,17 +51,13 @@ def build_recommendation_context(
         _string_list(data.get("kpis")),
     )
 
-    identifiers = []
+    device_conditions = []
     for item in devices:
-        identifier = Identifier.from_dict(
-            {
-                "value": item.get("device_id"),
-                "id_type": item.get("id_type"),
-                "match_mode": item.get("match_mode"),
-            }
-        )
-        if identifier.value and identifier.value not in invalid_values:
-            identifiers.append(identifier)
+        condition = DeviceCondition.from_dict(item)
+        if condition.device_id in invalid_values:
+            condition = DeviceCondition(device_type=condition.device_type)
+        if condition.device_id or condition.device_type:
+            device_conditions.append(condition)
 
     time_value = data.get("time")
     time_text = (
@@ -74,9 +70,8 @@ def build_recommendation_context(
     return RecommendationContext(
         intention=str(data.get("intention", "") or "").strip(),
         question=str(data.get("question", "") or "").strip(),
-        device_types=_dedupe(item.get("device_type") for item in devices),
+        devices=device_conditions,
         subcomponent_types=_dedupe(item.get("subcomponent_type") for item in subcomponents),
-        identifiers=identifiers,
         subnet=SubnetScope.from_dict(data.get("subnet")),
         properties=_string_list(data.get("properties")),
         kpis=kpis,

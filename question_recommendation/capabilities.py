@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .models import (
     CapabilityCandidate,
+    DeviceCondition,
     DeviceCapabilityProfile,
     MetadataTable,
     RecommendationContext,
@@ -177,7 +178,7 @@ def _empty_intention_basic_candidates(
             ]
         special_context = RecommendationContext(
             question=context.question,
-            device_types=matched_device_values,
+            devices=_device_conditions_for_types(matched_device_values),
             subcomponent_types=[
                 object_type
                 for spec in matched_special
@@ -237,7 +238,7 @@ def _recovery_question_direction_candidates(
     """
     if (
         not context.recovery_strategy
-        or context.device_types
+        or _context_device_types(context)
         or context.subcomponent_types
         or not context.question
     ):
@@ -262,11 +263,11 @@ def _recovery_question_direction_candidates(
 
     direction_context = replace(
         context,
-        device_types=[
+        devices=_device_conditions_for_types(
             device_type
             for profile in matched_profiles
             for device_type in profile.device_types
-        ],
+        ),
         subcomponent_types=[
             subcomponent_type
             for _, spec in matched_subcomponents
@@ -310,11 +311,12 @@ def _matching_profiles(
     profiles: Sequence[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
     """按明确设备类型或子部件对象过滤设备规格。"""
-    if context.device_types:
+    device_types = _context_device_types(context)
+    if device_types:
         return [
             profile
             for profile in profiles
-            if any(profile.matches(item) for item in context.device_types)
+            if any(profile.matches(item) for item in device_types)
         ]
     if context.subcomponent_types:
         return [
@@ -513,7 +515,7 @@ def _special_candidates(
         ) or not _special_matches_context(spec, context, profiles):
             continue
         matched_device_types = _matched_special_device_types(
-            context.device_types, spec.device_types, profiles
+            _context_device_types(context), spec.device_types, profiles
         )
         result.append(
             CapabilityCandidate(
@@ -552,10 +554,11 @@ def _special_matches_context(
     profiles: Sequence[DeviceCapabilityProfile],
 ) -> bool:
     """判断特殊能力是否与当前设备、对象和问题文本相关。"""
+    device_types = _context_device_types(context)
     matched_device_types = _matched_special_device_types(
-        context.device_types, spec.device_types, profiles
+        device_types, spec.device_types, profiles
     )
-    if spec.device_types and context.device_types:
+    if spec.device_types and device_types:
         if not matched_device_types:
             return False
     if spec.objects and context.subcomponent_types:
@@ -601,7 +604,7 @@ def _rank_candidate(
     primary_type = resolve_primary_capability_type(context)
     if _values_equal(candidate.capability_type, primary_type):
         score += 160
-    if _has_overlap(context.device_types, candidate.device_types):
+    if _has_overlap(_context_device_types(context), candidate.device_types):
         score += 120
     if _has_overlap(context.subcomponent_types, candidate.subcomponent_types):
         score += 100
@@ -669,7 +672,9 @@ def _select_diverse(
 
 def _locators_compatible(context: RecommendationContext, locators: Sequence[str]) -> bool:
     """忽略大小写判断仍有效的定位参数是否被设备规格支持。"""
-    identifier_types = _normalized_set(item.id_type for item in context.identifiers)
+    identifier_types = _normalized_set(
+        item.id_type for item in context.devices if item.device_id
+    )
     return not identifier_types or bool(
         identifier_types.intersection(_normalized_set(locators))
     )
@@ -678,8 +683,34 @@ def _locators_compatible(context: RecommendationContext, locators: Sequence[str]
 def _is_subnet_context(context: RecommendationContext) -> bool:
     """判断上下文是否明确查询子网资源。"""
     return _normalize_match_value("子网") in _normalized_set(
-        context.device_types + context.subcomponent_types
+        _context_device_types(context) + context.subcomponent_types
     )
+
+
+def _context_device_types(context: RecommendationContext) -> List[str]:
+    """从设备条件实时派生去重后的原始设备类型，并保持首次出现顺序。"""
+    result: List[str] = []
+    seen = set()
+    for condition in context.devices:
+        device_type = str(condition.device_type or "").strip()
+        normalized = _normalize_match_value(device_type)
+        if device_type and normalized not in seen:
+            seen.add(normalized)
+            result.append(device_type)
+    return result
+
+
+def _device_conditions_for_types(device_types: Iterable[str]) -> List[DeviceCondition]:
+    """将内部识别出的设备类型方向转换为不带定位值的设备条件。"""
+    result: List[DeviceCondition] = []
+    seen = set()
+    for device_type in device_types:
+        text = str(device_type or "").strip()
+        normalized = _normalize_match_value(text)
+        if text and normalized not in seen:
+            seen.add(normalized)
+            result.append(DeviceCondition(device_type=text))
+    return result
 
 
 def _examples_for_type(examples: Sequence[str], capability_type: str) -> List[str]:

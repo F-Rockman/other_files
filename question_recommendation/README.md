@@ -86,9 +86,8 @@ result = recommend_questions_chat(
 |---|---|
 | `intention` | 路由查信息、查指标、查告警或查链路能力 |
 | `question` | 保持原查询方向和自然表达 |
-| `device_types` | 硬过滤设备规格；精确命中候选标准类型时额外加分 |
+| `devices` | 逐项保存设备定位条件及其原始设备类型；运行时派生设备类型和有效定位方式 |
 | `subcomponent_types` | 硬过滤子部件规格；精确命中候选标准类型时额外加分 |
-| `identifiers` | 仍有效、允许继承的定位值；主候选要求定位类型与能力卡兼容 |
 | `subnet` | 有效子网范围；必须由延续原对象的推荐继承，但不改变主路由或分数 |
 | `properties` | 属性命中时加分；属性未命中不扣分、不屏蔽候选 |
 | `kpis` | KPI 名称匹配；指定 KPI 未命中时屏蔽对应指标候选 |
@@ -100,13 +99,20 @@ result = recommend_questions_chat(
 | `refusal_message` / `refusal_detail` | 辅助生成用户友好说明 |
 | `invalid_values` | 已确认无效、禁止推荐问题继承的值 |
 
-`Identifier` 包含：
+`DeviceCondition` 与上游 `devices[]` 同构：
 
 | 字段 | 含义 |
 |---|---|
-| `value` | 实际定位值，例如 IP、名称或 MAC |
+| `device_id` | 实际定位值，例如 IP、名称或 MAC；不会改写为 `value` |
 | `id_type` | 定位类型，例如 `IP`、`NAME`、`MAC`、`OTHER` |
 | `match_mode` | 匹配方式，例如 `EXACT`、`PREFIX`、`SUFFIX`、`FUZZY`；当前不参与能力过滤和打分 |
+| `device_type` | 该定位条件对应的原始设备类型，始终与本条定位值绑定 |
+
+设备类型不再单独存储。推荐器在召回时从所有非空 `devices[].device_type` 实时去重派生，
+定位方式只从仍有非空 `device_id` 的设备条件派生。设备定位值失效时，会清空该条件的
+`device_id / id_type / match_mode`，但保留 `device_type`，使推荐仍能围绕已识别类型生成。
+这是破坏性结构升级：`RecommendationContext.from_dict()` 不再读取旧 `identifiers`、
+顶层 `device_types` 或 `value` 字段。
 
 `SubnetScope` 包含：
 
@@ -118,7 +124,7 @@ result = recommend_questions_chat(
 子网范围与子网查询对象是两件事：
 
 - `subnet={"path": "根子网", "name": "127网段"}` 表示设备或子部件查询的有效范围。
-- `device_types=["子网"]` 或 `subcomponent_types=["子网"]` 表示查询对象本身是子网。
+- `devices=[{"device_type": "子网"}]` 或 `subcomponent_types=["子网"]` 表示查询对象本身是子网。
 - 子网范围不会写入设备类型、子部件类型或定位条件，也不会把设备查询改路由成子网查询。
 - 子网不属于网络业务域，是可包含网络、存储、服务器、PON、无线和终端对象的跨领域
   资源范围。
@@ -165,6 +171,24 @@ result = recommend_questions_chat(
 方向体现差异。当 `recovery_strategy` 为非空字符串时，形态仍有效则继续保留；只有失败
 说明明确表明该形态或必要条件不适合继续使用时，恢复策略才优先。未明确形态时完全沿用
 现有主路由、相邻候选和推荐多样性逻辑。
+
+### 多定位备选条件
+
+`devices[]` 保留每个定位条件与设备类型的对应关系。非链路查询处于 `disambiguate`
+恢复策略、至少有两个有效设备定位条件，且原问题明确使用“或”“或者”或独立英文 `OR`
+表达备选关系时，LLM 会将条件拆成独立推荐：
+
+```text
+查询 IP 为 A 或名称包含 B 的网络设备
+→ 查询 IP 为 A 的网络设备列表
+→ 查询名称包含 B 的网络设备列表
+→ 查询 IP 为 A 的网络设备数量
+```
+
+每条推荐最多继承一个完整 `DeviceCondition`，不得重新组合不同条件。原问题明确列表或
+数量时继续保持对应形态。`intention == "查链路"` 时永远不执行该拆分；`link_relation`
+属于链路语义，不进入 `RecommendationContext`，也不用于判断普通多设备条件是否为
+备选关系。
 
 ## 能力卡字段
 
@@ -268,8 +292,8 @@ result = recommend_questions_chat(
 
 ### 设备和父子对象过滤
 
-1. `context.device_types` 非空时，只保留 `device_types` 或 `aliases` 忽略大小写精确命中的
-   设备能力卡。
+1. 从 `context.devices[].device_type` 派生的设备类型非空时，只保留 `device_types` 或
+   `aliases` 忽略大小写精确命中的设备能力卡。
 2. 没有设备类型但存在 `subcomponent_types` 时，只保留包含该子部件标准类型或别名的设备
    能力卡，因此多领域光模块等场景可以同时保留多个父设备领域。
 3. 设备类型和子部件类型都为空时，保留全部设备能力卡。
@@ -278,8 +302,8 @@ result = recommend_questions_chat(
 
 ### 定位方式过滤
 
-主候选存在有效 `identifiers` 时，至少一个 `Identifier.id_type` 必须出现在能力卡
-`locators` 中，否则主候选被过滤。没有定位条件时不执行定位过滤。
+主候选存在 `device_id` 非空的设备条件时，至少一个对应 `DeviceCondition.id_type` 必须
+出现在能力卡 `locators` 中，否则主候选被过滤。没有有效定位值时不执行定位过滤。
 
 相邻候选用于提供低成本回退方向，会放宽定位方式过滤；这使定位值不兼容时仍可推荐
 同对象列表或数量问题。
@@ -329,7 +353,7 @@ match_score =
 |---|---|
 | 基础 `priority` | 设备候选使用设备 priority；子部件候选使用设备与子部件 priority 之和；特殊能力使用自身 priority |
 | 主骨架 `+160` | 候选 `capability_type` 等于 `resolve_primary_capability_type(context)` |
-| 设备对象 `+120` | `context.device_types` 与候选标准 `device_types` 存在忽略大小写的精确交集 |
+| 设备对象 `+120` | 从 `context.devices[].device_type` 派生的类型与候选标准 `device_types` 存在忽略大小写的精确交集 |
 | 子部件对象 `+100` | `context.subcomponent_types` 与候选标准 `subcomponent_types` 存在忽略大小写的精确交集 |
 | KPI `+60` | 上下文存在 KPI，且与候选 `metrics` 存在忽略大小写的精确交集 |
 | 属性 `+40` | 上下文存在属性，且与候选 `properties` 存在忽略大小写的精确交集 |
@@ -403,7 +427,7 @@ match_score =
 {
   "intention": "查信息",
   "question": "查询根子网下127网段的存储设备列表",
-  "device_types": ["存储设备"],
+  "devices": [{"device_type": "存储设备"}],
   "subnet": {
     "path": "根子网",
     "name": "127网段"
@@ -454,7 +478,7 @@ for item in ranked:
 
 ### 拒答场景的问题方向收敛
 
-当 `recovery_strategy` 非空，且结构化上下文没有 `device_types` 和
+当 `recovery_strategy` 非空，且结构化上下文没有非空 `devices[].device_type` 和
 `subcomponent_types` 时，推荐器会从原始 `question` 中补充业务方向：
 
 - 匹配词只来自能力卡已有的 `domain`、设备类型与别名、子部件类型与别名，匹配时忽略

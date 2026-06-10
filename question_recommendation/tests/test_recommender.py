@@ -18,7 +18,7 @@ from question_recommendation import (
     SUBCOMPONENT_COUNT,
     SUBCOMPONENT_INFO,
     SUBCOMPONENT_METRIC,
-    Identifier,
+    DeviceCondition,
     LogicalMetadataError,
     MetadataColumn,
     MetadataTable,
@@ -40,7 +40,7 @@ def _network_interface_context(**overrides):
     data = {
         "intention": "查信息",
         "question": "查询网络设备接口",
-        "device_types": ["网络设备"],
+        "devices": [{"device_type": "网络设备"}],
         "subcomponent_types": ["接口"],
     }
     data.update(overrides)
@@ -77,11 +77,12 @@ def test_build_context_keeps_only_consumed_fields():
     )
 
     assert context.intention == "查指标"
-    assert context.device_types == ["网络设备"]
-    assert context.identifiers[0].to_dict() == {
-        "value": "10.1",
+    assert [item.device_type for item in context.devices if item.device_type] == ["网络设备"]
+    assert context.devices[0].to_dict() == {
+        "device_id": "10.1",
         "id_type": "IP",
         "match_mode": "PREFIX",
+        "device_type": "网络设备",
     }
     assert context.aggregations == ["avg", "count_distinct", "top_n"]
     assert context.recovery_strategy == "disambiguate"
@@ -114,13 +115,98 @@ def test_build_context_ignores_subcomponent_name():
 
 def test_context_json_round_trip():
     original = _network_interface_context(
-        identifiers=[{"value": "10.0.0.1", "id_type": "IP", "match_mode": "EXACT"}],
+        devices=[
+            {
+                "device_id": "10.0.0.1",
+                "id_type": "IP",
+                "match_mode": "EXACT",
+                "device_type": "网络设备",
+            }
+        ],
         subnet={"path": "根子网", "name": "127网段"},
         aggregations=["count"],
     )
     restored = RecommendationContext.from_json(original.to_json())
     assert restored.to_dict() == original.to_dict()
     assert restored.subnet == SubnetScope(path="根子网", name="127网段")
+
+
+def test_context_only_accepts_new_device_structure_and_preserves_order():
+    context = RecommendationContext.from_dict(
+        {
+            "devices": [
+                {
+                    "device_id": "10.0.0.1",
+                    "id_type": "ip",
+                    "match_mode": "exact",
+                    "device_type": "网络设备",
+                },
+                {
+                    "device_id": "server-a",
+                    "id_type": "name",
+                    "match_mode": "fuzzy",
+                    "device_type": "服务器",
+                },
+                {"value": "legacy-inside-devices", "id_type": "NAME"},
+            ],
+            "identifiers": [{"value": "legacy", "id_type": "NAME"}],
+            "device_types": ["旧设备类型"],
+        }
+    )
+
+    assert [item.to_dict() for item in context.devices] == [
+        {
+            "device_id": "10.0.0.1",
+            "id_type": "IP",
+            "match_mode": "EXACT",
+            "device_type": "网络设备",
+        },
+        {
+            "device_id": "server-a",
+            "id_type": "NAME",
+            "match_mode": "FUZZY",
+            "device_type": "服务器",
+        },
+    ]
+    assert "identifiers" not in context.to_dict()
+    assert "device_types" not in context.to_dict()
+    assert "value" not in context.to_json()
+
+
+def test_build_context_preserves_each_device_type_relationship():
+    context = build_recommendation_context(
+        {
+            "devices": [
+                {
+                    "device_id": "10.0.0.1",
+                    "id_type": "IP",
+                    "match_mode": "EXACT",
+                    "device_type": "网络设备",
+                },
+                {
+                    "device_id": "server",
+                    "id_type": "NAME",
+                    "match_mode": "PREFIX",
+                    "device_type": "服务器",
+                },
+            ]
+        }
+    )
+
+    assert [item.to_dict() for item in context.devices] == [
+        {
+            "device_id": "10.0.0.1",
+            "id_type": "IP",
+            "match_mode": "EXACT",
+            "device_type": "网络设备",
+        },
+        {
+            "device_id": "server",
+            "id_type": "NAME",
+            "match_mode": "PREFIX",
+            "device_type": "服务器",
+        },
+    ]
 
 
 def test_invalid_device_identifier_is_removed():
@@ -147,7 +233,7 @@ def test_invalid_device_identifier_is_removed():
         "device-a",
         "00:11:22:33:44:55",
     ]
-    assert context.identifiers == []
+    assert context.devices == [DeviceCondition(device_type="网络设备")]
 
 
 def test_object_location_failure_removes_identifier_even_if_reason_omits_value():
@@ -166,7 +252,7 @@ def test_object_location_failure_removes_identifier_even_if_reason_omits_value()
         llm_refuse_message="设备不存在",
     )
     assert context.invalid_values == ["device-a"]
-    assert context.identifiers == []
+    assert context.devices == [DeviceCondition(device_type="网络设备")]
 
 
 def test_multi_device_prefix_is_not_invalidated():
@@ -186,7 +272,7 @@ def test_multi_device_prefix_is_not_invalidated():
     )
     assert context.recovery_strategy == "disambiguate"
     assert context.invalid_values == []
-    assert context.identifiers[0].value == "10.1"
+    assert context.devices[0].device_id == "10.1"
 
 
 def _candidate_ids(context, **kwargs):
@@ -290,7 +376,7 @@ def test_six_skeletons_route_by_intent_subcomponent_and_count(context, expected)
 def test_explicit_device_type_hard_filters_other_domains():
     context = RecommendationContext(
         intention="查信息",
-        device_types=["网络设备"],
+        devices=[DeviceCondition(device_type="网络设备")],
         subcomponent_types=["光模块"],
     )
     ids = _candidate_ids(context)
@@ -308,7 +394,7 @@ def test_missing_device_type_keeps_compatible_parent_domains():
 def test_unsupported_parent_child_relation_returns_no_candidate():
     context = RecommendationContext(
         intention="查信息",
-        device_types=["服务器"],
+        devices=[DeviceCondition(device_type="服务器")],
         subcomponent_types=["端口"],
     )
     assert recommend_capabilities(context) == []
@@ -318,14 +404,14 @@ def test_server_nic_and_network_port_are_separate_capabilities():
     server_ids = _candidate_ids(
         RecommendationContext(
             intention="查信息",
-            device_types=["服务器"],
+            devices=[DeviceCondition(device_type="服务器")],
             subcomponent_types=["网卡"],
         )
     )
     network_ids = _candidate_ids(
         RecommendationContext(
             intention="查信息",
-            device_types=["网络设备"],
+            devices=[DeviceCondition(device_type="网络设备")],
             subcomponent_types=["端口"],
         )
     )
@@ -346,7 +432,7 @@ def test_serial_number_is_property_but_not_locator():
 def test_storage_resources_use_subcomponent_skeleton(subcomponent):
     context = RecommendationContext(
         intention="查信息",
-        device_types=["存储设备"],
+        devices=[DeviceCondition(device_type="存储设备")],
         subcomponent_types=[subcomponent],
     )
     assert resolve_primary_capability_type(context) == SUBCOMPONENT_INFO
@@ -359,14 +445,14 @@ def test_storage_resources_use_subcomponent_skeleton(subcomponent):
         RecommendationContext(
             intention="查指标",
             question="查询服务器风扇转速",
-            device_types=["服务器"],
+            devices=[DeviceCondition(device_type="服务器")],
             subcomponent_types=["风扇"],
             kpis=["风扇转速"],
         ),
         RecommendationContext(
             intention="查指标",
             question="查询服务器风扇转速平均值",
-            device_types=["服务器"],
+            devices=[DeviceCondition(device_type="服务器")],
             subcomponent_types=["风扇"],
             kpis=["风扇转速"],
             aggregations=["avg"],
@@ -374,13 +460,13 @@ def test_storage_resources_use_subcomponent_skeleton(subcomponent):
         RecommendationContext(
             intention="查指标",
             question="查询存储设备总容量趋势",
-            device_types=["存储设备"],
+            devices=[DeviceCondition(device_type="存储设备")],
             kpis=["总容量"],
         ),
         RecommendationContext(
             intention="查指标",
             question="查询CPU利用率最高的服务器",
-            device_types=["服务器"],
+            devices=[DeviceCondition(device_type="服务器")],
             kpis=["CPU利用率"],
             aggregations=["top_n"],
         ),
@@ -396,20 +482,20 @@ def test_metric_query_form_does_not_filter_named_metric(context):
 @pytest.mark.parametrize(
     ("context", "expected_id"),
     [
-        (RecommendationContext(intention="查告警", device_types=["服务器"]), "alarm_query"),
-        (RecommendationContext(intention="查链路", device_types=["网络设备"]), "network_link"),
+        (RecommendationContext(intention="查告警", devices=[DeviceCondition(device_type="服务器")]), "alarm_query"),
+        (RecommendationContext(intention="查链路", devices=[DeviceCondition(device_type="网络设备")]), "network_link"),
         (
             RecommendationContext(
                 intention="查信息",
                 question="查询OLT下的ONU",
-                device_types=["OLT"],
+                devices=[DeviceCondition(device_type="OLT")],
             ),
             "olt_onu_relation",
         ),
         (
             RecommendationContext(
                 intention="查信息",
-                device_types=["子网"],
+                devices=[DeviceCondition(device_type="子网")],
             ),
             "subnet_resource",
         ),
@@ -423,7 +509,7 @@ def test_subnet_scope_keeps_device_info_primary_and_adds_relation_candidate():
     context = RecommendationContext(
         intention="查信息",
         question="查询根子网下127网段的存储设备列表",
-        device_types=["存储设备"],
+        devices=[DeviceCondition(device_type="存储设备")],
         subnet=SubnetScope(path="根子网", name="127网段"),
     )
     ranked = recommend_capabilities(context)
@@ -438,12 +524,12 @@ def test_subnet_scope_does_not_change_device_candidate_score():
     without_subnet = RecommendationContext(
         intention="查信息",
         question="查询存储设备列表",
-        device_types=["存储设备"],
+        devices=[DeviceCondition(device_type="存储设备")],
     )
     with_subnet = RecommendationContext(
         intention="查信息",
         question="查询存储设备列表",
-        device_types=["存储设备"],
+        devices=[DeviceCondition(device_type="存储设备")],
         subnet=SubnetScope(path="根子网", name="127网段"),
     )
     without_ranked = recommend_capabilities(without_subnet)
@@ -468,7 +554,7 @@ def test_subnet_scope_adds_relation_without_changing_metric_primary():
     context = RecommendationContext(
         intention="查指标",
         question="查询根子网下127网段的存储设备CPU利用率",
-        device_types=["存储设备"],
+        devices=[DeviceCondition(device_type="存储设备")],
         subnet=SubnetScope(path="根子网", name="127网段"),
         kpis=["CPU利用率"],
     )
@@ -481,7 +567,7 @@ def test_subnet_scope_adds_relation_without_changing_metric_primary():
 def test_subnet_scope_does_not_add_incompatible_relation_candidate():
     context = RecommendationContext(
         intention="查信息",
-        device_types=["未知设备"],
+        devices=[DeviceCondition(device_type="未知设备")],
         subnet=SubnetScope(path="根子网", name="127网段"),
     )
     assert "subnet_relation" not in _candidate_ids(context)
@@ -499,7 +585,7 @@ def test_subnet_special_capabilities_have_no_fixed_domain():
     resource = next(
         item
         for item in recommend_capabilities(
-            RecommendationContext(intention="查信息", device_types=["子网"])
+            RecommendationContext(intention="查信息", devices=[DeviceCondition(device_type="子网")])
         )
         if item.candidate.capability_id == "subnet_resource"
     )
@@ -534,7 +620,7 @@ def test_subnet_special_capabilities_have_no_fixed_domain():
 def test_subnet_relation_supports_cross_domain_device_types_and_aliases(device_type):
     context = RecommendationContext(
         intention="查信息",
-        device_types=[device_type],
+        devices=[DeviceCondition(device_type=device_type)],
         subnet=SubnetScope(path="根子网", name="生产网"),
     )
     ranked = recommend_capabilities(context)
@@ -549,7 +635,7 @@ def test_subnet_relation_supports_cross_domain_device_types_and_aliases(device_t
 def test_unsupported_metric_filters_metric_candidate():
     context = RecommendationContext(
         intention="查指标",
-        device_types=["网络设备"],
+        devices=[DeviceCondition(device_type="网络设备")],
         subcomponent_types=["光模块"],
         kpis=["CPU利用率"],
     )
@@ -641,7 +727,7 @@ def test_recovery_question_direction_does_not_override_structured_object():
         RecommendationContext(
             intention="查信息",
             question="查询网络设备信息",
-            device_types=["服务器"],
+            devices=[DeviceCondition(device_type="服务器")],
             recovery_strategy="disambiguate",
         )
     )
@@ -688,7 +774,7 @@ def test_kpi_relaxation_is_limited_to_clarify_and_disambiguate():
 def test_capability_metric_matching_ignores_case_and_keeps_standard_name():
     context = RecommendationContext(
         intention="查指标",
-        device_types=["网络设备"],
+        devices=[DeviceCondition(device_type="网络设备")],
         kpis=["cpu利用率"],
     )
     metric = next(
@@ -701,16 +787,21 @@ def test_capability_metric_matching_ignores_case_and_keeps_standard_name():
 
 def test_capability_device_subcomponent_and_locator_matching_ignore_case():
     device_ids = _candidate_ids(
-        RecommendationContext(intention="查信息", device_types=["fitap"])
+        RecommendationContext(intention="查信息", devices=[DeviceCondition(device_type="fitap")])
     )
     assert "fitap:device_info" in device_ids
 
     subcomponent_ids = _candidate_ids(
         RecommendationContext(
             intention="查信息",
-            device_types=["存储设备"],
             subcomponent_types=["bbu"],
-            identifiers=[Identifier(value="10.0.0.1", id_type="ip")],
+            devices=[
+                DeviceCondition(
+                    device_id="10.0.0.1",
+                    id_type="ip",
+                    device_type="存储设备",
+                )
+            ],
         )
     )
     assert "storage_device:BBU:subcomponent_info" in subcomponent_ids
@@ -720,14 +811,14 @@ def test_property_match_adds_score_and_property_miss_does_not_filter():
     matched = recommend_capabilities(
         RecommendationContext(
             intention="查信息",
-            device_types=["网络设备"],
+            devices=[DeviceCondition(device_type="网络设备")],
             properties=["状态"],
         )
     )
     missed = recommend_capabilities(
         RecommendationContext(
             intention="查信息",
-            device_types=["网络设备"],
+            devices=[DeviceCondition(device_type="网络设备")],
             properties=["不存在属性"],
         )
     )
@@ -744,14 +835,14 @@ def test_capability_property_score_matching_ignores_case():
     upper = recommend_capabilities(
         RecommendationContext(
             intention="查信息",
-            device_types=["网络设备"],
+            devices=[DeviceCondition(device_type="网络设备")],
             properties=["IP地址"],
         )
     )
     lower = recommend_capabilities(
         RecommendationContext(
             intention="查信息",
-            device_types=["网络设备"],
+            devices=[DeviceCondition(device_type="网络设备")],
             properties=["ip地址"],
         )
     )
@@ -961,15 +1052,15 @@ def test_prompt_requires_user_friendly_actionable_explanation():
 def test_prompt_preserves_object_context_in_unmatched_scenarios():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "未匹配场景的委婉表达" in prompt
-    assert "recommendation_context.device_types 恰好包含一个设备类型" in prompt
+    assert "recommendation_context.devices[].device_type 去重后恰好包含一个" in prompt
     assert "refusal_message 或 refusal_detail" in prompt
     assert "逐字使用" in prompt
-    assert "recommendation_context.device_types[0]" in prompt
+    assert "唯一原始 devices[].device_type" in prompt
     assert "candidate_capabilities.device_types" in prompt
     assert "标准类型、父类或更泛化名称替换" in prompt
     assert "必须保留父子关系" in prompt
-    assert '“{recommendation_context.device_types[0]}的{明确子部件}”' in prompt
-    assert "包含多个设备类型时，不得将未匹配问题归因于" in prompt
+    assert '“{唯一原始 devices[].device_type}的{明确子部件}”' in prompt
+    assert "包含多个非空设备类型时，不得将未匹配问题归因于" in prompt
     assert "没有明确设备类型时，不得虚构设备类型或业务对象" in prompt
     assert "不得复述 invalid_values" in prompt
     assert "位于 invalid_values 时不得点名复述" in prompt
@@ -1082,7 +1173,7 @@ def test_refuse_key_decides_strategy_not_messages():
         llm_refuse_message="未找到设备，这段文本不应改变分类",
     )
     assert context.recovery_strategy == "disambiguate"
-    assert context.identifiers[0].value == "device-a"
+    assert context.devices[0].device_id == "device-a"
     assert context.invalid_values == []
 
 
@@ -1124,7 +1215,7 @@ def test_ip_not_found_only_removes_ip_identifier():
         refuse_info=ErrorCode.VALUE_RETRIEVAL_IP_NOT_FOUND.to_info(),
     )
     assert context.invalid_values == ["1.1.1.1"]
-    assert [item.value for item in context.identifiers] == [
+    assert [item.device_id for item in context.devices if item.device_id] == [
         "device-a",
         "00:11:22:33:44:55",
     ]
@@ -1141,7 +1232,7 @@ def test_name_not_found_only_removes_name_identifier():
         refuse_info=ErrorCode.VALUE_RETRIEVAL_NAME_NOT_FOUND.to_info(),
     )
     assert context.invalid_values == ["device-a"]
-    assert [item.value for item in context.identifiers] == ["1.1.1.1"]
+    assert [item.device_id for item in context.devices if item.device_id] == ["1.1.1.1"]
 
 
 def test_kpi_multiple_candidates_keeps_original_kpi():
@@ -1156,7 +1247,7 @@ def test_kpi_multiple_candidates_keeps_original_kpi():
 
 def test_unknown_error_and_llm_message_only_use_basic_strategy():
     unknown = build_recommendation_context(
-        {"intention": "查指标", "device_types": ["网络设备"]},
+        {"intention": "查指标", "devices": [{"device_type": "网络设备"}]},
         refuse_info=ErrorInfo(
             key="future_new_error",
             level="warning",
@@ -1202,7 +1293,7 @@ def test_intent_reject_basic_uses_normal_recall_and_ranking():
 def test_basic_subcomponent_uses_normal_recall_and_keeps_metric_context():
     normal_context = RecommendationContext(
         intention="查指标",
-        device_types=["网络设备"],
+        devices=[DeviceCondition(device_type="网络设备")],
         subcomponent_types=["光模块"],
         kpis=["接收功率"],
         time="近七天",
@@ -1223,8 +1314,8 @@ def test_basic_subcomponent_uses_normal_recall_and_keeps_metric_context():
 @pytest.mark.parametrize(
     "normal_context",
     [
-        RecommendationContext(intention="查告警", device_types=["服务器"]),
-        RecommendationContext(intention="查链路", device_types=["网络设备"]),
+        RecommendationContext(intention="查告警", devices=[DeviceCondition(device_type="服务器")]),
+        RecommendationContext(intention="查链路", devices=[DeviceCondition(device_type="网络设备")]),
     ],
 )
 def test_basic_special_intents_use_normal_recall_and_ranking(normal_context):
@@ -1241,7 +1332,7 @@ def test_basic_special_intents_use_normal_recall_and_ranking(normal_context):
 def test_basic_without_compatible_candidate_falls_back_to_global_device_basics():
     basic_context = RecommendationContext(
         intention="查指标",
-        device_types=["未知设备"],
+        devices=[DeviceCondition(device_type="未知设备")],
         kpis=["未知指标"],
         recovery_strategy="basic",
     )
@@ -1432,7 +1523,7 @@ def test_chat_prompt_contains_structured_subnet_scope_and_relation_candidate():
         RecommendationContext(
             intention="查信息",
             question="查询根子网下127网段的存储设备列表",
-            device_types=["存储设备"],
+            devices=[DeviceCondition(device_type="存储设备")],
             subnet=SubnetScope(path="根子网", name="127网段"),
         ),
         llm_chat_client,
@@ -1453,7 +1544,7 @@ def test_basic_prompt_keeps_full_context_and_invalid_values():
         RecommendationContext(
             intention="查指标",
             question="查询近七天网络设备CPU利用率平均值",
-            device_types=["网络设备"],
+            devices=[DeviceCondition(device_type="网络设备")],
             kpis=["CPU利用率"],
             properties=["状态"],
             time="近七天",
@@ -1487,12 +1578,25 @@ def test_prompt_constrains_empty_intention_basic_to_matched_objects():
 def test_prompt_constrains_recovery_question_business_direction():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "拒答业务方向" in prompt
-    assert "没有 device_types 和 subcomponent_types 时" in prompt
+    assert "没有非空 device_type、同时没有 subcomponent_types 时" in prompt
     assert "不得重新扩展到其他业务域、设备或子部件" in prompt
     assert "原问题中的方向词不等于明确设备类型" in prompt
     assert "不得继续继承原问题中无法匹配的 KPI" in prompt
     assert "搭配同一业务方向的信息、列表和数量候选" in prompt
     assert "必须以结构化对象为准" in prompt
+
+
+def test_prompt_splits_non_link_alternative_device_conditions_only():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "多定位备选条件拆分" in prompt
+    assert "recommendation_context.recovery_strategy 为 disambiguate" in prompt
+    assert "至少有两个 device_id 非空的完整设备条件" in prompt
+    assert "“或”“或者”或独立英文单词 OR" in prompt
+    assert "每条推荐最多继承一个完整 devices[] 条件" in prompt
+    assert "禁止重新组合、合并或交叉拼接不同设备条件" in prompt
+    assert "第一个条件的列表、第二个条件的列表、第一个条件的数量" in prompt
+    assert "intention 为“查链路”时永远不应用本节规则" in prompt
+    assert "link_relation 属于链路语义" in prompt
 
 
 def test_prompt_treats_subnet_as_cross_domain_scope():
