@@ -31,6 +31,7 @@ from .capability_matching import (
     domain_cards_matching_question_direction,
     matching_domain_cards,
     specific_terms_in_text,
+    subcomponent_matches_any,
     subcomponents_matching_text,
 )
 from .capability_routing import resolve_primary_capability_type
@@ -41,7 +42,6 @@ from .models import (
     SpecialCapabilitySpec,
     SubcomponentCapabilitySpec,
 )
-from .refusal_rules import BASIC
 
 
 def recall_candidates(
@@ -87,16 +87,15 @@ def _empty_intention_basic_candidates(
     domain_cards: Sequence[DeviceCapabilityProfile],
     special_cards: Sequence[SpecialCapabilitySpec],
 ) -> Optional[List[CapabilityCandidate]]:
-    """按空意图 Basic 原问题中的明确业务对象收敛基础候选。"""
+    """空意图时复用 Basic，优先结构化对象并补充指标方向。"""
     if not _uses_empty_intention_basic_direction(context):
         return None
-    matched_domain_cards = domain_cards_matching_question_direction(
-        context.question, domain_cards
+    matched_domain_cards, matched_subcomponents = _empty_intention_object_matches(
+        context, domain_cards
     )
-    matched_subcomponents = subcomponents_matching_text(context.question, domain_cards)
-    matched_special_cards = _special_cards_matching_text(context.question, special_cards)
-    if not matched_domain_cards and not matched_subcomponents and not matched_special_cards:
-        return None
+    matched_special_cards = _special_cards_matching_text(
+        context.question, special_cards
+    )
     special_result = _basic_special_candidates(
         context, matched_domain_cards, matched_special_cards, domain_cards
     )
@@ -107,16 +106,45 @@ def _empty_intention_basic_candidates(
     )
     if matched_subcomponents:
         return _basic_subcomponent_candidates(context, matched_subcomponents)
+    if not matched_domain_cards:
+        matched_domain_cards = list(domain_cards)
     return _basic_domain_candidates(context, matched_domain_cards)
 
 
 def _uses_empty_intention_basic_direction(context: RecommendationContext) -> bool:
-    """判断是否应从空意图 Basic 原问题补充对象方向。"""
-    return bool(
-        context.recovery_strategy == BASIC
-        and not context.intention
-        and context.question
+    """判断是否应忽略恢复策略并直接复用空意图 Basic。"""
+    return not context.intention
+
+
+def _empty_intention_object_matches(
+    context: RecommendationContext,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> Tuple[
+    List[DeviceCapabilityProfile],
+    List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]],
+]:
+    """优先使用结构化对象，否则从原问题识别设备和子部件方向。"""
+    if context_device_types(context) or context.subcomponent_types:
+        matched_cards = matching_domain_cards(context, domain_cards)
+        return matched_cards, _structured_subcomponent_matches(context, matched_cards)
+    matched_cards = domain_cards_matching_question_direction(
+        context.question, domain_cards
     )
+    matched_subcomponents = subcomponents_matching_text(context.question, domain_cards)
+    return matched_cards, matched_subcomponents
+
+
+def _structured_subcomponent_matches(
+    context: RecommendationContext,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
+    """返回结构化上下文中父设备支持的子部件规格。"""
+    matches = []
+    for domain_card in domain_cards:
+        for spec in domain_card.subcomponents:
+            if subcomponent_matches_any(spec, context.subcomponent_types):
+                matches.append((domain_card, spec))
+    return matches
 
 
 def _special_cards_matching_text(
@@ -140,9 +168,11 @@ def _basic_special_candidates(
     """生成空意图 Basic 的特殊能力候选。"""
     if not matched_special_cards:
         return []
-    device_values = specific_terms_in_text(
-        context.question, domain_card_device_terms(domain_cards)
-    )
+    device_values = context_device_types(context)
+    if not device_values:
+        device_values = specific_terms_in_text(
+            context.question, domain_card_device_terms(domain_cards)
+        )
     if not device_values:
         device_values = domain_card_standard_device_types(matched_domain_cards)
     special_context = _basic_special_context(
@@ -200,12 +230,24 @@ def _basic_subcomponent_candidates(
         Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]
     ],
 ) -> List[CapabilityCandidate]:
-    """生成空意图 Basic 的子部件信息和数量候选。"""
+    """生成空意图 Basic 的子部件信息、数量和指标候选。"""
     candidates = []
+    metric_context = replace(context, kpis=[])
     for domain_card, subcomponent_card in matched_subcomponents:
-        for capability_type in (SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT):
+        for capability_type in (
+            SUBCOMPONENT_INFO,
+            SUBCOMPONENT_COUNT,
+            SUBCOMPONENT_METRIC,
+        ):
+            candidate_context = context
+            if capability_type == SUBCOMPONENT_METRIC:
+                candidate_context = metric_context
             candidate = subcomponent_candidate(
-                context, domain_card, subcomponent_card, capability_type, relax=True
+                candidate_context,
+                domain_card,
+                subcomponent_card,
+                capability_type,
+                relax=True,
             )
             if candidate:
                 candidates.append(candidate)
@@ -216,13 +258,17 @@ def _basic_domain_candidates(
     context: RecommendationContext,
     matched_domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[CapabilityCandidate]:
-    """生成空意图 Basic 的设备信息和数量候选。"""
+    """生成空意图 Basic 的设备信息、数量和指标候选。"""
     candidates = []
+    metric_context = replace(context, kpis=[])
     for domain_card in matched_domain_cards:
-        for capability_type in (DEVICE_INFO, DEVICE_COUNT):
+        for capability_type in (DEVICE_INFO, DEVICE_COUNT, DEVICE_METRIC):
+            candidate_context = context
+            if capability_type == DEVICE_METRIC:
+                candidate_context = metric_context
             candidates.extend(
                 domain_card_candidates(
-                    context, domain_card, capability_type, relax=True
+                    candidate_context, domain_card, capability_type, relax=True
                 )
             )
     return candidates

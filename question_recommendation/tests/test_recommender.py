@@ -1247,13 +1247,14 @@ def test_prompt_does_not_use_undefined_normal_or_error_scenes():
     assert "error 场景" not in prompt
 
 
-def test_prompt_defines_recovery_state_from_existing_context_field_only():
+def test_prompt_empty_intention_overrides_recovery_strategy():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "只使用 recommendation_context.recovery_strategy 判断是否需要失败恢复" in prompt
+    assert "优先使用 recommendation_context.intention" in prompt
+    assert "无论 recovery_strategy 是什么" in prompt
+    assert "直接执行“空 intention Basic”规则" in prompt
     assert "当前没有失败恢复要求" in prompt
     assert "当前需要严格按该恢复策略处理" in prompt
     assert "不能自行改变" in prompt
-    assert "不能覆盖 recovery_strategy" in prompt
 
 
 def test_prompt_requires_user_friendly_actionable_explanation():
@@ -1586,11 +1587,12 @@ def test_basic_without_compatible_candidate_falls_back_to_global_device_basics()
     assert all(item.capability_type in {DEVICE_INFO, DEVICE_COUNT} for item in candidates)
 
 
-def test_empty_intention_basic_device_object_only_recalls_device_basics():
+def test_empty_intention_basic_device_object_recalls_info_count_and_metric():
     context = _empty_intention_basic_context("查询名称为的网络设备")
     assert set(_candidate_ids(context)) == {
         "network_device:device_info",
         "network_device:device_count",
+        "network_device:device_metric",
     }
 
 
@@ -1604,6 +1606,17 @@ def test_empty_intention_basic_device_constrains_special_capability():
     ranked = recommend_capabilities(context)
     assert [item.candidate.capability_id for item in ranked] == ["alarm_query"]
     assert ranked[0].candidate.device_types == ["服务器"]
+
+
+def test_empty_intention_structured_device_constrains_special_capability():
+    context = RecommendationContext(
+        question="查询服务器告警",
+        devices=[DeviceCondition(device_type="网络设备")],
+        recovery_strategy="clarify",
+    )
+    ranked = recommend_capabilities(context)
+    assert [item.candidate.capability_id for item in ranked] == ["alarm_query"]
+    assert ranked[0].candidate.device_types == ["网络设备"]
 
 
 def test_empty_intention_basic_domain_constrains_special_capability():
@@ -1634,6 +1647,7 @@ def test_empty_intention_basic_subcomponent_recalls_compatible_parent_basics():
     assert set(_candidate_ids(context)) == {
         "network_device:光模块:subcomponent_info",
         "network_device:光模块:subcomponent_count",
+        "network_device:光模块:subcomponent_metric",
         "server:光模块:subcomponent_info",
         "server:光模块:subcomponent_count",
     }
@@ -1645,7 +1659,11 @@ def test_empty_intention_basic_attribute_words_keep_global_fallback(question):
         item.candidate for item in recommend_capabilities(_empty_intention_basic_context(question))
     ]
     assert len(candidates) > 2
-    assert all(item.capability_type in {DEVICE_INFO, DEVICE_COUNT} for item in candidates)
+    assert all(
+        item.capability_type in {DEVICE_INFO, DEVICE_COUNT, DEVICE_METRIC}
+        for item in candidates
+    )
+    assert any(item.capability_type == DEVICE_METRIC for item in candidates)
     assert len({tuple(item.device_types) for item in candidates}) > 1
 
 
@@ -1678,17 +1696,29 @@ def test_empty_intention_basic_keeps_separate_explicit_device_objects():
     [
         (
             "查询FATAP列表",
-            {"network_device:device_info", "network_device:device_count"},
+            {
+                "network_device:device_info",
+                "network_device:device_count",
+                "network_device:device_metric",
+            },
         ),
-        ("查询FITAP列表", {"fitap:device_info", "fitap:device_count"}),
-        ("查询AP列表", {"fitap:device_info", "fitap:device_count"}),
+        (
+            "查询FITAP列表",
+            {"fitap:device_info", "fitap:device_count", "fitap:device_metric"},
+        ),
+        (
+            "查询AP列表",
+            {"fitap:device_info", "fitap:device_count", "fitap:device_metric"},
+        ),
         (
             "查询PON设备列表",
             {
                 "olt:device_info",
                 "olt:device_count",
+                "olt:device_metric",
                 "onu:device_info",
                 "onu:device_count",
+                "onu:device_metric",
             },
         ),
     ],
@@ -1701,7 +1731,57 @@ def test_empty_intention_basic_object_matching_ignores_case():
     assert set(_candidate_ids(_empty_intention_basic_context("查询fitap列表"))) == {
         "fitap:device_info",
         "fitap:device_count",
+        "fitap:device_metric",
     }
+
+
+def test_empty_intention_uses_structured_device_and_overrides_recovery_strategy():
+    context = RecommendationContext(
+        question="查询网络设备",
+        devices=[DeviceCondition(device_type="服务器")],
+        recovery_strategy="reframe",
+    )
+    assert set(_candidate_ids(context)) == {
+        "server:device_info",
+        "server:device_count",
+        "server:device_metric",
+    }
+
+
+def test_empty_intention_structured_subcomponent_includes_metric_direction():
+    context = RecommendationContext(
+        question="查询设备部件",
+        devices=[DeviceCondition(device_type="网络设备")],
+        subcomponent_types=["光模块"],
+        recovery_strategy="clarify",
+    )
+    assert set(_candidate_ids(context)) == {
+        "network_device:光模块:subcomponent_info",
+        "network_device:光模块:subcomponent_count",
+        "network_device:光模块:subcomponent_metric",
+    }
+
+
+def test_empty_intention_metric_direction_ignores_unstandardized_context_kpi():
+    context = RecommendationContext(
+        question="查询A设备的KPI1平均值",
+        devices=[DeviceCondition(device_type="服务器")],
+        kpis=["KPI1"],
+        recovery_strategy="clarify",
+    )
+    ranked = recommend_capabilities(context)
+    metric = next(
+        item.candidate
+        for item in ranked
+        if item.candidate.capability_id == "server:device_metric"
+    )
+    assert metric.metrics
+    assert "KPI1" not in metric.metrics
+
+
+def test_empty_intention_does_not_create_metric_for_card_without_metrics():
+    ids = set(_candidate_ids(_empty_intention_basic_context("查询FC交换机")))
+    assert ids == {"fc_switch:device_info", "fc_switch:device_count"}
 
 
 def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monkeypatch):
@@ -1797,13 +1877,27 @@ def test_basic_prompt_keeps_full_context_and_invalid_values():
     assert "network_device:device_metric" in prompt
 
 
-def test_prompt_constrains_empty_intention_basic_to_matched_objects():
+def test_prompt_defines_empty_intention_basic_inheritance_and_boundaries():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "当 intention 为空时" in prompt
-    assert "已根据 question 中明确出现的业务对象" in prompt
-    assert "不得重新扩展到候选之外的设备类型" in prompt
-    assert "优先推荐列表、数量或基础信息" in prompt
-    assert "不要据此推断指标、趋势、聚合、排序或新的正式意图" in prompt
+    assert "空 intention Basic" in prompt
+    assert "本节具有最高优先级" in prompt
+    assert "结构化设备或子部件收敛" in prompt
+    assert "设备表达、子部件、KPI、时间、聚合、排序和 TopN" in prompt
+    assert "即使未出现在候选 metrics 或实时元数据中" in prompt
+    assert "device_metric 或 subcomponent_metric 查询方向" in prompt
+    assert "不得扩展候选之外的设备类型、父子关系、告警、链路" in prompt
+    assert "优先延续并修复原问题" in prompt
+
+
+def test_prompt_empty_intention_basic_splits_multiple_intents():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "当 refusal_message 或 refusal_detail 明确表示多意图时" in prompt
+    assert "每条推荐只包含一个可独立执行的查询意图" in prompt
+    assert "优先覆盖不同 KPI" in prompt
+    assert "同一 KPI 的不同聚合" in prompt
+    assert "必须始终输出正好 3 条" in prompt
+    assert "最近一小时A设备KPI1的平均值" in prompt
+    assert "最近一小时A设备KPI2的平均值" in prompt
 
 
 def test_prompt_constrains_recovery_question_business_direction():
