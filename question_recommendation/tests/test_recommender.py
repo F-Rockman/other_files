@@ -11,7 +11,7 @@ import pytest
 
 from query_errors import ErrorCode, ErrorInfo, ErrorLevel, ErrorStage
 
-import question_recommendation.capabilities as capability_module
+import question_recommendation.capability_loader as capability_loader_module
 from question_recommendation import (
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
@@ -338,9 +338,9 @@ def test_load_capability_cards_returns_domain_and_special_cards():
 
 
 def test_recommend_capabilities_loads_builtin_document_once_for_relation(monkeypatch):
-    original_load = capability_module._load_capability_document
+    original_load = capability_loader_module._load_capability_document
     load_spy = MagicMock(side_effect=original_load)
-    monkeypatch.setattr(capability_module, "_load_capability_document", load_spy)
+    monkeypatch.setattr(capability_loader_module, "_load_capability_document", load_spy)
     context = RecommendationContext(
         intention="查信息",
         devices=[DeviceCondition(device_type="存储设备")],
@@ -359,7 +359,7 @@ def test_recommend_capabilities_does_not_load_when_both_card_types_are_injected(
 ):
     domain_cards, special_cards = load_capability_cards()
     load_spy = MagicMock(side_effect=AssertionError("must not load built-in cards"))
-    monkeypatch.setattr(capability_module, "_load_capability_document", load_spy)
+    monkeypatch.setattr(capability_loader_module, "_load_capability_document", load_spy)
 
     ranked = recommend_capabilities(
         RecommendationContext(intention="查告警"),
@@ -376,9 +376,9 @@ def test_recommend_capabilities_loads_once_and_preserves_injected_domain_cards(
 ):
     domain_cards, _ = load_capability_cards()
     network_card = next(item for item in domain_cards if item.profile_id == "network_device")
-    original_load = capability_module._load_capability_document
+    original_load = capability_loader_module._load_capability_document
     load_spy = MagicMock(side_effect=original_load)
-    monkeypatch.setattr(capability_module, "_load_capability_document", load_spy)
+    monkeypatch.setattr(capability_loader_module, "_load_capability_document", load_spy)
 
     ranked = recommend_capabilities(
         RecommendationContext(intention="查信息"),
@@ -398,9 +398,9 @@ def test_recommend_capabilities_loads_once_and_preserves_injected_special_cards(
     custom_alarm_data = alarm_card.to_dict()
     custom_alarm_data["capability_id"] = "custom_alarm_query"
     custom_alarm_card = type(alarm_card).from_dict(custom_alarm_data)
-    original_load = capability_module._load_capability_document
+    original_load = capability_loader_module._load_capability_document
     load_spy = MagicMock(side_effect=original_load)
-    monkeypatch.setattr(capability_module, "_load_capability_document", load_spy)
+    monkeypatch.setattr(capability_loader_module, "_load_capability_document", load_spy)
 
     ranked = recommend_capabilities(
         RecommendationContext(intention="查告警"),
@@ -413,8 +413,6 @@ def test_recommend_capabilities_loads_once_and_preserves_injected_special_cards(
 
 
 def test_capabilities_comprehensions_only_express_simple_single_steps():
-    source_path = Path(__file__).resolve().parents[1] / "capabilities.py"
-    tree = ast.parse(source_path.read_text(encoding="utf-8"))
     comprehension_types = (
         ast.ListComp,
         ast.SetComp,
@@ -422,47 +420,66 @@ def test_capabilities_comprehensions_only_express_simple_single_steps():
         ast.GeneratorExp,
     )
 
-    for node in ast.walk(tree):
-        if not isinstance(node, comprehension_types):
-            continue
-        assert len(node.generators) == 1, (
-            f"line {node.lineno}: comprehension must use exactly one for"
-        )
-        assert len(node.generators[0].ifs) <= 1, (
-            f"line {node.lineno}: comprehension may use at most one filter"
-        )
-        nested_nodes = list(ast.walk(node))
-        assert not any(
-            isinstance(item, comprehension_types) and item is not node
-            for item in nested_nodes
-        ), f"line {node.lineno}: nested comprehensions are not allowed"
-        assert not any(
-            isinstance(item, (ast.BoolOp, ast.IfExp))
-            for item in nested_nodes
-        ), f"line {node.lineno}: complex boolean or conditional logic is not allowed"
-        assert not any(
-            isinstance(item, ast.Call)
-            and isinstance(item.func, ast.Name)
-            and item.func.id in {"any", "all"}
-            for item in nested_nodes
-        ), f"line {node.lineno}: any/all logic must use an explicit helper"
+    for source_path in _capability_module_paths():
+        tree = ast.parse(source_path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, comprehension_types):
+                _assert_simple_comprehension(node, comprehension_types, source_path)
+
+
+def _assert_simple_comprehension(node, comprehension_types, source_path):
+    """验证能力模块中的推导式只表达简单单步映射或过滤。"""
+    location = f"{source_path.name}:{node.lineno}"
+    assert len(node.generators) == 1, f"{location}: comprehension must use one for"
+    assert len(node.generators[0].ifs) <= 1, (
+        f"{location}: comprehension may use at most one filter"
+    )
+    nested_nodes = list(ast.walk(node))
+    assert not any(
+        isinstance(item, comprehension_types) and item is not node
+        for item in nested_nodes
+    ), f"{location}: nested comprehensions are not allowed"
+    assert not any(
+        isinstance(item, (ast.BoolOp, ast.IfExp))
+        for item in nested_nodes
+    ), f"{location}: complex boolean or conditional logic is not allowed"
+    assert not any(
+        isinstance(item, ast.Call)
+        and isinstance(item.func, ast.Name)
+        and item.func.id in {"any", "all"}
+        for item in nested_nodes
+    ), f"{location}: any/all logic must use an explicit helper"
 
 
 def test_capabilities_module_functions_stay_small_and_low_complexity():
-    source_path = Path(__file__).resolve().parents[1] / "capabilities.py"
-    tree = ast.parse(source_path.read_text(encoding="utf-8"))
+    for source_path in _capability_module_paths():
+        source = source_path.read_text(encoding="utf-8")
+        assert len(source.splitlines()) <= 500, (
+            f"{source_path.name} exceeds the 500-line capability module limit"
+        )
+        tree = ast.parse(source)
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                _assert_function_size_and_complexity(node, source_path)
 
-    for node in tree.body:
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        physical_lines = node.end_lineno - node.lineno + 1
-        complexity = _cyclomatic_complexity(node)
-        assert physical_lines <= 50, (
-            f"{node.name} has {physical_lines} physical lines; maximum is 50"
-        )
-        assert complexity <= 8, (
-            f"{node.name} has cyclomatic complexity {complexity}; maximum is 8"
-        )
+
+def _capability_module_paths():
+    """返回参与能力召回流程的全部 Python 模块路径。"""
+    package_path = Path(__file__).resolve().parents[1]
+    return sorted(package_path.glob("capabilit*.py"))
+
+
+def _assert_function_size_and_complexity(node, source_path):
+    """验证能力模块函数的物理行数和圈复杂度。"""
+    physical_lines = node.end_lineno - node.lineno + 1
+    complexity = _cyclomatic_complexity(node)
+    location = f"{source_path.name}:{node.name}"
+    assert physical_lines <= 50, (
+        f"{location} has {physical_lines} physical lines; maximum is 50"
+    )
+    assert complexity <= 8, (
+        f"{location} has cyclomatic complexity {complexity}; maximum is 8"
+    )
 
 
 def _cyclomatic_complexity(function_node):

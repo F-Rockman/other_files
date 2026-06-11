@@ -37,6 +37,23 @@
 能力卡只声明“这个对象有哪些属性和指标”。它不判断指标是否支持瞬时值、趋势、聚合、
 比较或排序，这些查询形式由后续问数流程负责。
 
+## 能力召回模块结构
+
+`capabilities.py` 是稳定公共入口，仅负责编排卡片加载、候选召回、排序和裁剪。内部实现
+按职责拆分，避免召回规则继续堆积在单个文件：
+
+| 模块 | 职责 |
+|---|---|
+| `capability_loader.py` | 一次读取并解析领域卡和特殊卡 |
+| `capability_routing.py` | 根据意图、子部件和数量聚合确定主查询骨架 |
+| `capability_matching.py` | 对象、文本、定位方式和通用值匹配 |
+| `capability_candidates.py` | 设备、子部件、特殊能力和相邻候选生成 |
+| `capability_recall.py` | 空意图 Basic、拒答方向和常规召回编排 |
+| `capability_ranking.py` | 候选评分、稳定排序和多样性裁剪 |
+
+外部调用继续只使用 `question_recommendation.capabilities` 或包级导出，不依赖内部模块。
+测试限制每个能力模块不超过 500 行、模块级函数不超过 50 行且圈复杂度不超过 8。
+
 ## 快速使用
 
 ```python
