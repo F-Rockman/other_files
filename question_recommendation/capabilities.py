@@ -48,165 +48,315 @@ class RankedCapability:
         return data
 
 
-def load_device_capability_profiles() -> List[DeviceCapabilityProfile]:
-    """从包内配置加载设备及其嵌套子部件能力规格。"""
+def load_capability_cards() -> Tuple[
+    List[DeviceCapabilityProfile],
+    List[SpecialCapabilitySpec],
+]:
+    """一次读取包内配置，同时加载领域卡和特殊卡。"""
     document = _load_capability_document()
-    return [
+    domain_cards = [
         DeviceCapabilityProfile.from_dict(item)
         for item in document.get("device_profiles", [])
         if isinstance(item, dict)
     ]
-
-
-def load_special_capabilities() -> List[SpecialCapabilitySpec]:
-    """从包内配置加载告警、链路、资源和关系特殊能力。"""
-    document = _load_capability_document()
-    return [
+    special_cards = [
         SpecialCapabilitySpec.from_dict(item)
         for item in document.get("special_capabilities", [])
         if isinstance(item, dict)
     ]
+    return domain_cards, special_cards
 
 
 def resolve_primary_capability_type(context: RecommendationContext) -> str:
     """根据意图、子部件和 count 聚合确定主查询骨架。"""
-    if context.intention == "查告警":
-        return ALARM_QUERY
-    if context.intention == "查链路":
-        return LINK_QUERY
-    if context.intention == "查信息" and _is_subnet_context(context):
-        return RESOURCE_QUERY
-
-    has_subcomponent = bool(context.subcomponent_types)
-    is_count = bool(COUNT_AGGREGATIONS.intersection(context.aggregations))
+    special_type = _special_primary_capability_type(context)
+    if special_type:
+        return special_type
     if context.intention == "查指标":
-        return SUBCOMPONENT_METRIC if has_subcomponent else DEVICE_METRIC
+        if context.subcomponent_types:
+            return SUBCOMPONENT_METRIC
+        return DEVICE_METRIC
     if context.intention == "查信息":
-        if has_subcomponent:
-            return SUBCOMPONENT_COUNT if is_count else SUBCOMPONENT_INFO
-        return DEVICE_COUNT if is_count else DEVICE_INFO
+        return _information_primary_capability_type(context)
     return ""
 
 
 def recommend_capabilities(
     context: RecommendationContext,
     metadata_tables: Sequence[MetadataTable] = (),
-    profiles: Sequence[DeviceCapabilityProfile] = (),
-    special_capabilities: Sequence[SpecialCapabilitySpec] = (),
+    domain_cards: Sequence[DeviceCapabilityProfile] = (),
+    special_cards: Sequence[SpecialCapabilitySpec] = (),
     limit: int = 12,
 ) -> List[RankedCapability]:
     """根据标准上下文生成、过滤、排序并选择动态候选能力。"""
     if limit <= 0:
         return []
-    available_profiles = list(profiles) if profiles else load_device_capability_profiles()
-    available_special = (
-        list(special_capabilities) if special_capabilities else load_special_capabilities()
+    resolved_domain_cards, resolved_special_cards = _resolve_capability_cards(
+        domain_cards, special_cards
     )
-    object_directed_candidates = _empty_intention_basic_candidates(
-        context, available_profiles, available_special
+    candidates = _recall_candidates(
+        context, resolved_domain_cards, resolved_special_cards
     )
-    if object_directed_candidates is not None:
-        candidates = object_directed_candidates
-    else:
-        direction_candidates = _recovery_question_direction_candidates(
-            context, available_profiles, available_special
-        )
-        if direction_candidates is not None:
-            candidates = direction_candidates
-        else:
-            matched_profiles = _matching_profiles(context, available_profiles)
-            primary_type = resolve_primary_capability_type(context)
-            candidates = _primary_candidates(
-                context, matched_profiles, available_special, primary_type
-            )
-            candidates.extend(_adjacent_candidates(context, matched_profiles, primary_type))
     candidates = _dedupe_candidates(candidates)
     if not candidates and context.recovery_strategy == BASIC:
-        candidates = _global_basic_fallback_candidates(available_profiles)
+        candidates = _global_basic_fallback_candidates(resolved_domain_cards)
+    ranked = _rank_candidates(context, candidates, metadata_tables)
+    return _select_diverse(ranked, limit)
 
+
+def _special_primary_capability_type(context: RecommendationContext) -> str:
+    """解析告警、链路和子网资源等特殊主能力。"""
+    if context.intention == "查告警":
+        return ALARM_QUERY
+    if context.intention == "查链路":
+        return LINK_QUERY
+    if context.intention == "查信息" and _is_subnet_context(context):
+        return RESOURCE_QUERY
+    return ""
+
+
+def _information_primary_capability_type(context: RecommendationContext) -> str:
+    """解析信息意图下的设备或子部件信息、数量骨架。"""
+    is_count = bool(COUNT_AGGREGATIONS.intersection(context.aggregations))
+    if context.subcomponent_types:
+        if is_count:
+            return SUBCOMPONENT_COUNT
+        return SUBCOMPONENT_INFO
+    if is_count:
+        return DEVICE_COUNT
+    return DEVICE_INFO
+
+
+def _resolve_capability_cards(
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    special_cards: Sequence[SpecialCapabilitySpec],
+) -> Tuple[List[DeviceCapabilityProfile], List[SpecialCapabilitySpec]]:
+    """保留已注入卡片，并通过一次文件读取补齐缺失卡片。"""
+    resolved_domain_cards = list(domain_cards)
+    resolved_special_cards = list(special_cards)
+    if resolved_domain_cards and resolved_special_cards:
+        return resolved_domain_cards, resolved_special_cards
+    loaded_domain_cards, loaded_special_cards = load_capability_cards()
+    if not resolved_domain_cards:
+        resolved_domain_cards = loaded_domain_cards
+    if not resolved_special_cards:
+        resolved_special_cards = loaded_special_cards
+    return resolved_domain_cards, resolved_special_cards
+
+
+def _recall_candidates(
+    context: RecommendationContext,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    special_cards: Sequence[SpecialCapabilitySpec],
+) -> List[CapabilityCandidate]:
+    """依次执行对象方向、拒答方向和常规能力召回。"""
+    candidates = _empty_intention_basic_candidates(
+        context, domain_cards, special_cards
+    )
+    if candidates is not None:
+        return candidates
+    candidates = _recovery_question_direction_candidates(
+        context, domain_cards, special_cards
+    )
+    if candidates is not None:
+        return candidates
+    matched_domain_cards = _matching_domain_cards(context, domain_cards)
+    primary_type = resolve_primary_capability_type(context)
+    candidates = _primary_candidates(
+        context, matched_domain_cards, special_cards, primary_type
+    )
+    candidates.extend(
+        _adjacent_candidates(
+            context, matched_domain_cards, special_cards, primary_type
+        )
+    )
+    return candidates
+
+
+def _rank_candidates(
+    context: RecommendationContext,
+    candidates: Sequence[CapabilityCandidate],
+    metadata_tables: Sequence[MetadataTable],
+) -> List[RankedCapability]:
+    """计算候选分数并按稳定规则排序。"""
     ranked = []
     for candidate in candidates:
         ranked.append(_rank_candidate(context, candidate, metadata_tables))
-    ranked.sort(
-        key=lambda item: (
-            -item.match_score,
-            -item.candidate.priority,
-            item.candidate.capability_id,
-        )
+    ranked.sort(key=_rank_sort_key)
+    return ranked
+
+
+def _rank_sort_key(item: RankedCapability) -> Tuple[int, int, str]:
+    """返回候选的稳定排序键。"""
+    return (
+        -item.match_score,
+        -item.candidate.priority,
+        item.candidate.capability_id,
     )
-    return _select_diverse(ranked, limit)
 
 
 def _empty_intention_basic_candidates(
     context: RecommendationContext,
-    profiles: Sequence[DeviceCapabilityProfile],
-    special_capabilities: Sequence[SpecialCapabilitySpec],
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    special_cards: Sequence[SpecialCapabilitySpec],
 ) -> Optional[List[CapabilityCandidate]]:
-    """
-    按空意图 Basic 原问题中的明确业务对象收敛基础候选。
-
-    返回 ``None`` 表示没有识别到对象方向，应继续使用原有召回流程。
-    """
-    if context.recovery_strategy != BASIC or context.intention or not context.question:
+    """按空意图 Basic 原问题中的明确业务对象收敛基础候选。"""
+    if not _uses_empty_intention_basic_direction(context):
         return None
 
-    matched_profiles = _profiles_matching_question_direction(context.question, profiles)
-    device_terms = _profile_device_terms(profiles)
-    matched_device_values = _specific_terms_in_text(context.question, device_terms)
-    matched_subcomponents = _subcomponents_matching_text(context.question, profiles)
-    matched_special = []
-    for spec in special_capabilities:
-        if _contains_any(context.question, spec.objects):
-            matched_special.append(spec)
-    if not matched_profiles and not matched_subcomponents and not matched_special:
+    matched_domain_cards = _domain_cards_matching_question_direction(
+        context.question, domain_cards
+    )
+    matched_device_values = _matched_device_terms(context.question, domain_cards)
+    matched_subcomponents = _subcomponents_matching_text(
+        context.question, domain_cards
+    )
+    matched_special_cards = _special_cards_matching_text(
+        context.question, special_cards
+    )
+    if not matched_domain_cards and not matched_subcomponents and not matched_special_cards:
         return None
 
-    if matched_special:
-        if not matched_device_values:
-            matched_device_values = _profile_standard_device_types(matched_profiles)
-        special_objects = []
-        for spec in matched_special:
-            special_objects.extend(spec.objects)
-        special_context = RecommendationContext(
-            question=context.question,
-            devices=_device_conditions_for_types(matched_device_values),
-            subcomponent_types=special_objects,
-        )
-        candidates = []
-        for spec in matched_special:
-            candidates.extend(
-                _special_candidates(
-                    special_context, [spec], spec.capability_type, profiles
-                )
-            )
-        if candidates:
-            return candidates
+    special_candidates = _basic_special_candidates(
+        context,
+        matched_domain_cards,
+        matched_device_values,
+        matched_special_cards,
+        domain_cards,
+    )
+    if special_candidates:
+        return special_candidates
 
-    if matched_profiles and matched_subcomponents:
-        profile_ids = _profile_ids(matched_profiles)
-        filtered_subcomponents = []
-        for profile, spec in matched_subcomponents:
-            if profile.profile_id in profile_ids:
-                filtered_subcomponents.append((profile, spec))
-        matched_subcomponents = filtered_subcomponents
-
+    matched_subcomponents = _constrain_subcomponent_matches(
+        matched_domain_cards, matched_subcomponents
+    )
     if matched_subcomponents:
-        candidates = []
-        for profile, spec in matched_subcomponents:
-            for capability_type in (SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT):
-                candidate = _subcomponent_candidate(
-                    context, profile, spec, capability_type, relax=True
-                )
-                if candidate:
-                    candidates.append(candidate)
-        return candidates
+        return _basic_subcomponent_candidates(context, matched_subcomponents)
+    return _basic_domain_candidates(context, matched_domain_cards)
 
+
+def _uses_empty_intention_basic_direction(context: RecommendationContext) -> bool:
+    """判断是否应从空意图 Basic 原问题补充对象方向。"""
+    return bool(
+        context.recovery_strategy == BASIC
+        and not context.intention
+        and context.question
+    )
+
+
+def _matched_device_terms(
+    question: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[str]:
+    """返回原问题中明确出现的设备类型或别名。"""
+    return _specific_terms_in_text(
+        question, _domain_card_device_terms(domain_cards)
+    )
+
+
+def _special_cards_matching_text(
+    text: str,
+    special_cards: Sequence[SpecialCapabilitySpec],
+) -> List[SpecialCapabilitySpec]:
+    """返回对象词出现在原问题中的特殊卡。"""
+    matched = []
+    for special_card in special_cards:
+        if _contains_any(text, special_card.objects):
+            matched.append(special_card)
+    return matched
+
+
+def _basic_special_candidates(
+    context: RecommendationContext,
+    matched_domain_cards: Sequence[DeviceCapabilityProfile],
+    matched_device_values: Sequence[str],
+    matched_special_cards: Sequence[SpecialCapabilitySpec],
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[CapabilityCandidate]:
+    """生成空意图 Basic 的特殊能力候选。"""
+    if not matched_special_cards:
+        return []
+    device_values = list(matched_device_values)
+    if not device_values:
+        device_values = _domain_card_standard_device_types(matched_domain_cards)
+    special_context = _basic_special_context(
+        context.question, device_values, matched_special_cards
+    )
     candidates = []
-    for profile in matched_profiles:
+    for special_card in matched_special_cards:
+        candidates.extend(
+            _special_candidates(
+                special_context,
+                [special_card],
+                special_card.capability_type,
+                domain_cards,
+            )
+        )
+    return candidates
+
+
+def _basic_special_context(
+    question: str,
+    device_types: Sequence[str],
+    special_cards: Sequence[SpecialCapabilitySpec],
+) -> RecommendationContext:
+    """构造仅用于特殊卡匹配的空意图 Basic 上下文。"""
+    special_objects = []
+    for special_card in special_cards:
+        special_objects.extend(special_card.objects)
+    return RecommendationContext(
+        question=question,
+        devices=_device_conditions_for_types(device_types),
+        subcomponent_types=special_objects,
+    )
+
+
+def _constrain_subcomponent_matches(
+    matched_domain_cards: Sequence[DeviceCapabilityProfile],
+    matched_subcomponents: Sequence[
+        Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]
+    ],
+) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
+    """存在设备方向时，仅保留其兼容的子部件。"""
+    if not matched_domain_cards:
+        return list(matched_subcomponents)
+    domain_card_ids = _domain_card_ids(matched_domain_cards)
+    result = []
+    for domain_card, subcomponent_card in matched_subcomponents:
+        if domain_card.profile_id in domain_card_ids:
+            result.append((domain_card, subcomponent_card))
+    return result
+
+
+def _basic_subcomponent_candidates(
+    context: RecommendationContext,
+    matched_subcomponents: Sequence[
+        Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]
+    ],
+) -> List[CapabilityCandidate]:
+    """生成空意图 Basic 的子部件信息和数量候选。"""
+    candidates = []
+    for domain_card, subcomponent_card in matched_subcomponents:
+        for capability_type in (SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT):
+            candidate = _subcomponent_candidate(
+                context, domain_card, subcomponent_card, capability_type, relax=True
+            )
+            if candidate:
+                candidates.append(candidate)
+    return candidates
+
+
+def _basic_domain_candidates(
+    context: RecommendationContext,
+    matched_domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[CapabilityCandidate]:
+    """生成空意图 Basic 的设备信息和数量候选。"""
+    candidates = []
+    for domain_card in matched_domain_cards:
         for capability_type in (DEVICE_INFO, DEVICE_COUNT):
             candidates.extend(
-                _profile_candidates(
-                    context, profile, capability_type, relax=True
+                _domain_card_candidates(
+                    context, domain_card, capability_type, relax=True
                 )
             )
     return candidates
@@ -214,69 +364,117 @@ def _empty_intention_basic_candidates(
 
 def _recovery_question_direction_candidates(
     context: RecommendationContext,
-    profiles: Sequence[DeviceCapabilityProfile],
-    special_capabilities: Sequence[SpecialCapabilitySpec],
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    special_cards: Sequence[SpecialCapabilitySpec],
 ) -> Optional[List[CapabilityCandidate]]:
-    """
-    在拒答且无结构化对象时，按原问题中的能力卡领域或对象收敛候选。
-
-    返回 ``None`` 表示问题中没有识别到能力卡已有方向，应继续使用原有全局召回。
-    """
-    if (
-        not context.recovery_strategy
-        or _context_device_types(context)
-        or context.subcomponent_types
-        or not context.question
-    ):
+    """在拒答且无结构化对象时，按原问题中的能力卡方向收敛候选。"""
+    if not _uses_recovery_question_direction(context):
         return None
 
-    matched_profiles = _profiles_matching_question_direction(context.question, profiles)
-    matched_subcomponents = _subcomponents_matching_text(context.question, profiles)
-    if matched_profiles and matched_subcomponents:
-        profile_ids = _profile_ids(matched_profiles)
-        filtered_subcomponents = []
-        for profile, spec in matched_subcomponents:
-            if profile.profile_id in profile_ids:
-                filtered_subcomponents.append((profile, spec))
-        matched_subcomponents = filtered_subcomponents
-    elif matched_subcomponents:
-        parent_profiles = []
-        for profile, _ in matched_subcomponents:
-            parent_profiles.append(profile)
-        matched_profiles = _dedupe_profiles(parent_profiles)
-
-    if not matched_profiles:
+    matched_domain_cards, matched_subcomponents = _recovery_direction_matches(
+        context.question, domain_cards
+    )
+    if not matched_domain_cards:
         return None
 
-    device_types = _profile_standard_device_types(matched_profiles)
-    subcomponent_types = []
-    for _, spec in matched_subcomponents:
-        subcomponent_types.extend(spec.types)
-    direction_context = replace(
-        context,
-        devices=_device_conditions_for_types(device_types),
-        subcomponent_types=subcomponent_types,
+    direction_context = _build_direction_context(
+        context, matched_domain_cards, matched_subcomponents
     )
     primary_type = resolve_primary_capability_type(direction_context)
     candidates = _primary_candidates(
-        direction_context, matched_profiles, special_capabilities, primary_type
+        direction_context, matched_domain_cards, special_cards, primary_type
     )
     candidates.extend(
-        _adjacent_candidates(direction_context, matched_profiles, primary_type)
+        _adjacent_candidates(
+            direction_context, matched_domain_cards, special_cards, primary_type
+        )
+    )
+    _append_relaxed_metric_candidates(
+        candidates,
+        context,
+        direction_context,
+        matched_domain_cards,
+        special_cards,
+        primary_type,
+    )
+    return candidates
+
+
+def _uses_recovery_question_direction(context: RecommendationContext) -> bool:
+    """判断拒答场景是否需要从原问题补充业务方向。"""
+    return bool(
+        context.recovery_strategy
+        and not _context_device_types(context)
+        and not context.subcomponent_types
+        and context.question
     )
 
-    if (
-        primary_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC}
-        and context.recovery_strategy in KPI_RELAXING_RECOVERY_STRATEGIES
-        and not _contains_capability_type(candidates, primary_type)
-    ):
-        relaxed_context = replace(direction_context, kpis=[])
-        candidates.extend(
-            _primary_candidates(
-                relaxed_context, matched_profiles, special_capabilities, primary_type
-            )
+
+def _recovery_direction_matches(
+    question: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> Tuple[
+    List[DeviceCapabilityProfile],
+    List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]],
+]:
+    """解析拒答原问题中的领域卡和子部件方向。"""
+    matched_domain_cards = _domain_cards_matching_question_direction(
+        question, domain_cards
+    )
+    matched_subcomponents = _subcomponents_matching_text(question, domain_cards)
+    if matched_domain_cards:
+        matched_subcomponents = _constrain_subcomponent_matches(
+            matched_domain_cards, matched_subcomponents
         )
-    return candidates
+    elif matched_subcomponents:
+        parent_cards = []
+        for domain_card, _ in matched_subcomponents:
+            parent_cards.append(domain_card)
+        matched_domain_cards = _dedupe_domain_cards(parent_cards)
+    return matched_domain_cards, matched_subcomponents
+
+
+def _build_direction_context(
+    context: RecommendationContext,
+    matched_domain_cards: Sequence[DeviceCapabilityProfile],
+    matched_subcomponents: Sequence[
+        Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]
+    ],
+) -> RecommendationContext:
+    """使用识别到的业务方向构造临时召回上下文。"""
+    subcomponent_types = []
+    for _, subcomponent_card in matched_subcomponents:
+        subcomponent_types.extend(subcomponent_card.types)
+    return replace(
+        context,
+        devices=_device_conditions_for_types(
+            _domain_card_standard_device_types(matched_domain_cards)
+        ),
+        subcomponent_types=subcomponent_types,
+    )
+
+
+def _append_relaxed_metric_candidates(
+    candidates: List[CapabilityCandidate],
+    context: RecommendationContext,
+    direction_context: RecommendationContext,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    special_cards: Sequence[SpecialCapabilitySpec],
+    primary_type: str,
+) -> None:
+    """指标不清晰且方向明确时，补充忽略错误 KPI 的同方向指标候选。"""
+    if primary_type not in {DEVICE_METRIC, SUBCOMPONENT_METRIC}:
+        return
+    if context.recovery_strategy not in KPI_RELAXING_RECOVERY_STRATEGIES:
+        return
+    if _contains_capability_type(candidates, primary_type):
+        return
+    relaxed_context = replace(direction_context, kpis=[])
+    candidates.extend(
+        _primary_candidates(
+            relaxed_context, domain_cards, special_cards, primary_type
+        )
+    )
 
 
 def _load_capability_document() -> Dict[str, Any]:
@@ -289,96 +487,119 @@ def _load_capability_document() -> Dict[str, Any]:
     return document if isinstance(document, dict) else {}
 
 
-def _matching_profiles(
+def _matching_domain_cards(
     context: RecommendationContext,
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
     """按明确设备类型或子部件对象过滤设备规格。"""
     device_types = _context_device_types(context)
     if device_types:
         matched = []
-        for profile in profiles:
-            if _profile_matches_any(profile, device_types):
-                matched.append(profile)
+        for domain_card in domain_cards:
+            if _domain_card_matches_any(domain_card, device_types):
+                matched.append(domain_card)
         return matched
     if context.subcomponent_types:
         matched = []
-        for profile in profiles:
-            if _profile_has_matching_subcomponent(
-                profile, context.subcomponent_types
+        for domain_card in domain_cards:
+            if _domain_card_has_matching_subcomponent(
+                domain_card, context.subcomponent_types
             ):
-                matched.append(profile)
+                matched.append(domain_card)
         return matched
-    return list(profiles)
+    return list(domain_cards)
 
 
 def _primary_candidates(
     context: RecommendationContext,
-    profiles: Sequence[DeviceCapabilityProfile],
-    special_capabilities: Sequence[SpecialCapabilitySpec],
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    special_cards: Sequence[SpecialCapabilitySpec],
     primary_type: str,
 ) -> List[CapabilityCandidate]:
     """生成主查询骨架对应的设备或特殊能力候选。"""
     if primary_type in {ALARM_QUERY, LINK_QUERY, RESOURCE_QUERY, RELATION_QUERY}:
-        return _special_candidates(context, special_capabilities, primary_type, profiles)
+        return _special_candidates(context, special_cards, primary_type, domain_cards)
     candidates = []
-    for profile in profiles:
-        candidates.extend(_profile_candidates(context, profile, primary_type))
+    for domain_card in domain_cards:
+        candidates.extend(
+            _domain_card_candidates(context, domain_card, primary_type)
+        )
     return candidates
 
 
 def _adjacent_candidates(
     context: RecommendationContext,
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    special_cards: Sequence[SpecialCapabilitySpec],
     primary_type: str,
 ) -> List[CapabilityCandidate]:
     """在主能力附近补充同对象、低成本且语义不同的候选能力。"""
+    adjacent_types = _adjacent_capability_types(context, primary_type)
+    candidates: List[CapabilityCandidate] = []
+    for domain_card in domain_cards:
+        for capability_type in adjacent_types:
+            if capability_type == primary_type:
+                continue
+            candidates.extend(
+                _domain_card_candidates(
+                    context, domain_card, capability_type, relax=True
+                )
+            )
+
+    if context.intention == "查信息" or context.subnet:
+        candidates.extend(
+            _relation_candidates(context, domain_cards, special_cards)
+        )
+    return candidates
+
+
+def _adjacent_capability_types(
+    context: RecommendationContext,
+    primary_type: str,
+) -> List[str]:
+    """返回主能力附近可补充的同对象能力类型。"""
     if context.subcomponent_types:
         adjacent_types = [SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT]
         if primary_type == SUBCOMPONENT_INFO:
             adjacent_types.append(SUBCOMPONENT_METRIC)
-    else:
-        adjacent_types = [DEVICE_INFO, DEVICE_COUNT]
-        if primary_type == DEVICE_INFO:
-            adjacent_types.append(DEVICE_METRIC)
-
-    candidates: List[CapabilityCandidate] = []
-    for profile in profiles:
-        for capability_type in adjacent_types:
-            if capability_type == primary_type:
-                continue
-            candidates.extend(_profile_candidates(context, profile, capability_type, relax=True))
-
-    if context.intention == "查信息" or context.subnet:
-        candidates.extend(_relation_candidates(context, profiles))
-    return candidates
+        return adjacent_types
+    adjacent_types = [DEVICE_INFO, DEVICE_COUNT]
+    if primary_type == DEVICE_INFO:
+        adjacent_types.append(DEVICE_METRIC)
+    return adjacent_types
 
 
 def _global_basic_fallback_candidates(
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[CapabilityCandidate]:
     """在 Basic 没有兼容候选时生成全局设备信息和数量候选。"""
     empty_context = RecommendationContext()
     candidates: List[CapabilityCandidate] = []
-    for profile in profiles:
+    for domain_card in domain_cards:
         candidates.extend(
-            _profile_candidates(empty_context, profile, DEVICE_INFO, relax=True)
+            _domain_card_candidates(
+                empty_context, domain_card, DEVICE_INFO, relax=True
+            )
         )
         candidates.extend(
-            _profile_candidates(empty_context, profile, DEVICE_COUNT, relax=True)
+            _domain_card_candidates(
+                empty_context, domain_card, DEVICE_COUNT, relax=True
+            )
         )
     return _dedupe_candidates(candidates)
 
 
-def _profile_candidates(
+def _domain_card_candidates(
     context: RecommendationContext,
-    profile: DeviceCapabilityProfile,
+    domain_card: DeviceCapabilityProfile,
     capability_type: str,
     relax: bool = False,
 ) -> List[CapabilityCandidate]:
     """根据一个设备规格和查询骨架动态生成候选能力。"""
     if capability_type in {DEVICE_INFO, DEVICE_COUNT, DEVICE_METRIC}:
-        candidate = _device_candidate(context, profile, capability_type, relax)
+        candidate = _device_candidate(
+            context, domain_card, capability_type, relax
+        )
         return [candidate] if candidate else []
 
     if capability_type not in {
@@ -388,9 +609,9 @@ def _profile_candidates(
     }:
         return []
     candidates = []
-    for spec in _matching_subcomponents(context, profile):
+    for spec in _matching_subcomponents(context, domain_card):
         candidate = _subcomponent_candidate(
-            context, profile, spec, capability_type, relax
+            context, domain_card, spec, capability_type, relax
         )
         if candidate:
             candidates.append(candidate)
@@ -399,69 +620,69 @@ def _profile_candidates(
 
 def _device_candidate(
     context: RecommendationContext,
-    profile: DeviceCapabilityProfile,
+    domain_card: DeviceCapabilityProfile,
     capability_type: str,
     relax: bool,
 ) -> Optional[CapabilityCandidate]:
     """生成设备信息、数量或指标候选。"""
-    if not relax and not _locators_compatible(context, profile.locators):
+    if not relax and not _locators_compatible(context, domain_card.locators):
         return None
-    metrics = _matching_metrics(context, profile.metrics, capability_type)
+    metrics = _matching_metrics(context, domain_card.metrics, capability_type)
     if capability_type == DEVICE_METRIC and not metrics:
         return None
 
     return CapabilityCandidate(
-        capability_id=f"{profile.profile_id}:{capability_type}",
+        capability_id=f"{domain_card.profile_id}:{capability_type}",
         capability_type=capability_type,
-        domain=profile.domain,
-        device_types=profile.device_types,
-        locators=profile.locators,
-        properties=profile.properties if capability_type == DEVICE_INFO else [],
+        domain=domain_card.domain,
+        device_types=domain_card.device_types,
+        locators=domain_card.locators,
+        properties=domain_card.properties if capability_type == DEVICE_INFO else [],
         metrics=metrics,
-        table_hints=profile.table_hints,
-        examples=_examples_for_type(profile.examples, capability_type),
-        priority=profile.priority,
+        table_hints=domain_card.table_hints,
+        examples=_examples_for_type(domain_card.examples, capability_type),
+        priority=domain_card.priority,
     )
 
 
 def _subcomponent_candidate(
     context: RecommendationContext,
-    profile: DeviceCapabilityProfile,
+    domain_card: DeviceCapabilityProfile,
     spec: SubcomponentCapabilitySpec,
     capability_type: str,
     relax: bool,
 ) -> Optional[CapabilityCandidate]:
     """生成设备子部件信息、数量或指标候选。"""
-    if not relax and not _locators_compatible(context, profile.locators):
+    if not relax and not _locators_compatible(context, domain_card.locators):
         return None
     metrics = _matching_metrics(context, spec.metrics, capability_type)
     if capability_type == SUBCOMPONENT_METRIC and not metrics:
         return None
 
     return CapabilityCandidate(
-        capability_id=f"{profile.profile_id}:{_slug(spec.types)}:{capability_type}",
+        capability_id=f"{domain_card.profile_id}:{_slug(spec.types)}:{capability_type}",
         capability_type=capability_type,
-        domain=profile.domain,
-        device_types=profile.device_types,
+        domain=domain_card.domain,
+        device_types=domain_card.device_types,
         subcomponent_types=spec.types,
-        locators=profile.locators,
+        locators=domain_card.locators,
         properties=spec.properties if capability_type == SUBCOMPONENT_INFO else [],
         metrics=metrics,
-        table_hints=profile.table_hints + spec.table_hints,
+        table_hints=domain_card.table_hints + spec.table_hints,
         examples=_examples_for_type(spec.examples, capability_type),
-        priority=profile.priority + spec.priority,
+        priority=domain_card.priority + spec.priority,
     )
 
 
 def _matching_subcomponents(
     context: RecommendationContext,
-    profile: DeviceCapabilityProfile,
+    domain_card: DeviceCapabilityProfile,
 ) -> List[SubcomponentCapabilitySpec]:
     """返回与上下文对象匹配的嵌套子部件规格。"""
     if not context.subcomponent_types:
-        return list(profile.subcomponents)
+        return list(domain_card.subcomponents)
     matched = []
-    for spec in profile.subcomponents:
+    for spec in domain_card.subcomponents:
         if _subcomponent_matches_any(spec, context.subcomponent_types):
             matched.append(spec)
     return matched
@@ -487,81 +708,133 @@ def _matching_metrics(
 
 def _special_candidates(
     context: RecommendationContext,
-    special_capabilities: Sequence[SpecialCapabilitySpec],
+    special_cards: Sequence[SpecialCapabilitySpec],
     primary_type: str,
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[CapabilityCandidate]:
     """生成特殊查询候选，并通过设备能力卡解析设备别名。"""
     result = []
-    for spec in special_capabilities:
-        if not _values_equal(
-            spec.capability_type, primary_type
-        ) or not _special_matches_context(spec, context, profiles):
+    for special_card in special_cards:
+        if not _special_card_is_candidate(
+            special_card, context, domain_cards, primary_type
+        ):
             continue
         matched_device_types = _matched_special_device_types(
-            _context_device_types(context), spec.device_types, profiles
+            _context_device_types(context),
+            special_card.device_types,
+            domain_cards,
         )
         result.append(
             CapabilityCandidate(
-                capability_id=spec.capability_id,
-                capability_type=spec.capability_type,
-                domain=spec.domain,
-                device_types=matched_device_types or spec.device_types,
-                subcomponent_types=spec.objects,
-                properties=spec.properties,
-                table_hints=spec.table_hints,
-                examples=spec.examples,
-                priority=spec.priority,
+                capability_id=special_card.capability_id,
+                capability_type=special_card.capability_type,
+                domain=special_card.domain,
+                device_types=matched_device_types or special_card.device_types,
+                subcomponent_types=special_card.objects,
+                properties=special_card.properties,
+                table_hints=special_card.table_hints,
+                examples=special_card.examples,
+                priority=special_card.priority,
             )
         )
     return result
 
 
+def _special_card_is_candidate(
+    special_card: SpecialCapabilitySpec,
+    context: RecommendationContext,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    primary_type: str,
+) -> bool:
+    """判断特殊卡的类型和上下文是否同时匹配。"""
+    if not _values_equal(special_card.capability_type, primary_type):
+        return False
+    return _special_matches_context(special_card, context, domain_cards)
+
+
 def _relation_candidates(
     context: RecommendationContext,
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    special_cards: Sequence[SpecialCapabilitySpec],
 ) -> List[CapabilityCandidate]:
     """在结构化子网或原问题明确关系方向时补充关系候选。"""
-    if not context.subnet and not _contains_any(
-        context.question, ("下", "相连", "父", "子", "所属")
-    ):
+    if not _has_relation_direction(context):
         return []
     return _special_candidates(
-        context, load_special_capabilities(), RELATION_QUERY, profiles
+        context, special_cards, RELATION_QUERY, domain_cards
     )
 
 
+def _has_relation_direction(context: RecommendationContext) -> bool:
+    """判断上下文是否具有结构化子网或明确关系词。"""
+    if context.subnet:
+        return True
+    return _contains_any(context.question, ("下", "相连", "父", "子", "所属"))
+
+
 def _special_matches_context(
-    spec: SpecialCapabilitySpec,
+    special_card: SpecialCapabilitySpec,
     context: RecommendationContext,
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> bool:
     """判断特殊能力是否与当前设备、对象和问题文本相关。"""
     device_types = _context_device_types(context)
     matched_device_types = _matched_special_device_types(
-        device_types, spec.device_types, profiles
+        device_types, special_card.device_types, domain_cards
     )
-    if spec.device_types and device_types:
-        if not matched_device_types:
-            return False
-    if spec.objects and context.subcomponent_types:
-        if not _has_overlap(spec.objects, context.subcomponent_types):
-            return False
-    if _values_equal(spec.capability_type, RESOURCE_QUERY):
+    if not _special_device_types_match(
+        special_card, device_types, matched_device_types
+    ):
+        return False
+    if not _special_objects_match(special_card, context):
+        return False
+    if _values_equal(special_card.capability_type, RESOURCE_QUERY):
         return _is_subnet_context(context)
-    if _values_equal(spec.capability_type, RELATION_QUERY):
-        return bool(
-            matched_device_types
-            or _has_overlap(spec.objects, context.subcomponent_types)
-            or _contains_any(context.question, spec.objects)
+    if _values_equal(special_card.capability_type, RELATION_QUERY):
+        return _relation_special_matches(
+            special_card, context, matched_device_types
         )
     return True
+
+
+def _special_device_types_match(
+    special_card: SpecialCapabilitySpec,
+    device_types: Sequence[str],
+    matched_device_types: Sequence[str],
+) -> bool:
+    """判断上下文设备类型是否满足特殊卡约束。"""
+    if special_card.device_types and device_types:
+        return bool(matched_device_types)
+    return True
+
+
+def _special_objects_match(
+    special_card: SpecialCapabilitySpec,
+    context: RecommendationContext,
+) -> bool:
+    """判断上下文子部件是否满足特殊卡对象约束。"""
+    if special_card.objects and context.subcomponent_types:
+        return _has_overlap(special_card.objects, context.subcomponent_types)
+    return True
+
+
+def _relation_special_matches(
+    special_card: SpecialCapabilitySpec,
+    context: RecommendationContext,
+    matched_device_types: Sequence[str],
+) -> bool:
+    """判断关系特殊卡是否具有设备、对象或文本方向。"""
+    if matched_device_types:
+        return True
+    if _has_overlap(special_card.objects, context.subcomponent_types):
+        return True
+    return _contains_any(context.question, special_card.objects)
 
 
 def _matched_special_device_types(
     values: Sequence[str],
     supported: Sequence[str],
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[str]:
     """返回能够通过标准类型或设备能力卡别名命中特殊能力的原始设备类型。"""
     supported_set = _normalized_set(supported)
@@ -570,7 +843,7 @@ def _matched_special_device_types(
         if _normalize_match_value(value) in supported_set:
             matched.append(value)
             continue
-        if _profile_alias_supported(value, supported_set, profiles):
+        if _domain_card_alias_supported(value, supported_set, domain_cards):
             matched.append(value)
     return matched
 
@@ -581,9 +854,19 @@ def _rank_candidate(
     metadata_tables: Sequence[MetadataTable],
 ) -> RankedCapability:
     """计算动态候选与上下文的确定性相关分数。"""
-    score = candidate.priority
-    primary_type = resolve_primary_capability_type(context)
-    if _values_equal(candidate.capability_type, primary_type):
+    score = candidate.priority + _context_match_score(context, candidate)
+    if _metadata_matches(candidate.table_hints, context.tables, metadata_tables):
+        score += 30
+    return RankedCapability(candidate=candidate, match_score=score)
+
+
+def _context_match_score(
+    context: RecommendationContext,
+    candidate: CapabilityCandidate,
+) -> int:
+    """计算不含优先级和元数据的上下文匹配分数。"""
+    score = 0
+    if _values_equal(candidate.capability_type, resolve_primary_capability_type(context)):
         score += 160
     if _has_overlap(_context_device_types(context), candidate.device_types):
         score += 120
@@ -593,9 +876,7 @@ def _rank_candidate(
         score += 60
     if context.properties and _has_overlap(context.properties, candidate.properties):
         score += 40
-    if _metadata_matches(candidate.table_hints, context.tables, metadata_tables):
-        score += 30
-    return RankedCapability(candidate=candidate, match_score=score)
+    return score
 
 
 def _metadata_matches(
@@ -687,30 +968,30 @@ def _device_conditions_for_types(device_types: Iterable[str]) -> List[DeviceCond
     return result
 
 
-def _profile_device_terms(
-    profiles: Sequence[DeviceCapabilityProfile],
+def _domain_card_device_terms(
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[str]:
     """按能力卡顺序展开所有标准设备类型和别名。"""
     terms = []
-    for profile in profiles:
-        terms.extend(profile.device_types)
-        terms.extend(profile.aliases)
+    for domain_card in domain_cards:
+        terms.extend(domain_card.device_types)
+        terms.extend(domain_card.aliases)
     return terms
 
 
-def _profile_standard_device_types(
-    profiles: Sequence[DeviceCapabilityProfile],
+def _domain_card_standard_device_types(
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[str]:
     """按能力卡顺序展开所有标准设备类型。"""
     device_types = []
-    for profile in profiles:
-        device_types.extend(profile.device_types)
+    for domain_card in domain_cards:
+        device_types.extend(domain_card.device_types)
     return device_types
 
 
-def _profile_ids(profiles: Sequence[DeviceCapabilityProfile]) -> set:
+def _domain_card_ids(domain_cards: Sequence[DeviceCapabilityProfile]) -> set:
     """返回能力卡标识集合。"""
-    return {profile.profile_id for profile in profiles}
+    return {domain_card.profile_id for domain_card in domain_cards}
 
 
 def _contains_capability_type(
@@ -724,23 +1005,23 @@ def _contains_capability_type(
     return False
 
 
-def _profile_matches_any(
-    profile: DeviceCapabilityProfile,
+def _domain_card_matches_any(
+    domain_card: DeviceCapabilityProfile,
     device_types: Sequence[str],
 ) -> bool:
     """判断设备能力卡是否命中任一设备类型。"""
     for device_type in device_types:
-        if profile.matches(device_type):
+        if domain_card.matches(device_type):
             return True
     return False
 
 
-def _profile_has_matching_subcomponent(
-    profile: DeviceCapabilityProfile,
+def _domain_card_has_matching_subcomponent(
+    domain_card: DeviceCapabilityProfile,
     subcomponent_types: Sequence[str],
 ) -> bool:
     """判断设备能力卡是否包含任一匹配的子部件。"""
-    for spec in profile.subcomponents:
+    for spec in domain_card.subcomponents:
         if _subcomponent_matches_any(spec, subcomponent_types):
             return True
     return False
@@ -757,17 +1038,17 @@ def _subcomponent_matches_any(
     return False
 
 
-def _profile_alias_supported(
+def _domain_card_alias_supported(
     value: str,
     supported: set,
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> bool:
     """判断设备别名是否能够映射到特殊能力支持的标准设备类型。"""
-    for profile in profiles:
-        if not profile.matches(value):
+    for domain_card in domain_cards:
+        if not domain_card.matches(value):
             continue
-        profile_types = _normalized_set(profile.device_types)
-        if supported.intersection(profile_types):
+        domain_card_types = _normalized_set(domain_card.device_types)
+        if supported.intersection(domain_card_types):
             return True
     return False
 
@@ -782,36 +1063,32 @@ def _examples_for_type(examples: Sequence[str], capability_type: str) -> List[st
     """只保留与当前六类骨架一致的表达示例，避免 Basic 被指标示例干扰。"""
     result = []
     for example in examples:
-        is_count = _contains_any(example, ("数量", "总数"))
-        is_metric = _contains_any(
-            example,
-            (
-                "趋势",
-                "平均",
-                "最大",
-                "最小",
-                "Top",
-                "利用率",
-                "IOPS",
-                "响应时间",
-                "功率",
-                "温度",
-                "速率",
-                "流量",
-                "丢包率",
-                "错包率",
-                "光功率",
-                "不可达比率",
-                "当前移动终端数",
-            ),
-        )
-        if capability_type in {DEVICE_COUNT, SUBCOMPONENT_COUNT} and is_count:
-            result.append(example)
-        elif capability_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC} and is_metric:
-            result.append(example)
-        elif capability_type in {DEVICE_INFO, SUBCOMPONENT_INFO} and not is_count and not is_metric:
+        if _example_matches_type(example, capability_type):
             result.append(example)
     return result
+
+
+def _example_matches_type(example: str, capability_type: str) -> bool:
+    """判断自然问法示例是否与指定能力骨架一致。"""
+    is_count = _contains_any(example, ("数量", "总数"))
+    is_metric = _is_metric_example(example)
+    if capability_type in {DEVICE_COUNT, SUBCOMPONENT_COUNT}:
+        return is_count
+    if capability_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC}:
+        return is_metric
+    if capability_type in {DEVICE_INFO, SUBCOMPONENT_INFO}:
+        return not is_count and not is_metric
+    return False
+
+
+def _is_metric_example(example: str) -> bool:
+    """判断示例是否表达指标、趋势、聚合或排名方向。"""
+    metric_terms = (
+        "趋势", "平均", "最大", "最小", "Top", "利用率", "IOPS",
+        "响应时间", "功率", "温度", "速率", "流量", "丢包率", "错包率",
+        "光功率", "不可达比率", "当前移动终端数",
+    )
+    return _contains_any(example, metric_terms)
 
 
 def _dedupe_candidates(
@@ -842,92 +1119,83 @@ def _contains_any(text: str, values: Sequence[str]) -> bool:
     return False
 
 
-def _profiles_matching_text(
+def _domain_cards_matching_text(
     text: str,
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
     """按文本中未被更长对象词覆盖的设备类型或别名匹配能力卡。"""
     matched_terms = _normalized_set(
-        _specific_terms_in_text(text, _profile_device_terms(profiles))
+        _specific_terms_in_text(text, _domain_card_device_terms(domain_cards))
     )
-    matched_profiles = []
-    for profile in profiles:
-        profile_terms = _normalized_set(profile.device_types + profile.aliases)
-        if matched_terms.intersection(profile_terms):
-            matched_profiles.append(profile)
-    return matched_profiles
+    matched_domain_cards = []
+    for domain_card in domain_cards:
+        card_terms = _normalized_set(domain_card.device_types + domain_card.aliases)
+        if matched_terms.intersection(card_terms):
+            matched_domain_cards.append(domain_card)
+    return matched_domain_cards
 
 
-def _profiles_matching_question_direction(
+def _domain_cards_matching_question_direction(
     text: str,
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
     """按原问题中能力卡已有的业务域、设备类型或别名匹配设备规格。"""
-    object_profile_ids = _profile_ids(_profiles_matching_text(text, profiles))
-    profile_domains = [profile.domain for profile in profiles]
-    matched_domains = _normalized_set(
-        _specific_terms_in_text(text, profile_domains)
+    object_card_ids = _domain_card_ids(
+        _domain_cards_matching_text(text, domain_cards)
     )
-    matched_profiles = []
-    for profile in profiles:
-        if profile.profile_id in object_profile_ids:
-            matched_profiles.append(profile)
+    domains = [domain_card.domain for domain_card in domain_cards]
+    matched_domains = _normalized_set(
+        _specific_terms_in_text(text, domains)
+    )
+    matched_domain_cards = []
+    for domain_card in domain_cards:
+        if domain_card.profile_id in object_card_ids:
+            matched_domain_cards.append(domain_card)
             continue
-        if _normalize_match_value(profile.domain) in matched_domains:
-            matched_profiles.append(profile)
-    return matched_profiles
+        if _normalize_match_value(domain_card.domain) in matched_domains:
+            matched_domain_cards.append(domain_card)
+    return matched_domain_cards
 
 
 def _subcomponents_matching_text(
     text: str,
-    profiles: Sequence[DeviceCapabilityProfile],
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
     """按原问题中能力卡已有的子部件类型或别名匹配父设备与子部件规格。"""
     subcomponent_terms = []
-    for profile in profiles:
-        for spec in profile.subcomponents:
+    for domain_card in domain_cards:
+        for spec in domain_card.subcomponents:
             subcomponent_terms.extend(spec.types)
             subcomponent_terms.extend(spec.aliases)
     matched_terms = _normalized_set(
         _specific_terms_in_text(text, subcomponent_terms)
     )
     matched_subcomponents = []
-    for profile in profiles:
-        for spec in profile.subcomponents:
+    for domain_card in domain_cards:
+        for spec in domain_card.subcomponents:
             spec_terms = _normalized_set(spec.types + spec.aliases)
             if matched_terms.intersection(spec_terms):
-                matched_subcomponents.append((profile, spec))
+                matched_subcomponents.append((domain_card, spec))
     return matched_subcomponents
 
 
-def _dedupe_profiles(
-    profiles: Iterable[DeviceCapabilityProfile],
+def _dedupe_domain_cards(
+    domain_cards: Iterable[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
     """按能力卡标识去重并保留首次出现的设备规格。"""
     result: List[DeviceCapabilityProfile] = []
     seen = set()
-    for profile in profiles:
-        if profile.profile_id and profile.profile_id not in seen:
-            seen.add(profile.profile_id)
-            result.append(profile)
+    for domain_card in domain_cards:
+        if domain_card.profile_id and domain_card.profile_id not in seen:
+            seen.add(domain_card.profile_id)
+            result.append(domain_card)
     return result
 
 
 def _specific_terms_in_text(text: str, terms: Sequence[str]) -> List[str]:
     """忽略大小写返回明确对象词，并移除被更长对象词完整覆盖的短词。"""
     normalized_text = _normalize_match_value(text)
-    matches: List[Tuple[str, int, int]] = []
-    unique_terms = {}
-    for term in terms:
-        normalized_term = _normalize_match_value(term)
-        if normalized_term and normalized_term not in unique_terms:
-            unique_terms[normalized_term] = term
-    for normalized_term, term in unique_terms.items():
-        start = normalized_text.find(normalized_term)
-        while start >= 0:
-            matches.append((term, start, start + len(normalized_term)))
-            start = normalized_text.find(normalized_term, start + 1)
-
+    matches = _term_occurrences(normalized_text, terms)
     result: List[str] = []
     for term, start, end in matches:
         if _is_covered_by_longer_term(term, start, end, matches):
@@ -935,6 +1203,43 @@ def _specific_terms_in_text(text: str, terms: Sequence[str]) -> List[str]:
         if term not in result:
             result.append(term)
     return result
+
+
+def _term_occurrences(
+    normalized_text: str,
+    terms: Sequence[str],
+) -> List[Tuple[str, int, int]]:
+    """返回去重词项在规范文本中的全部出现位置。"""
+    matches: List[Tuple[str, int, int]] = []
+    for normalized_term, term in _unique_normalized_terms(terms).items():
+        matches.extend(
+            _single_term_occurrences(normalized_text, normalized_term, term)
+        )
+    return matches
+
+
+def _unique_normalized_terms(terms: Sequence[str]) -> Dict[str, str]:
+    """按首次出现顺序返回规范词项到展示词项的映射。"""
+    unique_terms = {}
+    for term in terms:
+        normalized_term = _normalize_match_value(term)
+        if normalized_term and normalized_term not in unique_terms:
+            unique_terms[normalized_term] = term
+    return unique_terms
+
+
+def _single_term_occurrences(
+    normalized_text: str,
+    normalized_term: str,
+    term: str,
+) -> List[Tuple[str, int, int]]:
+    """返回一个规范词项在文本中的全部出现位置。"""
+    matches = []
+    start = normalized_text.find(normalized_term)
+    while start >= 0:
+        matches.append((term, start, start + len(normalized_term)))
+        start = normalized_text.find(normalized_term, start + 1)
+    return matches
 
 
 def _is_covered_by_longer_term(

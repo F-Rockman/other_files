@@ -11,6 +11,7 @@ import pytest
 
 from query_errors import ErrorCode, ErrorInfo, ErrorLevel, ErrorStage
 
+import question_recommendation.capabilities as capability_module
 from question_recommendation import (
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
@@ -27,8 +28,7 @@ from question_recommendation import (
     RecommendationContext,
     SubnetScope,
     build_recommendation_context,
-    load_device_capability_profiles,
-    load_special_capabilities,
+    load_capability_cards,
     load_logical_metadata,
     recommend_capabilities,
     recommend_questions_chat,
@@ -290,8 +290,7 @@ def _empty_intention_basic_context(question, llm_refuse_message=""):
 
 
 def test_capability_configuration_is_valid():
-    profiles = load_device_capability_profiles()
-    specials = load_special_capabilities()
+    profiles, specials = load_capability_cards()
     profile_ids = [profile.profile_id for profile in profiles]
     assert len(profiles) >= 8
     assert len(profile_ids) == len(set(profile_ids))
@@ -330,6 +329,89 @@ def test_capability_configuration_is_valid():
     assert not removed_fields.intersection(specials[0].to_dict())
 
 
+def test_load_capability_cards_returns_domain_and_special_cards():
+    domain_cards, special_cards = load_capability_cards()
+    assert domain_cards
+    assert special_cards
+    assert all(item.profile_id for item in domain_cards)
+    assert all(item.capability_id for item in special_cards)
+
+
+def test_recommend_capabilities_loads_builtin_document_once_for_relation(monkeypatch):
+    original_load = capability_module._load_capability_document
+    load_spy = MagicMock(side_effect=original_load)
+    monkeypatch.setattr(capability_module, "_load_capability_document", load_spy)
+    context = RecommendationContext(
+        intention="查信息",
+        devices=[DeviceCondition(device_type="存储设备")],
+        subnet=SubnetScope(path="根子网", name="生产网"),
+    )
+
+    ranked = recommend_capabilities(context)
+
+    assert ranked
+    assert load_spy.call_count == 1
+    assert any(item.candidate.capability_id == "subnet_relation" for item in ranked)
+
+
+def test_recommend_capabilities_does_not_load_when_both_card_types_are_injected(
+    monkeypatch,
+):
+    domain_cards, special_cards = load_capability_cards()
+    load_spy = MagicMock(side_effect=AssertionError("must not load built-in cards"))
+    monkeypatch.setattr(capability_module, "_load_capability_document", load_spy)
+
+    ranked = recommend_capabilities(
+        RecommendationContext(intention="查告警"),
+        domain_cards=domain_cards,
+        special_cards=special_cards,
+    )
+
+    assert ranked
+    load_spy.assert_not_called()
+
+
+def test_recommend_capabilities_loads_once_and_preserves_injected_domain_cards(
+    monkeypatch,
+):
+    domain_cards, _ = load_capability_cards()
+    network_card = next(item for item in domain_cards if item.profile_id == "network_device")
+    original_load = capability_module._load_capability_document
+    load_spy = MagicMock(side_effect=original_load)
+    monkeypatch.setattr(capability_module, "_load_capability_document", load_spy)
+
+    ranked = recommend_capabilities(
+        RecommendationContext(intention="查信息"),
+        domain_cards=[network_card],
+    )
+
+    assert ranked
+    assert load_spy.call_count == 1
+    assert all(item.candidate.capability_id.startswith("network_device:") for item in ranked)
+
+
+def test_recommend_capabilities_loads_once_and_preserves_injected_special_cards(
+    monkeypatch,
+):
+    _, special_cards = load_capability_cards()
+    alarm_card = next(item for item in special_cards if item.capability_id == "alarm_query")
+    custom_alarm_data = alarm_card.to_dict()
+    custom_alarm_data["capability_id"] = "custom_alarm_query"
+    custom_alarm_card = type(alarm_card).from_dict(custom_alarm_data)
+    original_load = capability_module._load_capability_document
+    load_spy = MagicMock(side_effect=original_load)
+    monkeypatch.setattr(capability_module, "_load_capability_document", load_spy)
+
+    ranked = recommend_capabilities(
+        RecommendationContext(intention="查告警"),
+        special_cards=[custom_alarm_card],
+    )
+
+    assert load_spy.call_count == 1
+    assert any(item.candidate.capability_id == "custom_alarm_query" for item in ranked)
+    assert not any(item.candidate.capability_id == "alarm_query" for item in ranked)
+
+
 def test_capabilities_comprehensions_only_express_simple_single_steps():
     source_path = Path(__file__).resolve().parents[1] / "capabilities.py"
     tree = ast.parse(source_path.read_text(encoding="utf-8"))
@@ -366,8 +448,72 @@ def test_capabilities_comprehensions_only_express_simple_single_steps():
         ), f"line {node.lineno}: any/all logic must use an explicit helper"
 
 
+def test_capabilities_module_functions_stay_small_and_low_complexity():
+    source_path = Path(__file__).resolve().parents[1] / "capabilities.py"
+    tree = ast.parse(source_path.read_text(encoding="utf-8"))
+
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        physical_lines = node.end_lineno - node.lineno + 1
+        complexity = _cyclomatic_complexity(node)
+        assert physical_lines <= 50, (
+            f"{node.name} has {physical_lines} physical lines; maximum is 50"
+        )
+        assert complexity <= 8, (
+            f"{node.name} has cyclomatic complexity {complexity}; maximum is 8"
+        )
+
+
+def _cyclomatic_complexity(function_node):
+    """按 capabilities.py 的可读性约束计算圈复杂度。"""
+
+    class ComplexityVisitor(ast.NodeVisitor):
+        def __init__(self):
+            self.value = 1
+
+        def visit_If(self, node):
+            self.value += 1
+            self.generic_visit(node)
+
+        def visit_For(self, node):
+            self.value += 1
+            self.generic_visit(node)
+
+        def visit_While(self, node):
+            self.value += 1
+            self.generic_visit(node)
+
+        def visit_IfExp(self, node):
+            self.value += 1
+            self.generic_visit(node)
+
+        def visit_Assert(self, node):
+            self.value += 1
+            self.generic_visit(node)
+
+        def visit_BoolOp(self, node):
+            self.value += len(node.values) - 1
+            self.generic_visit(node)
+
+        def visit_Try(self, node):
+            self.value += len(node.handlers)
+            self.value += int(bool(node.orelse))
+            self.value += int(bool(node.finalbody))
+            self.generic_visit(node)
+
+        def visit_comprehension(self, node):
+            self.value += len(node.ifs)
+            self.generic_visit(node)
+
+    visitor = ComplexityVisitor()
+    visitor.visit(function_node)
+    return visitor.value
+
+
 def test_device_profiles_reflect_cross_domain_device_classification():
-    profiles = {profile.profile_id: profile for profile in load_device_capability_profiles()}
+    domain_cards, _ = load_capability_cards()
+    profiles = {profile.profile_id: profile for profile in domain_cards}
     assert profiles["fc_switch"].domain == "存储"
     assert {"WAC", "防火墙", "FATAP"}.issubset(profiles["network_device"].aliases)
     assert "ap" not in profiles
@@ -459,7 +605,7 @@ def test_server_nic_and_network_port_are_separate_capabilities():
 
 
 def test_serial_number_is_property_but_not_locator():
-    profiles = load_device_capability_profiles()
+    profiles, _ = load_capability_cards()
     for profile_id in ("server", "storage_device"):
         profile = next(item for item in profiles if item.profile_id == profile_id)
         assert "序列号" in profile.properties
@@ -612,9 +758,10 @@ def test_subnet_scope_does_not_add_incompatible_relation_candidate():
 
 
 def test_subnet_special_capabilities_have_no_fixed_domain():
+    _, special_cards = load_capability_cards()
     subnet_capabilities = [
         spec
-        for spec in load_special_capabilities()
+        for spec in special_cards
         if spec.capability_id in {"subnet_resource", "subnet_relation"}
     ]
     assert len(subnet_capabilities) == 2
@@ -1046,6 +1193,35 @@ def test_prompt_explicit_form_respects_error_recovery_and_unspecified_behavior()
     assert "继续按现有候选顺序、" in prompt
     assert "恢复策略和推荐多样性规则生成问题" in prompt
     assert "指标、趋势、聚合和 TopN 等其他表达继续遵守既有规则" in prompt
+
+
+def test_prompt_removes_explicitly_missing_property_before_other_rules():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "明确缺失属性剔除" in prompt
+    assert "只有失败原因明确点名一个具体属性时才执行剔除" in prompt
+    assert "即使该属性没有出现在 recommendation_context.invalid_values 中" in prompt
+    assert "不得从 question、recommendation_context.properties、subcomponent_types" in prompt
+    assert "不得把缺失属性改写或变形成子部件、列表、数量、统计" in prompt
+    assert "禁止推荐“有哪些节点”“节点信息”“节点列表”“节点数量”或“按节点统计”" in prompt
+    assert "优先于原问题参数继承、明确列表或数量形态继承、Basic 兜底" in prompt
+    assert "不得为了保持原形态或凑足差异继续使用缺失属性" in prompt
+
+
+def test_prompt_missing_property_keeps_valid_context_and_uses_safe_fallback():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "必须继续继承仍有效的设备定位条件、设备类型、时间、子网范围" in prompt
+    assert "存在一个唯一、明确相似的业务描述时" in prompt
+    assert "允许按“唯一相似查询项替换”生成一条替换推荐" in prompt
+    assert "否则回退到 candidate_capabilities 范围内的基础信息、列表、数量" in prompt
+    assert "其他推荐仍不得继续使用已明确缺失的原属性" in prompt
+    assert "暂未匹配到相关属性内容" in prompt
+
+
+def test_prompt_does_not_remove_property_for_generic_field_failure():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "“缺少节点字段”明确点名“节点”" in prompt
+    assert "“字段检索失败”“缺少字段”“未找到匹配字段”" in prompt
+    assert "未明确具体属性的原因不得据此删除原问题内容" in prompt
 
 
 def test_prompt_does_not_use_undefined_normal_or_error_scenes():
