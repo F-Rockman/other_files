@@ -12,6 +12,8 @@ import pytest
 from query_errors import ErrorCode, ErrorInfo, ErrorLevel, ErrorStage
 
 import question_recommendation.capability_loader as capability_loader_module
+import question_recommendation.capability_candidates as capability_candidates_module
+import question_recommendation.capability_matching as capability_matching_module
 from question_recommendation import (
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
@@ -22,11 +24,13 @@ from question_recommendation import (
     SUBCOMPONENT_INFO,
     SUBCOMPONENT_METRIC,
     DeviceCondition,
+    DeviceCapabilityProfile,
     LogicalMetadataError,
     MetadataColumn,
     MetadataTable,
     RecommendationContext,
     SubnetScope,
+    SubcomponentCapabilitySpec,
     build_recommendation_context,
     load_capability_cards,
     load_logical_metadata,
@@ -541,6 +545,68 @@ def test_device_profiles_reflect_cross_domain_device_classification():
         "PON设备" in profiles[profile_id].aliases
         for profile_id in ("olt", "onu")
     )
+
+
+def test_metric_example_only_matches_current_card_metrics():
+    examples = [
+        "查询设备CUSTOMKPI趋势",
+        "查询设备CPU利用率趋势",
+        "查询设备平均值",
+        "查询设备Top5",
+    ]
+    matched = capability_matching_module.examples_for_type(
+        examples, DEVICE_METRIC, ["CustomKPI"]
+    )
+    assert matched == ["查询设备CUSTOMKPI趋势"]
+
+
+def test_metric_example_new_name_needs_no_code_change():
+    example = "查询设备全新业务指标趋势"
+    assert not capability_matching_module._is_metric_example(example, [])
+    assert capability_matching_module._is_metric_example(
+        example, ["全新业务指标"]
+    )
+
+
+def test_count_example_classification_is_unchanged():
+    examples = ["查询设备指标A数量", "查询设备指标A趋势"]
+    matched = capability_matching_module.examples_for_type(
+        examples, DEVICE_COUNT, ["指标A"]
+    )
+    assert matched == ["查询设备指标A数量"]
+
+
+def test_device_and_subcomponent_examples_use_their_own_metrics():
+    subcomponent = SubcomponentCapabilitySpec(
+        types=["测试部件"],
+        metrics=["部件指标B"],
+        examples=["查询测试部件部件指标B趋势", "查询测试部件设备指标A趋势"],
+    )
+    domain_card = DeviceCapabilityProfile(
+        profile_id="test_device",
+        domain="测试",
+        device_types=["测试设备"],
+        metrics=["设备指标A"],
+        subcomponents=[subcomponent],
+        examples=["查询测试设备设备指标A趋势", "查询测试设备部件指标B趋势"],
+    )
+    device_candidate = capability_candidates_module.domain_card_candidates(
+        RecommendationContext(intention="查指标"),
+        domain_card,
+        DEVICE_METRIC,
+        relax=True,
+    )[0]
+    subcomponent_candidate = capability_candidates_module.domain_card_candidates(
+        RecommendationContext(
+            intention="查指标",
+            subcomponent_types=["测试部件"],
+        ),
+        domain_card,
+        SUBCOMPONENT_METRIC,
+        relax=True,
+    )[0]
+    assert device_candidate.examples == ["查询测试设备设备指标A趋势"]
+    assert subcomponent_candidate.examples == ["查询测试部件部件指标B趋势"]
 
 
 @pytest.mark.parametrize(

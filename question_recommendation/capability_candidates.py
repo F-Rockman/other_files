@@ -162,7 +162,9 @@ def _device_candidate(
         properties=domain_card.properties if capability_type == DEVICE_INFO else [],
         metrics=metrics,
         table_hints=domain_card.table_hints,
-        examples=examples_for_type(domain_card.examples, capability_type),
+        examples=examples_for_type(
+            domain_card.examples, capability_type, domain_card.metrics
+        ),
         priority=domain_card.priority,
     )
 
@@ -190,7 +192,7 @@ def subcomponent_candidate(
         properties=spec.properties if capability_type == SUBCOMPONENT_INFO else [],
         metrics=metrics,
         table_hints=domain_card.table_hints + spec.table_hints,
-        examples=examples_for_type(spec.examples, capability_type),
+        examples=examples_for_type(spec.examples, capability_type, spec.metrics),
         priority=domain_card.priority + spec.priority,
     )
 

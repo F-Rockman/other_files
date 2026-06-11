@@ -301,19 +301,27 @@ def _is_covered_by_longer_term(
     return False
 
 
-def examples_for_type(examples: Sequence[str], capability_type: str) -> List[str]:
+def examples_for_type(
+    examples: Sequence[str],
+    capability_type: str,
+    metrics: Sequence[str],
+) -> List[str]:
     """只保留与当前六类骨架一致的表达示例。"""
     result = []
     for example in examples:
-        if _example_matches_type(example, capability_type):
+        if _example_matches_type(example, capability_type, metrics):
             result.append(example)
     return result
 
 
-def _example_matches_type(example: str, capability_type: str) -> bool:
+def _example_matches_type(
+    example: str,
+    capability_type: str,
+    metrics: Sequence[str],
+) -> bool:
     """判断自然问法示例是否与指定能力骨架一致。"""
     is_count = contains_any(example, ("数量", "总数"))
-    is_metric = _is_metric_example(example)
+    is_metric = _is_metric_example(example, metrics)
     if capability_type in {DEVICE_COUNT, SUBCOMPONENT_COUNT}:
         return is_count
     if capability_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC}:
@@ -323,14 +331,9 @@ def _example_matches_type(example: str, capability_type: str) -> bool:
     return False
 
 
-def _is_metric_example(example: str) -> bool:
-    """判断示例是否表达指标、趋势、聚合或排名方向。"""
-    metric_terms = (
-        "趋势", "平均", "最大", "最小", "Top", "利用率", "IOPS",
-        "响应时间", "功率", "温度", "速率", "流量", "丢包率", "错包率",
-        "光功率", "不可达比率", "当前移动终端数",
-    )
-    return contains_any(example, metric_terms)
+def _is_metric_example(example: str, metrics: Sequence[str]) -> bool:
+    """仅按当前能力卡指标名称判断示例是否属于指标查询。"""
+    return contains_any(example, metrics)
 
 
 def dedupe_candidates(
