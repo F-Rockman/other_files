@@ -97,6 +97,15 @@ class TestPromptConstant:
         assert "默认查询全部交换机及其出厂日期" in SQL_INTENT_SYSTEM_PROMPT
         assert "缺少设备名称、IP、MAC、ID 等具体实体标识不能作为条件不完整的拒答理由" in SQL_INTENT_SYSTEM_PROMPT
 
+    def test_entity_attribute_phrase_implies_information_query(self):
+        assert "查询动作对“实体类型+属性”的信息查询为可选表达" in SQL_INTENT_SYSTEM_PROMPT
+        assert "省略查询动作的实体属性短语" in SQL_INTENT_SYSTEM_PROMPT
+        assert '"终端设备IP"' in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询全部终端设备的IP信息" in SQL_INTENT_SYSTEM_PROMPT
+        assert "交换机出厂日期" in SQL_INTENT_SYSTEM_PROMPT
+        assert "服务器操作系统" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不能以缺少指标、属性或查询动作为由拒答" in SQL_INTENT_SYSTEM_PROMPT
+
     def test_special_character_filter_value_rule_present(self):
         assert "包含特殊字符的过滤值" in SQL_INTENT_SYSTEM_PROMPT
         assert "查询设备名称为<script></script>的设备" in SQL_INTENT_SYSTEM_PROMPT
