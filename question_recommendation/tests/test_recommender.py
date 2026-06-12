@@ -39,8 +39,9 @@ from question_recommendation import (
     recommend_questions_chat,
     resolve_primary_capability_type,
 )
-from question_recommendation.recommender import _parse_llm_response
+from question_recommendation.recommender import _build_chat_messages, _parse_llm_response
 from question_recommendation.refusal_rules import get_refusal_recovery_rule
+from question_recommendation.prompt import _build_system_prompt
 
 
 def _network_interface_context(**overrides):
@@ -1215,258 +1216,179 @@ def test_top_twelve_selection_is_stable():
     assert len(first) == 12
 
 
-def test_prompt_contains_minimal_context_and_ambiguity_rules():
-    assert "recommendation_context" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "candidate_capabilities" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "disambiguate" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "invalid_values" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "设备与子部件兼容关系" not in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "candidate_templates" not in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "诊断、异常原因分析" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "description_cn 明确提供的枚举" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "不能借此扩展候选中的" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "properties、metrics：没有可用实时元数据时" in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    for removed in (
-        "filter_fields",
-        "group_by_fields",
-        "allowed_operations",
-        "result_forms",
-        "parent_device_type",
-        "match_score",
-        "match_reasons",
+def test_core_prompt_keeps_global_and_text_interpretation_rules():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    for expected in (
+        "candidate_capabilities 决定允许的业务域",
+        "invalid_values",
+        "结果形态与语义去重",
+        "原问题查数量时不得推荐查信息",
+        "明确缺失属性剔除",
+        "多意图拆分",
+        "多定位备选条件拆分",
+        "委婉表达",
+        "必须输出正好 3 条推荐",
     ):
-        assert removed not in QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+        assert expected in prompt
+    for dynamic_heading in (
+        "当前场景：simplify",
+        "当前场景：空 intention Basic",
+        "当前场景：basic",
+        "当前场景：子网范围",
+        "当前场景：可用实时元数据",
+        "当前场景：拒答业务方向",
+    ):
+        assert dynamic_heading not in prompt
     assert "{recommendation_context_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
 
 
-def test_prompt_requires_valid_subnet_scope_inheritance():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "subnet 是设备或子部件查询的有效范围条件" in prompt
-    assert "延续原设备或子部件对象的推荐必须继承有效子网范围" in prompt
-    assert "根子网下127网段的存储设备" in prompt
-    assert "path 和 name 必须逐字继承" in prompt
-    assert "subnet.path 或 subnet.name 出现在 invalid_values 中时" in prompt
-    assert "只有 resource_query 或 relation_query 候选才能把子网本身作为主要查询对象" in prompt
+def test_normal_runtime_prompt_is_core_prompt_and_is_clearly_shorter():
+    prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
+    assert prompt == QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert len(prompt) < 6000
 
 
-def test_prompt_preserves_explicit_list_and_count_forms():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "明确结果形态继承" in prompt
-    assert "必须由你根据原始 question 判断" in prompt
-    assert "不得依赖 recommendation_context.aggregations" in prompt
-    assert "列表”“有哪些”“全部" in prompt
-    assert "数量”“总数”“多少”“几个" in prompt
-    assert "明确要求列表" in prompt
-    assert "三条推荐都必须保持" in prompt
-    assert "列表形态" in prompt
-    assert "明确要求数量" in prompt
-    assert "数量或数量统计形态" in prompt
-    assert "同一形态的三条推荐仍必须具有业务语义差异" in prompt
+def test_simplify_fragment_overrides_empty_intention_basic():
+    prompt = _build_system_prompt(RecommendationContext(recovery_strategy="simplify"))
+    assert "当前场景：simplify" in prompt
+    assert "当前场景：空 intention Basic" not in prompt
+    assert "每条推荐必须删除至少一个条件" in prompt
 
 
-def test_prompt_explicit_form_respects_error_recovery_and_unspecified_behavior():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "recovery_strategy 字段不存在或为空字符串" in prompt
-    assert "recovery_strategy 为非空字符串" in prompt
-    assert "列表或数量形态本身仍然有效" in prompt
-    assert "simplify 始终优先于形态继承" in prompt
-    assert "其他恢复策略仅在" in prompt
-    assert "refusal_message 或" in prompt
-    assert "refusal_detail 明确表明该形态或其必要条件" in prompt
-    assert "不适合继续使用时" in prompt
-    assert "没有明确要求列表或数量时，不主动推断或强制选择形态" in prompt
-    assert "继续按现有候选顺序、" in prompt
-    assert "恢复策略和推荐多样性规则生成问题" in prompt
-    assert "指标、趋势、聚合和 TopN 等其他表达继续遵守既有规则" in prompt
+def test_empty_intention_uses_basic_fragment_for_other_strategies():
+    prompt = _build_system_prompt(
+        RecommendationContext(recovery_strategy="clarify", question="任意问题")
+    )
+    assert "当前场景：空 intention Basic" in prompt
+    assert "当前场景：clarify" not in prompt
 
 
-def test_prompt_removes_explicitly_missing_property_before_other_rules():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "明确缺失属性剔除" in prompt
-    assert "只有失败原因明确点名一个具体属性时才执行剔除" in prompt
-    assert "即使该属性没有出现在 recommendation_context.invalid_values 中" in prompt
-    assert "不得从 question、recommendation_context.properties、subcomponent_types" in prompt
-    assert "不得把缺失属性改写或变形成子部件、列表、数量、统计" in prompt
-    assert "禁止推荐“有哪些节点”“节点信息”“节点列表”“节点数量”或“按节点统计”" in prompt
-    assert "优先于原问题参数继承、明确列表或数量形态继承、Basic 兜底" in prompt
-    assert "不得为了保持原形态或凑足差异继续使用缺失属性" in prompt
+@pytest.mark.parametrize(
+    ("strategy", "heading"),
+    [
+        ("basic", "当前场景：basic"),
+        ("clarify", "当前场景：clarify"),
+        ("disambiguate", "当前场景：disambiguate"),
+        ("remove_invalid", "当前场景：remove_invalid"),
+        ("adjust_scope", "当前场景：adjust_scope"),
+    ],
+)
+def test_nonempty_intention_selects_only_matching_recovery_fragment(strategy, heading):
+    prompt = _build_system_prompt(
+        RecommendationContext(intention="查信息", recovery_strategy=strategy)
+    )
+    assert heading in prompt
+    assert prompt.count("## 当前场景：") == 2
+    assert "当前场景：拒答业务方向" in prompt
 
 
-def test_prompt_missing_property_keeps_valid_context_and_uses_safe_fallback():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "必须继续继承仍有效的设备定位条件、设备类型、时间、子网范围" in prompt
-    assert "存在一个唯一、明确相似的业务描述时" in prompt
-    assert "允许按“唯一相似查询项替换”生成一条替换推荐" in prompt
-    assert "否则回退到 candidate_capabilities 范围内的基础信息、列表、数量" in prompt
-    assert "其他推荐仍不得继续使用已明确缺失的原属性" in prompt
-    assert "暂未匹配到相关属性内容" in prompt
+def test_recovery_direction_fragment_requires_recovery_and_no_structured_object():
+    no_object = RecommendationContext(intention="查指标", recovery_strategy="clarify")
+    with_device = RecommendationContext(
+        intention="查指标",
+        recovery_strategy="clarify",
+        devices=[DeviceCondition(device_type="网络设备")],
+    )
+    with_subcomponent = RecommendationContext(
+        intention="查指标",
+        recovery_strategy="clarify",
+        subcomponent_types=["光模块"],
+    )
+    assert "当前场景：拒答业务方向" in _build_system_prompt(no_object)
+    assert "当前场景：拒答业务方向" not in _build_system_prompt(with_device)
+    assert "当前场景：拒答业务方向" not in _build_system_prompt(with_subcomponent)
 
 
-def test_prompt_does_not_remove_property_for_generic_field_failure():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "“缺少节点字段”明确点名“节点”" in prompt
-    assert "“字段检索失败”“缺少字段”“未找到匹配字段”" in prompt
-    assert "未明确具体属性的原因不得据此删除原问题内容" in prompt
+def test_question_and_refusal_text_do_not_select_dynamic_fragments():
+    first = RecommendationContext(
+        intention="查信息",
+        recovery_strategy="basic",
+        question="查询网络设备",
+        refusal_detail="缺少节点字段",
+    )
+    second = RecommendationContext(
+        intention="查信息",
+        recovery_strategy="basic",
+        question="查询服务器告警",
+        refusal_detail="多意图：不同指标查询",
+    )
+    assert _build_system_prompt(first) == _build_system_prompt(second)
 
 
-def test_prompt_does_not_use_undefined_normal_or_error_scenes():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "normal 场景" not in prompt
-    assert "error 场景" not in prompt
+def test_subnet_fragment_is_selected_only_by_structured_subnet():
+    plain = _build_system_prompt(RecommendationContext(intention="查信息"))
+    scoped = _build_system_prompt(
+        RecommendationContext(intention="查信息", subnet=SubnetScope(name="生产网"))
+    )
+    assert "当前场景：子网范围" not in plain
+    assert "当前场景：子网范围" in scoped
+    assert "subnet 是跨领域查询范围" in scoped
 
 
-def test_prompt_simplify_overrides_empty_intention_basic():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "优先判断 simplify" in prompt
-    assert "recovery_strategy 为 simplify：无论 intention 是否为空" in prompt
-    assert "优先执行“简化查询”规则" in prompt
-    assert "recovery_strategy 不是 simplify" in prompt
-    assert "当前没有失败恢复要求" in prompt
-    assert "当前需要严格按该恢复策略处理" in prompt
-    assert "不能自行改变" in prompt
+def test_metadata_fragment_requires_nonempty_column_description():
+    no_metadata = _build_system_prompt(RecommendationContext(intention="查指标"))
+    empty_metadata = _build_system_prompt(
+        RecommendationContext(intention="查指标"),
+        [MetadataTable(table_name="metric", columns=[MetadataColumn(column_name="cpu")])],
+    )
+    usable_metadata = _build_system_prompt(
+        RecommendationContext(intention="查指标"),
+        [
+            MetadataTable(
+                table_name="metric",
+                columns=[
+                    MetadataColumn(
+                        column_name="cpu_usage",
+                        column_description="CPU利用率",
+                    )
+                ],
+            )
+        ],
+    )
+    assert "当前场景：可用实时元数据" not in no_metadata
+    assert "当前场景：可用实时元数据" not in empty_metadata
+    assert "当前场景：可用实时元数据" in usable_metadata
+    assert "实时元数据没有的字段不得推荐" in usable_metadata
+    assert "元数据不能扩展设备、业务域、父子关系" in usable_metadata
 
 
-def test_prompt_globally_forbids_original_and_form_only_recommendations():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "全局推荐去重" in prompt
-    assert "不得与原问题语义完全一致" in prompt
-    assert "不得只把原问题从列表改为数量，或从数量改为列表" in prompt
-    assert "不得为了制造差异" in prompt
-    assert "追加未出现的过滤值、对象范围、时间范围" in prompt
-    assert "输出前必须逐条自检" in prompt
+def test_dynamic_fragments_have_stable_order_and_are_not_duplicated():
+    prompt = _build_system_prompt(
+        RecommendationContext(
+            intention="查信息",
+            recovery_strategy="basic",
+            subnet=SubnetScope(name="生产网"),
+        ),
+        [
+            MetadataTable(
+                columns=[MetadataColumn(column_description="设备状态")]
+            )
+        ],
+    )
+    headings = [
+        "当前场景：basic",
+        "当前场景：拒答业务方向",
+        "当前场景：子网范围",
+        "当前场景：可用实时元数据",
+        "输出与自检",
+    ]
+    positions = [prompt.index(heading) for heading in headings]
+    assert positions == sorted(positions)
+    for heading in headings:
+        assert prompt.count(heading) == 1
 
 
-def test_prompt_simplify_removes_conditions_without_adding_new_ones():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "## 简化查询" in prompt
-    assert "保留原业务对象、父子关系，以及至少一个核心查询目标" in prompt
-    assert "可以删除时间、子网、设备定位值、聚合、分组、排序、TopN" in prompt
-    assert "优先分别删除不同的单一条件" in prompt
-    assert "再组合删除多个条件" in prompt
-    assert "每条推荐必须比原问题至少少一个条件" in prompt
-    assert "禁止保留全部原条件" in prompt
-    assert "禁止追加任何原问题中不存在的条件" in prompt
-    assert "原问题没有任何可删除条件时" in prompt
-    assert "同对象的其他指标、属性或基础能力" in prompt
-    assert "不得出现 SQL、查询语句、查询引擎或内部错误" in prompt
-
-
-def test_prompt_requires_user_friendly_actionable_explanation():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "直接展示给用户的完整、友好推荐说明" in prompt
-    assert "不限制字数" in prompt
-    assert "先说明当前提问是什么" in prompt
-    assert "说明当前问题" in prompt
-    assert "再说明推荐按什么方向进行" in prompt
-    assert "推荐方向必须与 recommends 中实际给出的问题一致" in prompt
-    assert "80 个中文字符以内" not in prompt
-    assert "不责备用户" in prompt
-    assert "不复述 invalid_values" in prompt
-    assert "先定位，再收敛" in prompt
-    assert "basic 是无法进一步细分失败类型时使用的通用兜底策略" in prompt
-    assert "必须输出正好 3 条推荐" in prompt
-    for strategy in (
-        "clarify",
-        "disambiguate",
-        "remove_invalid",
-        "adjust_scope",
-    ):
-        assert f"- {strategy}：" in prompt
-    assert "recovery_strategy 为 simplify" in prompt
-
-
-def test_prompt_preserves_object_context_in_unmatched_scenarios():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "未匹配场景的委婉表达" in prompt
-    assert "recommendation_context.devices[].device_type 去重后恰好包含一个" in prompt
-    assert "refusal_message 或 refusal_detail" in prompt
-    assert "逐字使用" in prompt
-    assert "唯一原始 devices[].device_type" in prompt
-    assert "candidate_capabilities.device_types" in prompt
-    assert "标准类型、父类或更泛化名称替换" in prompt
-    assert "必须保留父子关系" in prompt
-    assert '“{唯一原始 devices[].device_type}的{明确子部件}”' in prompt
-    assert "包含多个非空设备类型时，不得将未匹配问题归因于" in prompt
-    assert "没有明确设备类型时，不得虚构设备类型或业务对象" in prompt
-    assert "不得复述 invalid_values" in prompt
-    assert "位于 invalid_values 时不得点名复述" in prompt
-    assert "设备类型不是设备定位值，可以按上述规则保留" in prompt
-    assert "后半段必须结合 recommends 中实际问题说明推荐方向" in prompt
-
-
-def test_prompt_uses_polite_wording_for_unmatched_scenarios():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "当前环境暂未匹配到对应的{设备类型}" in prompt
-    assert "当前可查询的{对象}信息中，暂未匹配到“{属性}”相关内容" in prompt
-    assert "当前环境中暂未采集到{对象}的“{指标}”相关数据" in prompt
-    assert "当前查询涉及多个设备类型，暂未匹配到相关信息" in prompt
-    assert "当前条件暂未匹配到合适的业务取值" in prompt
-    assert "当前环境暂未识别到相关对象之间的可用关联" in prompt
-    assert "当前查询条件下暂未查询到相关数据" in prompt
-
-
-def test_prompt_forbids_direct_negative_wording():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "禁止在面向用户的 explain 中使用" in prompt
-    for wording in (
-        "设备不存在",
-        "字段不存在",
-        "{对象}没有该属性",
-        "{对象}没有该指标",
-        "不支持查询该字段",
-        "不支持查询该指标",
-        "暂不支持该查询",
-    ):
-        assert f"“{wording}”" in prompt
-
-
-def test_prompt_polite_examples_cover_device_subcomponent_and_multiple_types():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "暂未采集到网络设备的" in prompt
-    assert "当前可查询的服务器风扇信息中暂未匹配到" in prompt
-    assert "当前可查询的闪存存储信息中暂未匹配到" in prompt
-    assert "不得将“闪存存储”改写为“存储设备”" in prompt
-    assert "当前提问涉及多个设备类型，暂未匹配到相关信息" in prompt
-
-
-def test_prompt_allows_only_unique_similar_metadata_replacement():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "唯一相似查询项替换" in prompt
-    assert "只有一个冲突属性或指标时才继续" in prompt
-    assert "metadata_tables.columns[].column_description" in prompt
-    assert "一个唯一、明确相似的业务描述" in prompt
-    assert "多个相似项无法明确区分" in prompt
-    assert "仅替换唯一冲突属性或指标" in prompt
-    assert "相似替换最多占一条推荐" in prompt
-    assert "物理列名、表名或“字段”概念" in prompt
-    assert "其余推荐继续遵守对象、父子关系和查询能力方向边界" in prompt
-
-
-def test_prompt_uses_realtime_metadata_as_final_field_source():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "实时元数据字段优先级" in prompt
-    assert "至少存在一个非空 columns[].column_description" in prompt
-    assert "具体属性和指标必须来自与当前候选对象明确相关的" in prompt
-    assert "实时元数据中不存在的属性或指标不得出现在推荐问题中" in prompt
-    assert "实时元数据中存在、但 candidate_capabilities.properties 或 metrics 未声明" in prompt
-    assert "或指标可以用于推荐" in prompt
-
-
-def test_prompt_metadata_cannot_expand_object_or_capability_direction():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "不能扩展设备类型、业务域、子部件与父子" in prompt
-    assert "不能创建候选中没有的告警、链路、关系或其他查询能力方向" in prompt
-    assert "对象、父子关系和查询能力方向都必须在候选能力边界内" in prompt
-
-
-def test_prompt_metadata_fallback_and_safe_field_expression():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "不得使用 column_name、表名或物理字段名" in prompt
-    assert "只能使用 table_description 与当前候选对象明确相关的表中字段" in prompt
-    assert "没有适合当前候选对象的属性或指标时" in prompt
-    assert "列表、数量、" in prompt
-    assert "所有 column_description 均为空时" in prompt
-    assert "回退使用 candidate_capabilities.properties 和 metrics" in prompt
+def test_chat_messages_use_runtime_system_prompt():
+    context = RecommendationContext(
+        intention="查信息",
+        recovery_strategy="basic",
+        subnet=SubnetScope(name="生产网"),
+    )
+    messages = _build_chat_messages(context, [], [])
+    system_prompt = messages[0]["content"]
+    assert "当前场景：basic" in system_prompt
+    assert "当前场景：子网范围" in system_prompt
+    assert system_prompt != QUESTION_RECOMMENDATION_SYSTEM_PROMPT
 
 
 def test_refuse_info_requires_shared_error_info():
@@ -1999,62 +1921,6 @@ def test_basic_prompt_keeps_full_context_and_invalid_values():
     assert '"refusal_detail": "当前条件无法直接查询CPU利用率"' in prompt
     assert '"invalid_values": [' in prompt and '"无效设备"' in prompt
     assert "network_device:device_metric" in prompt
-
-
-def test_prompt_defines_empty_intention_basic_inheritance_and_boundaries():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "空 intention Basic" in prompt
-    assert "recovery_strategy 不是 simplify" in prompt
-    assert "直接复用 Basic" in prompt
-    assert "结构化设备或子部件收敛" in prompt
-    assert "设备表达、子部件、KPI、时间、聚合、排序和 TopN" in prompt
-    assert "即使未出现在候选 metrics 或实时元数据中" in prompt
-    assert "device_metric 或 subcomponent_metric 查询方向" in prompt
-    assert "不得扩展候选之外的设备类型、父子关系、告警、链路" in prompt
-    assert "优先延续并修复原问题" in prompt
-
-
-def test_prompt_empty_intention_basic_splits_multiple_intents():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "当 refusal_message 或 refusal_detail 明确表示多意图时" in prompt
-    assert "每条推荐只包含一个可独立执行的查询意图" in prompt
-    assert "优先覆盖不同 KPI" in prompt
-    assert "同一 KPI 的不同聚合" in prompt
-    assert "必须始终输出正好 3 条" in prompt
-    assert "最近一小时A设备KPI1的平均值" in prompt
-    assert "最近一小时A设备KPI2的平均值" in prompt
-
-
-def test_prompt_constrains_recovery_question_business_direction():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "拒答业务方向" in prompt
-    assert "没有非空 device_type、同时没有 subcomponent_types 时" in prompt
-    assert "不得重新扩展到其他业务域、设备或子部件" in prompt
-    assert "原问题中的方向词不等于明确设备类型" in prompt
-    assert "不得继续继承原问题中无法匹配的 KPI" in prompt
-    assert "搭配同一业务方向的信息、列表和数量候选" in prompt
-    assert "必须以结构化对象为准" in prompt
-
-
-def test_prompt_splits_non_link_alternative_device_conditions_only():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "多定位备选条件拆分" in prompt
-    assert "recommendation_context.recovery_strategy 为 disambiguate" in prompt
-    assert "至少有两个 device_id 非空的完整设备条件" in prompt
-    assert "“或”“或者”或独立英文单词 OR" in prompt
-    assert "每条推荐最多继承一个完整 devices[] 条件" in prompt
-    assert "禁止重新组合、合并或交叉拼接不同设备条件" in prompt
-    assert "第一个条件的列表、第二个条件的列表、第一个条件的数量" in prompt
-    assert "intention 为“查链路”时永远不应用本节规则" in prompt
-    assert "link_relation 属于链路语义" in prompt
-
-
-def test_prompt_treats_subnet_as_cross_domain_scope():
-    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "子网是跨领域资源范围" in prompt
-    assert "网络、存储、服务器、PON、无线和终端对象" in prompt
-    assert "不得默认将子网归为网络业务域" in prompt
-    assert "不得把用户明确的设备类型改写为网络设备" in prompt
 
 
 def test_structurally_valid_llm_result_is_returned_without_content_filtering():

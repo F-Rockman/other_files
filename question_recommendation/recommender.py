@@ -8,7 +8,7 @@ from .capabilities import recommend_capabilities
 from .config import EXPLAIN_FIELD, LLM_CHAT_CALL_ERROR_REASON, RECOMMENDS_FIELD
 from .metadata_loader import PathProvider, load_logical_metadata
 from .models import MetadataTable, RecommendationContext
-from .prompt import QUESTION_RECOMMENDATION_SYSTEM_PROMPT, QUESTION_RECOMMENDATION_USER_TEMPLATE
+from .prompt import QUESTION_RECOMMENDATION_USER_TEMPLATE, _build_system_prompt
 
 
 class QuestionRecommendationError(Exception):
@@ -63,8 +63,9 @@ def _build_chat_messages(
         candidate_capabilities_json=_json_dumps(candidate_capabilities),
         metadata_tables_json=_json_dumps([table.to_dict() for table in metadata_tables]),
     )
+    system_prompt = _build_system_prompt(context, metadata_tables)
     return [
-        {"role": "system", "content": QUESTION_RECOMMENDATION_SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
 
