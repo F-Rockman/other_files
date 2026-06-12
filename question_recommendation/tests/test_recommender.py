@@ -1221,7 +1221,9 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
     for expected in (
         "candidate_capabilities 决定允许的业务域",
         "invalid_values",
+        "只有候选 locators 支持的设备定位类型才可继承",
         "结果形态与语义去重",
+        "原问题未明确列表或数量时，不主动推断或强制选择",
         "原问题查数量时不得推荐查信息",
         "明确缺失属性剔除",
         "多意图拆分",
@@ -1232,6 +1234,7 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         assert expected in prompt
     for dynamic_heading in (
         "当前场景：simplify",
+        "当前场景：无恢复要求",
         "当前场景：空 intention Basic",
         "当前场景：basic",
         "当前场景：子网范围",
@@ -1242,9 +1245,12 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
     assert "{recommendation_context_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
 
 
-def test_normal_runtime_prompt_is_core_prompt_and_is_clearly_shorter():
+def test_normal_runtime_prompt_loads_weak_path_and_is_clearly_shorter():
     prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
-    assert prompt == QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "当前场景：无恢复要求" in prompt
+    assert "信息/列表 → 数量/统计 → 指标 → 关联能力" in prompt
+    assert "趋势、聚合、排序和 TopN" in prompt
+    assert "禁止主动虚构" in prompt
     assert len(prompt) < 6000
 
 
@@ -1261,6 +1267,7 @@ def test_empty_intention_uses_basic_fragment_for_other_strategies():
     )
     assert "当前场景：空 intention Basic" in prompt
     assert "当前场景：clarify" not in prompt
+    assert "当前场景：无恢复要求" not in prompt
 
 
 @pytest.mark.parametrize(
@@ -1280,6 +1287,14 @@ def test_nonempty_intention_selects_only_matching_recovery_fragment(strategy, he
     assert heading in prompt
     assert prompt.count("## 当前场景：") == 2
     assert "当前场景：拒答业务方向" in prompt
+    assert "当前场景：无恢复要求" not in prompt
+
+
+def test_unknown_recovery_strategy_does_not_load_normal_fragment():
+    prompt = _build_system_prompt(
+        RecommendationContext(intention="查信息", recovery_strategy="unknown")
+    )
+    assert "当前场景：无恢复要求" not in prompt
 
 
 def test_recovery_direction_fragment_requires_recovery_and_no_structured_object():
@@ -1323,6 +1338,8 @@ def test_subnet_fragment_is_selected_only_by_structured_subnet():
     assert "当前场景：子网范围" not in plain
     assert "当前场景：子网范围" in scoped
     assert "subnet 是跨领域查询范围" in scoped
+    assert "必须逐字继承有效 path/name" in scoped
+    assert "name 已包含在完整 path 中时避免重复表达" in scoped
 
 
 def test_metadata_fragment_requires_nonempty_column_description():
@@ -1350,6 +1367,8 @@ def test_metadata_fragment_requires_nonempty_column_description():
     assert "当前场景：可用实时元数据" in usable_metadata
     assert "实时元数据没有的字段不得推荐" in usable_metadata
     assert "元数据不能扩展设备、业务域、父子关系" in usable_metadata
+    assert "必须保留原设备类型、父子关系、定位条件、时间、聚合和子网范围" in usable_metadata
+    assert "已按相近查询内容调整" in usable_metadata
 
 
 def test_dynamic_fragments_have_stable_order_and_are_not_duplicated():
