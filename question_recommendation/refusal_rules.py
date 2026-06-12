@@ -8,7 +8,7 @@ BASIC = "basic"
 CLARIFY = "clarify"
 DISAMBIGUATE = "disambiguate"
 REMOVE_INVALID = "remove_invalid"
-REFRAME = "reframe"
+SIMPLIFY = "simplify"
 ADJUST_SCOPE = "adjust_scope"
 
 VALID_RECOVERY_STRATEGIES = {
@@ -16,7 +16,7 @@ VALID_RECOVERY_STRATEGIES = {
     CLARIFY,
     DISAMBIGUATE,
     REMOVE_INVALID,
-    REFRAME,
+    SIMPLIFY,
     ADJUST_SCOPE,
 }
 
@@ -42,10 +42,10 @@ REFUSAL_RECOVERY_RULES: Dict[str, RefusalRecoveryRule] = {
         REMOVE_INVALID, ALL_DEVICE_IDENTIFIERS
     ),
     "intent_guide_metric_not_found": RefusalRecoveryRule(REMOVE_INVALID, ALL_KPIS),
-    "intent_guide_unsupported_subnet_metric_query": RefusalRecoveryRule(REFRAME),
-    "intent_guide_unsupported_subnet_alarm_query": RefusalRecoveryRule(REFRAME),
-    "intent_guide_relation_not_found": RefusalRecoveryRule(REFRAME),
-    "intent_guide_field_retrieval_failed": RefusalRecoveryRule(REFRAME),
+    "intent_guide_unsupported_subnet_metric_query": RefusalRecoveryRule(BASIC),
+    "intent_guide_unsupported_subnet_alarm_query": RefusalRecoveryRule(BASIC),
+    "intent_guide_relation_not_found": RefusalRecoveryRule(BASIC),
+    "intent_guide_field_retrieval_failed": RefusalRecoveryRule(BASIC),
     # 第 4 类：意图追问。
     "intent_clarify_query_object_missing": RefusalRecoveryRule(CLARIFY),
     "intent_clarify_query_intent_ambiguous": RefusalRecoveryRule(CLARIFY),
@@ -74,13 +74,15 @@ REFUSAL_RECOVERY_RULES: Dict[str, RefusalRecoveryRule] = {
     "value_retrieval_ip_multiple_candidates": RefusalRecoveryRule(DISAMBIGUATE),
     "value_retrieval_kpi_multiple_candidates": RefusalRecoveryRule(DISAMBIGUATE),
     "value_retrieval_value_semantic_ambiguous": RefusalRecoveryRule(DISAMBIGUATE),
-    "value_retrieval_alias_normalization_failed": RefusalRecoveryRule(REFRAME),
+    "value_retrieval_alias_normalization_failed": RefusalRecoveryRule(BASIC),
     # 第 6 类：SQL 生成。
-    "sql_generation_schema_mapping_failed": RefusalRecoveryRule(REFRAME),
-    "sql_generation_join_path_failed": RefusalRecoveryRule(REFRAME),
-    "sql_generation_unsupported_sql_feature": RefusalRecoveryRule(REFRAME),
-    "sql_generation_failed": RefusalRecoveryRule(REFRAME),
+    "sql_generation_schema_mapping_failed": RefusalRecoveryRule(BASIC),
+    "sql_generation_join_path_failed": RefusalRecoveryRule(BASIC),
+    "sql_generation_unsupported_sql_feature": RefusalRecoveryRule(BASIC),
+    "sql_generation_failed": RefusalRecoveryRule(SIMPLIFY),
     "sql_generation_timeout": RefusalRecoveryRule(ADJUST_SCOPE),
+    # 第 7 类：查询执行。
+    "query_execution_engine_error": RefusalRecoveryRule(SIMPLIFY),
 }
 
 

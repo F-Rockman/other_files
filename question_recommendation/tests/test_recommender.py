@@ -14,6 +14,7 @@ from query_errors import ErrorCode, ErrorInfo, ErrorLevel, ErrorStage
 import question_recommendation.capability_loader as capability_loader_module
 import question_recommendation.capability_candidates as capability_candidates_module
 import question_recommendation.capability_matching as capability_matching_module
+import question_recommendation.refusal_rules as refusal_rules_module
 from question_recommendation import (
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
@@ -1032,7 +1033,7 @@ def test_kpi_relaxation_is_limited_to_clarify_and_disambiguate():
             intention="查指标",
             question="查询网络CUP",
             kpis=["CUP"],
-            recovery_strategy="reframe",
+            recovery_strategy="basic",
         )
     )
     assert not any(item.candidate.capability_type == DEVICE_METRIC for item in ranked)
@@ -1268,7 +1269,8 @@ def test_prompt_explicit_form_respects_error_recovery_and_unspecified_behavior()
     assert "recovery_strategy 字段不存在或为空字符串" in prompt
     assert "recovery_strategy 为非空字符串" in prompt
     assert "列表或数量形态本身仍然有效" in prompt
-    assert "恢复策略才优先于形态" in prompt
+    assert "simplify 始终优先于形态继承" in prompt
+    assert "其他恢复策略仅在" in prompt
     assert "refusal_message 或" in prompt
     assert "refusal_detail 明确表明该形态或其必要条件" in prompt
     assert "不适合继续使用时" in prompt
@@ -1313,14 +1315,40 @@ def test_prompt_does_not_use_undefined_normal_or_error_scenes():
     assert "error 场景" not in prompt
 
 
-def test_prompt_empty_intention_overrides_recovery_strategy():
+def test_prompt_simplify_overrides_empty_intention_basic():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    assert "优先使用 recommendation_context.intention" in prompt
-    assert "无论 recovery_strategy 是什么" in prompt
-    assert "直接执行“空 intention Basic”规则" in prompt
+    assert "优先判断 simplify" in prompt
+    assert "recovery_strategy 为 simplify：无论 intention 是否为空" in prompt
+    assert "优先执行“简化查询”规则" in prompt
+    assert "recovery_strategy 不是 simplify" in prompt
     assert "当前没有失败恢复要求" in prompt
     assert "当前需要严格按该恢复策略处理" in prompt
     assert "不能自行改变" in prompt
+
+
+def test_prompt_globally_forbids_original_and_form_only_recommendations():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "全局推荐去重" in prompt
+    assert "不得与原问题语义完全一致" in prompt
+    assert "不得只把原问题从列表改为数量，或从数量改为列表" in prompt
+    assert "不得为了制造差异" in prompt
+    assert "追加未出现的过滤值、对象范围、时间范围" in prompt
+    assert "输出前必须逐条自检" in prompt
+
+
+def test_prompt_simplify_removes_conditions_without_adding_new_ones():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "## 简化查询" in prompt
+    assert "保留原业务对象、父子关系，以及至少一个核心查询目标" in prompt
+    assert "可以删除时间、子网、设备定位值、聚合、分组、排序、TopN" in prompt
+    assert "优先分别删除不同的单一条件" in prompt
+    assert "再组合删除多个条件" in prompt
+    assert "每条推荐必须比原问题至少少一个条件" in prompt
+    assert "禁止保留全部原条件" in prompt
+    assert "禁止追加任何原问题中不存在的条件" in prompt
+    assert "原问题没有任何可删除条件时" in prompt
+    assert "同对象的其他指标、属性或基础能力" in prompt
+    assert "不得出现 SQL、查询语句、查询引擎或内部错误" in prompt
 
 
 def test_prompt_requires_user_friendly_actionable_explanation():
@@ -1341,10 +1369,10 @@ def test_prompt_requires_user_friendly_actionable_explanation():
         "clarify",
         "disambiguate",
         "remove_invalid",
-        "reframe",
         "adjust_scope",
     ):
         assert f"- {strategy}：" in prompt
+    assert "recovery_strategy 为 simplify" in prompt
 
 
 def test_prompt_preserves_object_context_in_unmatched_scenarios():
@@ -1479,21 +1507,51 @@ def test_refuse_key_decides_strategy_not_messages():
     ("error_code", "expected_strategy"),
     [
         (ErrorCode.INTENT_GUIDE_CROSS_DOMAIN_QUERY, "disambiguate"),
-        (ErrorCode.INTENT_GUIDE_UNSUPPORTED_SUBNET_METRIC_QUERY, "reframe"),
+        (ErrorCode.INTENT_GUIDE_UNSUPPORTED_SUBNET_METRIC_QUERY, "basic"),
         (ErrorCode.INTENT_CLARIFY_METRIC_MISSING, "clarify"),
         (ErrorCode.INTENT_CLARIFY_OBJECT_AMBIGUOUS, "disambiguate"),
         (ErrorCode.VALUE_RETRIEVAL_KPI_NOT_FOUND, "remove_invalid"),
-        (ErrorCode.VALUE_RETRIEVAL_ALIAS_NORMALIZATION_FAILED, "reframe"),
-        (ErrorCode.SQL_GENERATION_SCHEMA_MAPPING_FAILED, "reframe"),
+        (ErrorCode.VALUE_RETRIEVAL_ALIAS_NORMALIZATION_FAILED, "basic"),
+        (ErrorCode.SQL_GENERATION_SCHEMA_MAPPING_FAILED, "basic"),
+        (ErrorCode.SQL_GENERATION_FAILED, "simplify"),
+        (ErrorCode.QUERY_EXECUTION_ENGINE_ERROR, "simplify"),
         (ErrorCode.SQL_GENERATION_TIMEOUT, "adjust_scope"),
     ],
 )
-def test_classes_three_to_six_map_to_stable_recovery_strategies(
+def test_configured_errors_map_to_stable_recovery_strategies(
     error_code,
     expected_strategy,
 ):
     context = build_recommendation_context({}, refuse_info=error_code.to_info())
     assert context.recovery_strategy == expected_strategy
+
+
+@pytest.mark.parametrize(
+    "error_key",
+    [
+        "intent_guide_unsupported_subnet_metric_query",
+        "intent_guide_unsupported_subnet_alarm_query",
+        "intent_guide_relation_not_found",
+        "intent_guide_field_retrieval_failed",
+        "value_retrieval_alias_normalization_failed",
+        "sql_generation_schema_mapping_failed",
+        "sql_generation_join_path_failed",
+        "sql_generation_unsupported_sql_feature",
+    ],
+)
+def test_former_reframe_errors_use_basic(error_key):
+    assert get_refusal_recovery_rule(error_key).strategy == "basic"
+
+
+def test_valid_recovery_strategies_use_simplify_without_reframe():
+    assert "simplify" in refusal_rules_module.VALID_RECOVERY_STRATEGIES
+    assert "re" + "frame" not in refusal_rules_module.VALID_RECOVERY_STRATEGIES
+
+
+def test_reframe_is_removed_from_recommendation_code_and_docs():
+    package_path = Path(__file__).resolve().parents[1]
+    source_paths = list(package_path.glob("*.py")) + [package_path / "README.md"]
+    assert all("reframe" not in path.read_text(encoding="utf-8") for path in source_paths)
 
 
 def test_unconfigured_clarification_defaults_to_clarify():
@@ -1805,7 +1863,7 @@ def test_empty_intention_uses_structured_device_and_overrides_recovery_strategy(
     context = RecommendationContext(
         question="查询网络设备",
         devices=[DeviceCondition(device_type="服务器")],
-        recovery_strategy="reframe",
+        recovery_strategy="basic",
     )
     assert set(_candidate_ids(context)) == {
         "server:device_info",
@@ -1946,7 +2004,8 @@ def test_basic_prompt_keeps_full_context_and_invalid_values():
 def test_prompt_defines_empty_intention_basic_inheritance_and_boundaries():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "空 intention Basic" in prompt
-    assert "本节具有最高优先级" in prompt
+    assert "recovery_strategy 不是 simplify" in prompt
+    assert "直接复用 Basic" in prompt
     assert "结构化设备或子部件收敛" in prompt
     assert "设备表达、子部件、KPI、时间、聚合、排序和 TopN" in prompt
     assert "即使未出现在候选 metrics 或实时元数据中" in prompt
