@@ -1280,6 +1280,21 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "不能用“该设备”替代设备类型" in prompt
     assert "最终 recommends 和 explain 必须替换为输入中的真实有效表达" in prompt
     assert "可以先查看该设备类型A的属性2、属性3或指标1" in prompt
+    assert "拒答原因中的“缺少字段”等内容仅用于判断" in prompt
+    assert "内部原因只能用于判断" in prompt
+    assert "元数据中缺少属性1相关字段，无法直接回答" in prompt
+    assert "若 explain 包含内部实现词" in prompt
+    for forbidden_output in (
+        "元数据",
+        "字段",
+        "列",
+        "表",
+        "映射",
+        "无法直接回答",
+        "无法回答",
+        "不能回答",
+    ):
+        assert f"“{forbidden_output}”" in prompt
 
 
 def test_normal_runtime_prompt_loads_weak_path_and_is_clearly_shorter():
