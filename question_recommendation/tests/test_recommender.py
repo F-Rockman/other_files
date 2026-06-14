@@ -1232,9 +1232,9 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "明确缺失属性剔除",
         "多意图拆分",
         "多定位备选条件拆分",
-        "固定结构",
+        "固定生成流程",
         "对象与条件",
-        "原因转译",
+        "stop_reason 固定表达",
         "必须输出正好 3 条推荐",
     ):
         assert expected in prompt
@@ -1256,23 +1256,26 @@ def test_core_prompt_requires_actionable_natural_explain():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert prompt.count("## explain") == 1
     assert "explain 直接展示给用户，只按本节规则生成" in prompt
-    assert "当前查询内容 → 当前为什么没有继续 → 推荐给用户的下一步" in prompt
-    assert "没有恢复信息时，只表达当前查询内容和推荐给用户的下一步" in prompt
-    assert "不编造未继续原因" in prompt
-    assert "当前查询内容概括业务对象、查询目标和仍然有效的条件" in prompt
-    assert "下一步必须概括 recommends 中实际推荐的方向" in prompt
-    assert "不机械复述 refusal_message/refusal_detail" in prompt
-    assert "不责备用户，不使用带有指责、纠正或质疑用户表达能力的措辞" in prompt
-    assert "当前查询、未继续原因和下一步都必须逐字使用该设备类型" in prompt
-    assert "当前查询还必须按 id_type 和 match_mode 自然保留该定位条件" in prompt
+    assert "current_query：用户当前查询的对象、目标和仍然有效的条件" in prompt
+    assert "stop_reason：将当前没有继续的原因转译为用户可理解的业务说明" in prompt
+    assert "next_step：根据实际 recommends 概括用户下一步可以查询的方向" in prompt
+    assert "explain 必须严格生成三句话" in prompt
+    assert "三句话不得合并、省略或增加系统分析过程" in prompt
+    assert "没有恢复信息时，只生成两句话" in prompt
+    assert "不得编造 stop_reason" in prompt
+    assert "current_query 和 stop_reason 必须逐字使用该设备类型" in prompt
+    assert "current_query 还必须按 id_type 和 match_mode 自然保留该定位条件" in prompt
+    assert "next_step 使用 recommends 中实际出现的具体设备类型" in prompt
     assert "存在子部件时使用完整父子对象" in prompt
-    assert "存在多个设备类型时，应分别点名每个未包含对应属性或信息的设备类型" in prompt
+    assert "存在多个明确设备类型时，stop_reason 按具体设备类型分别说明" in prompt
     assert "没有明确设备类型时不得虚构对象" in prompt
-    assert "当前可查询的设备类型A信息中，暂未包含与属性1相关的内容" in prompt
+    assert "目前暂未提供设备类型A的属性1相关信息" in prompt
+    assert "目前暂未提供对象A的指标1相关数据" in prompt
+    assert "目前暂未匹配到对应的设备类型A" in prompt
+    assert "当前查询涉及多个设备方向，需要先按具体设备类型分别确认" in prompt
     assert "最终 recommends 和 explain 必须替换为输入中的真实有效表达" in prompt
-    assert "可以先从该设备类型A的属性2、基础信息或指标1方向继续了解设备情况" in prompt
-    assert "元数据中缺少属性1相关字段，无法直接回答" in prompt
-    assert "同时触发两个禁止项" in prompt
+    assert "可以先从设备类型A的属性2、基础信息或指标1方向继续了解" in prompt
+    assert "恢复场景 explain 是否严格为 current_query、stop_reason、next_step 三句话" in prompt
     for forbidden_output in (
         "元数据",
         "字段",
@@ -1284,6 +1287,13 @@ def test_core_prompt_requires_actionable_natural_explain():
         "不能回答",
     ):
         assert f"“{forbidden_output}”" in prompt
+    for obsolete_wording in (
+        "当前可查询的信息中暂未包含",
+        "当前可查询的设备类型A信息中",
+        "现有数据中暂未匹配到",
+        "元数据中缺少",
+    ):
+        assert obsolete_wording not in prompt
     explain_section = prompt.split("## explain", 1)[1].split("## 输出与自检", 1)[0]
     for concrete_example in ("闪存存储", "节点信息", "7.183.7.126"):
         assert concrete_example not in explain_section
