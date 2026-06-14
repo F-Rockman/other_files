@@ -1262,13 +1262,19 @@ def test_core_prompt_requires_actionable_natural_explain():
         "基于上述原因",
         "针对该错误",
         "系统建议",
+        "支持查看",
+        "可查看",
     ):
         assert f"“{forbidden_style}”" in prompt
-    assert "使用一到两句连贯自然的话" in prompt
+    assert "默认使用一句连贯自然的话" in prompt
+    assert "不以拒答原因或系统结论开头" in prompt
+    assert "不复述“当前查询涉及多个业务域”“建议选择具体设备类型”等拒答内容" in prompt
     assert "不完整复述原问题" in prompt
-    assert "直接告诉用户可以先查什么、确认什么或减少什么条件" in prompt
     assert "不解释系统为什么选择这三条推荐" in prompt
     assert "不要每次机械使用同一句式" in prompt
+    assert "必须逐字沿用 recommends 中实际使用的名称" in prompt
+    assert "不得把“闪存存储”改写为“存储设备”" in prompt
+    assert "不同设备类型记录的状态信息有所不同，可以先分别查看服务器健康状态、网络设备通信状态和闪存存储连接状态" in prompt
     assert "当前条件下暂未匹配到对应的网络设备，可以先查看网络设备列表" in prompt
 
 
