@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
 from .capabilities import recommend_capabilities
 from .config import EXPLAIN_FIELD, LLM_CHAT_CALL_ERROR_REASON, RECOMMENDS_FIELD
+from .field_analysis import analyze_candidate_fields
 from .metadata_loader import PathProvider, load_logical_metadata
 from .models import MetadataTable, RecommendationContext
 from .prompt import QUESTION_RECOMMENDATION_USER_TEMPLATE, _build_system_prompt
@@ -58,10 +59,17 @@ def _build_chat_messages(
     candidate_capabilities: Sequence[Mapping[str, Any]],
 ) -> List[Dict[str, str]]:
     """将标准上下文、按表元数据和候选能力组装为 Chat API messages。"""
+    field_analysis = analyze_candidate_fields(
+        context, candidate_capabilities, metadata_tables
+    )
     user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
         recommendation_context_json=_json_dumps(context.to_dict()),
         candidate_capabilities_json=_json_dumps(candidate_capabilities),
         metadata_tables_json=_json_dumps([table.to_dict() for table in metadata_tables]),
+    )
+    user_prompt += (
+        "\n\n确定性候选字段分析 candidate_field_analysis：\n"
+        + _json_dumps(field_analysis)
     )
     system_prompt = _build_system_prompt(context, metadata_tables)
     return [

@@ -41,6 +41,7 @@ from question_recommendation import (
 )
 from question_recommendation.recommender import _build_chat_messages, _parse_llm_response
 from question_recommendation.refusal_rules import get_refusal_recovery_rule
+from question_recommendation.field_analysis import analyze_candidate_fields
 from question_recommendation.prompt import _build_system_prompt
 
 
@@ -1478,6 +1479,79 @@ def test_cross_domain_candidate_fields_remain_bound_to_their_device_type():
     assert "运行状态" in server.properties
     assert "运行状态" not in network.properties
     assert "状态" in network.properties
+
+
+def test_candidate_field_analysis_marks_field_missing_from_all_final_candidates():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询运行状态正常的设备有哪些",
+        properties=["运行状态"],
+    )
+    candidates = [
+        {"device_types": ["网络设备"], "properties": ["状态"]},
+        {"device_types": ["服务器"], "properties": ["健康状态"]},
+        {"device_types": ["分布式存储"], "properties": ["名称"]},
+        {"device_types": ["闪存存储"], "properties": ["型号"]},
+    ]
+
+    assert analyze_candidate_fields(context, candidates) == {
+        "unsupported_properties": ["运行状态"],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_keeps_field_supported_by_any_final_candidate():
+    context = RecommendationContext(properties=["运行状态"], kpis=["CPU利用率"])
+    candidates = [
+        {"device_types": ["网络设备"], "properties": ["状态"], "metrics": ["cpu利用率"]},
+        {"device_types": ["服务器"], "properties": ["运行状态"]},
+    ]
+
+    assert analyze_candidate_fields(context, candidates) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_is_disabled_by_usable_metadata():
+    context = RecommendationContext(properties=["运行状态"], kpis=["CPU利用率"])
+    metadata = [
+        MetadataTable(
+            table_description="设备信息",
+            columns=[MetadataColumn(column_description="设备名称")],
+        )
+    ]
+
+    assert analyze_candidate_fields(context, [], metadata) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
+def test_chat_prompt_prioritizes_similar_fields_for_globally_unsupported_item():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询运行状态正常的设备有哪些",
+        properties=["运行状态"],
+        recovery_strategy="disambiguate",
+    )
+    candidates = [
+        {"device_types": ["网络设备"], "properties": ["状态"]},
+        {"device_types": ["服务器"], "properties": ["健康状态"]},
+        {"device_types": ["闪存存储"], "properties": ["型号"]},
+    ]
+
+    messages = _build_chat_messages(context, [], candidates)
+    system_prompt = messages[0]["content"]
+    user_prompt = messages[1]["content"]
+
+    assert '"unsupported_properties": [\n    "运行状态"\n  ]' in user_prompt
+    assert "每条推荐仍先绑定一张具体候选卡" in system_prompt
+    assert "优先从该卡自身字段中选择一个语义明确的相近字段" in system_prompt
+    assert "替换时必须删除原字段及其直接绑定的过滤值" in system_prompt
+    assert "只有绑定候选没有清晰相近字段时" in system_prompt
+    assert "继承设备定位、父子关系、子网、时间、其他未冲突条件" in system_prompt
+    assert "最后才回退同对象基础信息" in system_prompt
 
 
 def test_dynamic_fragments_have_stable_order_and_are_not_duplicated():
