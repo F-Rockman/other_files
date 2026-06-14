@@ -1275,12 +1275,11 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "不责备用户，不使用带有指责、纠正或质疑用户表达能力的措辞" in prompt
     assert "不要每次机械使用同一句式" in prompt
     assert "必须逐字沿用 recommends 中实际使用的名称" in prompt
-    assert "不得把“闪存存储”改写为“存储设备”" in prompt
-    assert "不能用“现有数据”“当前数据”“系统数据”等泛化主语代替对象归属" in prompt
-    assert "你希望查看所有设备的健康状态，但不同设备类型记录的状态信息并不完全一致" in prompt
-    assert "可以分别查看服务器健康状态、网络设备通信状态和闪存存储连接状态" in prompt
-    assert "当前可查询的闪存存储设备信息中暂未包含节点相关内容" in prompt
-    assert "当前条件下暂未匹配到对应的网络设备，可以先查看网络设备列表" in prompt
+    assert '不得把"设备类型A"改写为其父类"设备类型B"' in prompt
+    assert "当前提问、当前原因和推荐方向三部分都必须逐字体现该设备类型" in prompt
+    assert "不能用“该设备”替代设备类型" in prompt
+    assert "最终 recommends 和 explain 必须替换为输入中的真实有效表达" in prompt
+    assert "可以先查看该设备类型A的属性2、属性3或指标1" in prompt
 
 
 def test_normal_runtime_prompt_loads_weak_path_and_is_clearly_shorter():
@@ -1444,9 +1443,9 @@ def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
     assert "禁止从 question、recommendation_context 或 examples 重新继承" in prompt
     assert "可以从当前绑定候选选择一个语义相近字段" in prompt
     assert "相近字段不得继承原字段绑定的过滤值" in prompt
-    assert "禁止生成“运行状态正常的网络设备”或“状态正常的网络设备”" in prompt
+    assert "禁止生成“属性1取值A的设备类型B”或“属性2取值A的设备类型B”" in prompt
     assert "原属性或指标精确命中绑定候选白名单时" in prompt
-    assert "运行状态正常的服务器" in prompt
+    assert "属性1取值A的设备类型A" in prompt
 
 
 def test_no_metadata_fragment_falls_back_to_same_object_information():
