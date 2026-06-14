@@ -1241,6 +1241,7 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "当前场景：basic",
         "当前场景：子网范围",
         "当前场景：可用实时元数据",
+        "当前场景：无可用实时元数据",
         "当前场景：拒答业务方向",
     ):
         assert dynamic_heading not in prompt
@@ -1308,8 +1309,10 @@ def test_nonempty_intention_selects_only_matching_recovery_fragment(strategy, he
         RecommendationContext(intention="查信息", recovery_strategy=strategy)
     )
     assert heading in prompt
-    assert prompt.count("## 当前场景：") == 2
+    assert prompt.count("## 当前场景：") == 3
     assert "当前场景：拒答业务方向" in prompt
+    assert "当前场景：无可用实时元数据" in prompt
+    assert "当前场景：可用实时元数据" not in prompt
     assert "当前场景：无恢复要求" not in prompt
 
 
@@ -1386,13 +1389,63 @@ def test_metadata_fragment_requires_nonempty_column_description():
         ],
     )
     assert "当前场景：可用实时元数据" not in no_metadata
+    assert "当前场景：无可用实时元数据" in no_metadata
     assert "当前场景：可用实时元数据" not in empty_metadata
+    assert "当前场景：无可用实时元数据" in empty_metadata
     assert "当前场景：可用实时元数据" in usable_metadata
+    assert "当前场景：无可用实时元数据" not in usable_metadata
     assert "实时元数据没有的字段不得推荐" in usable_metadata
     assert "元数据不能扩展设备、业务域、父子关系" in usable_metadata
     assert "必须保留原设备类型、父子关系、定位条件、时间、聚合和子网范围" in usable_metadata
     assert "可以先尝试相近的查询内容" in usable_metadata
     assert "不得描述“推荐已调整”或系统处理过程" in usable_metadata
+
+
+def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
+    prompt = _build_system_prompt(
+        RecommendationContext(
+            intention="查信息",
+            question="查询运行状态正常的网络设备",
+            devices=[DeviceCondition(device_type="网络设备")],
+            properties=["运行状态"],
+        )
+    )
+    assert "当前场景：无可用实时元数据" in prompt
+    assert "字段白名单" in prompt
+    assert "属性和指标名称匹配忽略英文字母大小写" in prompt
+    assert "具体属性只能来自同一对象" in prompt
+    assert "具体指标只能来自同一对象" in prompt
+    assert "禁止跨设备、子部件或候选对象借用字段" in prompt
+
+
+def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
+    prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
+    assert "原属性或指标未命中相关候选白名单时" in prompt
+    assert "禁止继续推荐" in prompt
+    assert "禁止从 question、recommendation_context 或 examples 重新继承" in prompt
+    assert "选择最多三个语义相近字段" in prompt
+    assert "禁止继承与原冲突字段绑定的过滤值" in prompt
+    assert "不能把“运行状态正常”改成“状态正常”或“连接状态正常”" in prompt
+    assert "原属性或指标精确命中相关候选白名单时" in prompt
+
+
+def test_no_metadata_fragment_falls_back_to_same_object_information():
+    prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
+    assert "使用不依赖具体字段的同对象信息查询补足" in prompt
+    assert "设备回退 device_info，子部件回退 subcomponent_info" in prompt
+    assert "没有同子部件信息候选时才回退父设备信息" in prompt
+    assert "继续继承其他有效对象、父子关系、定位条件、时间和子网范围" in prompt
+    assert "禁止为了补足三条切换为数量查询" in prompt
+
+
+def test_no_metadata_fragment_keeps_empty_intention_kpi_exception_and_natural_explain():
+    prompt = _build_system_prompt(RecommendationContext())
+    assert "intention 为空时" in prompt
+    assert "device_metric 或 subcomponent_metric 候选时受控继承" in prompt
+    assert "暂未匹配到原属性或指标" in prompt
+    assert "查看同对象的相近信息或基础信息" in prompt
+    assert "原字段位于 invalid_values 时不得复述名称" in prompt
+    assert "禁止使用“错误原因是”“推荐调整为”“字段不存在”“不支持查询”等表达" in prompt
 
 
 def test_dynamic_fragments_have_stable_order_and_are_not_duplicated():

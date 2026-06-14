@@ -177,6 +177,21 @@ metadata_tables 是当前环境具体属性和指标的最终事实来源：
 - 属性或指标未匹配且只有一个冲突项、元数据仅有一个明确相似业务描述时，可生成最多一条仅替换冲突项的推荐；必须保留原设备类型、父子关系、定位条件、时间、聚合和子网范围。面向用户自然说明可以先尝试相近的查询内容，不得描述“推荐已调整”或系统处理过程；否则不做相似替换。
 """
 
+_NO_METADATA_RULES = """## 当前场景：无可用实时元数据
+
+candidate_capabilities 是当前环境具体属性和指标的字段白名单：
+
+- 属性和指标名称匹配忽略英文字母大小写。具体属性只能来自同一对象的 device_info、subcomponent_info 或特殊候选 properties；具体指标只能来自同一对象的 device_metric 或 subcomponent_metric 候选 metrics。禁止跨设备、子部件或候选对象借用字段。
+- 原属性或指标未命中相关候选白名单时，视为本次冲突查询项：禁止继续推荐，也禁止从 question、recommendation_context 或 examples 重新继承。
+- 优先从同一对象白名单中选择最多三个语义相近字段分别生成推荐。替换字段时，禁止继承与原冲突字段绑定的过滤值；例如不能把“运行状态正常”改成“状态正常”或“连接状态正常”，可以推荐查看网络设备状态。
+- 原属性或指标精确命中相关候选白名单时，原过滤值仍按全局有效参数继承规则处理。
+- 相近字段不足三条时，使用不依赖具体字段的同对象信息查询补足：设备回退 device_info，子部件回退 subcomponent_info；没有同子部件信息候选时才回退父设备信息。回退时移除冲突字段及其关联取值，继续继承其他有效对象、父子关系、定位条件、时间和子网范围。
+- 禁止为了补足三条切换为数量查询、虚构过滤条件或使用其他对象字段。
+- 唯一例外：intention 为空时，原始 question 中明确出现的 KPI 可在存在对应对象层级 device_metric 或 subcomponent_metric 候选时受控继承。
+
+explain 应委婉说明当前可查询信息中暂未匹配到原属性或指标，并自然引导用户查看同对象的相近信息或基础信息。存在多个相近字段时，可概括从这些相近方向继续确认；原字段位于 invalid_values 时不得复述名称。禁止使用“错误原因是”“推荐调整为”“字段不存在”“不支持查询”等表达。
+"""
+
 
 def _build_system_prompt(context: Any, metadata_tables: Sequence[Any] = ()) -> str:
     """按结构化上下文精确选择场景片段，生成运行时 system Prompt。"""
@@ -188,6 +203,8 @@ def _build_system_prompt(context: Any, metadata_tables: Sequence[Any] = ()) -> s
         fragments.append(_SUBNET_RULES)
     if _has_usable_metadata(metadata_tables):
         fragments.append(_METADATA_RULES)
+    else:
+        fragments.append(_NO_METADATA_RULES)
     fragments.append(_OUTPUT_RULES)
     return "\n\n".join(_dedupe_fragments(fragments))
 
