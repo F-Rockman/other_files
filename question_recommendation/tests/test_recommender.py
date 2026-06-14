@@ -14,6 +14,7 @@ from query_errors import ErrorCode, ErrorInfo, ErrorLevel, ErrorStage
 import question_recommendation.capability_loader as capability_loader_module
 import question_recommendation.capability_candidates as capability_candidates_module
 import question_recommendation.capability_matching as capability_matching_module
+import question_recommendation.prompt as prompt_module
 import question_recommendation.refusal_rules as refusal_rules_module
 from question_recommendation import (
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
@@ -1231,9 +1232,9 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "明确缺失属性剔除",
         "多意图拆分",
         "多定位备选条件拆分",
-        "委婉表达",
-        "不写成错误分析报告或推荐系统处理日志",
-        "可以先……",
+        "固定结构",
+        "对象与条件",
+        "原因转译",
         "必须输出正好 3 条推荐",
     ):
         assert expected in prompt
@@ -1253,37 +1254,24 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
 
 def test_core_prompt_requires_actionable_natural_explain():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
-    for forbidden_style in (
-        "错误原因是",
-        "失败原因是",
-        "推荐调整为",
-        "建议调整为",
-        "推荐方向是",
-        "基于上述原因",
-        "针对该错误",
-        "系统建议",
-        "支持查看",
-        "可查看",
-    ):
-        assert f"“{forbidden_style}”" in prompt
-    assert "完整、友好说明，不限制字数" in prompt
-    assert "先概括用户当前想查询的业务对象、查询方向和仍然有效的条件" in prompt
-    assert "再自然说明当前查询为什么不适合直接继续" in prompt
-    assert "最后结合 recommends 中实际问题" in prompt
+    assert prompt.count("## explain") == 1
+    assert "explain 直接展示给用户，只按本节规则生成" in prompt
+    assert "当前查询内容 → 当前为什么没有继续 → 推荐给用户的下一步" in prompt
+    assert "没有恢复信息时，只表达当前查询内容和推荐给用户的下一步" in prompt
+    assert "不编造未继续原因" in prompt
+    assert "当前查询内容概括业务对象、查询目标和仍然有效的条件" in prompt
+    assert "下一步必须概括 recommends 中实际推荐的方向" in prompt
     assert "不机械复述 refusal_message/refusal_detail" in prompt
-    assert "不解释系统为什么选择这三条推荐" in prompt
     assert "不责备用户，不使用带有指责、纠正或质疑用户表达能力的措辞" in prompt
-    assert "不要每次机械使用同一句式" in prompt
-    assert "必须逐字沿用 recommends 中实际使用的名称" in prompt
-    assert '不得把"设备类型A"改写为其父类"设备类型B"' in prompt
-    assert "当前提问、当前原因和推荐方向三部分都必须逐字体现该设备类型" in prompt
-    assert "不能用“该设备”替代设备类型" in prompt
+    assert "当前查询、未继续原因和下一步都必须逐字使用该设备类型" in prompt
+    assert "当前查询还必须按 id_type 和 match_mode 自然保留该定位条件" in prompt
+    assert "存在子部件时使用完整父子对象" in prompt
+    assert "存在多个设备类型时，不把原因归属于单一类型" in prompt
+    assert "没有明确设备类型时不得虚构对象" in prompt
+    assert "当前可查询的设备类型A信息中，暂未包含与属性1相关的内容" in prompt
     assert "最终 recommends 和 explain 必须替换为输入中的真实有效表达" in prompt
-    assert "可以先查看该设备类型A的属性2、属性3或指标1" in prompt
-    assert "拒答原因中的“缺少字段”等内容仅用于判断" in prompt
-    assert "内部原因只能用于判断" in prompt
+    assert "可以先从该设备类型A的属性2、基础信息或指标1方向继续了解设备情况" in prompt
     assert "元数据中缺少属性1相关字段，无法直接回答" in prompt
-    assert "若 explain 包含内部实现词" in prompt
     for forbidden_output in (
         "元数据",
         "字段",
@@ -1295,6 +1283,27 @@ def test_core_prompt_requires_actionable_natural_explain():
         "不能回答",
     ):
         assert f"“{forbidden_output}”" in prompt
+    explain_section = prompt.split("## explain", 1)[1].split("## 输出与自检", 1)[0]
+    for concrete_example in ("闪存存储", "节点信息", "7.183.7.126"):
+        assert concrete_example not in explain_section
+
+
+def test_dynamic_fragments_do_not_define_explain_wording():
+    dynamic_fragments = [
+        prompt_module._NORMAL_RULES,
+        prompt_module._SIMPLIFY_RULES,
+        prompt_module._EMPTY_INTENTION_BASIC_RULES,
+        prompt_module._BASIC_RULES,
+        *prompt_module._RECOVERY_RULES.values(),
+        prompt_module._RECOVERY_DIRECTION_RULES,
+        prompt_module._SUBNET_RULES,
+        prompt_module._METADATA_RULES,
+        prompt_module._NO_METADATA_RULES,
+    ]
+    for fragment in dynamic_fragments:
+        assert "explain" not in fragment
+        assert "错误原因是" not in fragment
+        assert "推荐调整为" not in fragment
 
 
 def test_normal_runtime_prompt_loads_weak_path_and_is_clearly_shorter():
@@ -1427,8 +1436,6 @@ def test_metadata_fragment_requires_nonempty_column_description():
     assert "每条推荐仍必须绑定一张具体候选卡" in usable_metadata
     assert "不能把一个候选对象的字段用于另一个对象" in usable_metadata
     assert "必须保留原设备类型、父子关系、定位条件、时间、聚合和子网范围" in usable_metadata
-    assert "可以先尝试相近的查询内容" in usable_metadata
-    assert "不得描述“推荐已调整”或系统处理过程" in usable_metadata
 
 
 def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
@@ -1471,15 +1478,10 @@ def test_no_metadata_fragment_falls_back_to_same_object_information():
     assert "禁止为了补足三条切换为数量查询" in prompt
 
 
-def test_no_metadata_fragment_keeps_empty_intention_kpi_exception_and_natural_explain():
+def test_no_metadata_fragment_keeps_empty_intention_kpi_exception():
     prompt = _build_system_prompt(RecommendationContext())
     assert "intention 为空时" in prompt
     assert "device_metric 或 subcomponent_metric 候选时受控继承" in prompt
-    assert "不同设备类型当前可查询的信息有所不同" in prompt
-    assert "分别查看精确支持的原字段、相近信息或基础信息" in prompt
-    assert "不描述候选卡、字段绑定或系统判断过程" in prompt
-    assert "原字段位于 invalid_values 时不得复述名称" in prompt
-    assert "禁止使用“错误原因是”“推荐调整为”“字段不存在”“不支持查询”等表达" in prompt
 
 
 def test_cross_domain_candidate_fields_remain_bound_to_their_device_type():
@@ -1574,8 +1576,6 @@ def test_chat_prompt_prioritizes_similar_fields_for_globally_unsupported_item():
     assert "每条推荐仍先绑定一张具体候选卡" in system_prompt
     assert "优先从该卡自身字段中选择一个语义明确的相近字段" in system_prompt
     assert "替换时必须删除原字段及其直接绑定的过滤值" in system_prompt
-    assert "必须将未匹配内容归属到 recommends 中实际使用的具体设备类型或父子对象" in system_prompt
-    assert "禁止使用“现有数据中暂未匹配到”" in system_prompt
     assert "只有绑定候选没有清晰相近字段时" in system_prompt
     assert "继承设备定位、父子关系、子网、时间、其他未冲突条件" in system_prompt
     assert "最后才回退同对象基础信息" in system_prompt
