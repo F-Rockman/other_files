@@ -1276,8 +1276,10 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "不要每次机械使用同一句式" in prompt
     assert "必须逐字沿用 recommends 中实际使用的名称" in prompt
     assert "不得把“闪存存储”改写为“存储设备”" in prompt
+    assert "不能用“现有数据”“当前数据”“系统数据”等泛化主语代替对象归属" in prompt
     assert "你希望查看所有设备的健康状态，但不同设备类型记录的状态信息并不完全一致" in prompt
     assert "可以分别查看服务器健康状态、网络设备通信状态和闪存存储连接状态" in prompt
+    assert "当前可查询的闪存存储设备信息中暂未包含节点相关内容" in prompt
     assert "当前条件下暂未匹配到对应的网络设备，可以先查看网络设备列表" in prompt
 
 
@@ -1558,6 +1560,8 @@ def test_chat_prompt_prioritizes_similar_fields_for_globally_unsupported_item():
     assert "每条推荐仍先绑定一张具体候选卡" in system_prompt
     assert "优先从该卡自身字段中选择一个语义明确的相近字段" in system_prompt
     assert "替换时必须删除原字段及其直接绑定的过滤值" in system_prompt
+    assert "必须将未匹配内容归属到 recommends 中实际使用的具体设备类型或父子对象" in system_prompt
+    assert "禁止使用“现有数据中暂未匹配到”" in system_prompt
     assert "只有绑定候选没有清晰相近字段时" in system_prompt
     assert "继承设备定位、父子关系、子网、时间、其他未冲突条件" in system_prompt
     assert "最后才回退同对象基础信息" in system_prompt
