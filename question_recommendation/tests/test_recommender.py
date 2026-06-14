@@ -1266,12 +1266,13 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "当前查询、未继续原因和下一步都必须逐字使用该设备类型" in prompt
     assert "当前查询还必须按 id_type 和 match_mode 自然保留该定位条件" in prompt
     assert "存在子部件时使用完整父子对象" in prompt
-    assert "存在多个设备类型时，不把原因归属于单一类型" in prompt
+    assert "存在多个设备类型时，应分别点名每个未包含对应属性或信息的设备类型" in prompt
     assert "没有明确设备类型时不得虚构对象" in prompt
     assert "当前可查询的设备类型A信息中，暂未包含与属性1相关的内容" in prompt
     assert "最终 recommends 和 explain 必须替换为输入中的真实有效表达" in prompt
     assert "可以先从该设备类型A的属性2、基础信息或指标1方向继续了解设备情况" in prompt
     assert "元数据中缺少属性1相关字段，无法直接回答" in prompt
+    assert "同时触发两个禁止项" in prompt
     for forbidden_output in (
         "元数据",
         "字段",
