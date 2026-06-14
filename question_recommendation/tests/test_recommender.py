@@ -1220,8 +1220,10 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     for expected in (
         "candidate_capabilities 决定允许的业务域",
+        "每条推荐必须绑定一个具体 candidate_capability",
+        "禁止把多张候选卡的字段并集当作通用白名单",
         "invalid_values",
-        "只有候选 locators 支持的设备定位类型才可继承",
+        "只有绑定候选 locators 支持的设备定位类型才可继承",
         "结果形态与语义去重",
         "原问题未明确列表或数量时，不主动推断或强制选择",
         "原问题查数量时不得推荐查信息",
@@ -1395,7 +1397,9 @@ def test_metadata_fragment_requires_nonempty_column_description():
     assert "当前场景：可用实时元数据" in usable_metadata
     assert "当前场景：无可用实时元数据" not in usable_metadata
     assert "实时元数据没有的字段不得推荐" in usable_metadata
-    assert "元数据不能扩展设备、业务域、父子关系" in usable_metadata
+    assert "元数据不能扩展绑定候选的设备、业务域、父子关系" in usable_metadata
+    assert "每条推荐仍必须绑定一张具体候选卡" in usable_metadata
+    assert "不能把一个候选对象的字段用于另一个对象" in usable_metadata
     assert "必须保留原设备类型、父子关系、定位条件、时间、聚合和子网范围" in usable_metadata
     assert "可以先尝试相近的查询内容" in usable_metadata
     assert "不得描述“推荐已调整”或系统处理过程" in usable_metadata
@@ -1412,28 +1416,31 @@ def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
     )
     assert "当前场景：无可用实时元数据" in prompt
     assert "字段白名单" in prompt
+    assert "每条推荐先绑定一张具体候选卡" in prompt
+    assert "多张候选卡字段的并集不是通用白名单" in prompt
+    assert "每条推荐必须明确表达绑定候选的具体设备类型" in prompt
     assert "属性和指标名称匹配忽略英文字母大小写" in prompt
-    assert "具体属性只能来自同一对象" in prompt
-    assert "具体指标只能来自同一对象" in prompt
-    assert "禁止跨设备、子部件或候选对象借用字段" in prompt
+    assert "具体属性只能来自绑定的" in prompt
+    assert "具体指标只能来自绑定的" in prompt
+    assert "禁止跨设备、子部件或候选借用字段" in prompt
 
 
 def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
     prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
-    assert "原属性或指标未命中相关候选白名单时" in prompt
-    assert "禁止继续推荐" in prompt
+    assert "原属性或指标未命中绑定候选白名单时" in prompt
+    assert "禁止在该候选推荐中使用原字段及其过滤值" in prompt
     assert "禁止从 question、recommendation_context 或 examples 重新继承" in prompt
-    assert "选择最多三个语义相近字段" in prompt
-    assert "禁止继承与原冲突字段绑定的过滤值" in prompt
-    assert "不能把“运行状态正常”改成“状态正常”或“连接状态正常”" in prompt
-    assert "原属性或指标精确命中相关候选白名单时" in prompt
+    assert "可以从当前绑定候选选择一个语义相近字段" in prompt
+    assert "相近字段不得继承原字段绑定的过滤值" in prompt
+    assert "禁止生成“运行状态正常的网络设备”或“状态正常的网络设备”" in prompt
+    assert "原属性或指标精确命中绑定候选白名单时" in prompt
+    assert "运行状态正常的服务器" in prompt
 
 
 def test_no_metadata_fragment_falls_back_to_same_object_information():
     prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
-    assert "使用不依赖具体字段的同对象信息查询补足" in prompt
-    assert "设备回退 device_info，子部件回退 subcomponent_info" in prompt
-    assert "没有同子部件信息候选时才回退父设备信息" in prompt
+    assert "当前绑定候选没有合适相近字段时" in prompt
+    assert "回退到当前对象不依赖具体字段的基础信息查询" in prompt
     assert "继续继承其他有效对象、父子关系、定位条件、时间和子网范围" in prompt
     assert "禁止为了补足三条切换为数量查询" in prompt
 
@@ -1442,10 +1449,35 @@ def test_no_metadata_fragment_keeps_empty_intention_kpi_exception_and_natural_ex
     prompt = _build_system_prompt(RecommendationContext())
     assert "intention 为空时" in prompt
     assert "device_metric 或 subcomponent_metric 候选时受控继承" in prompt
-    assert "暂未匹配到原属性或指标" in prompt
-    assert "查看同对象的相近信息或基础信息" in prompt
+    assert "不同设备类型当前可查询的信息有所不同" in prompt
+    assert "分别查看精确支持的原字段、相近信息或基础信息" in prompt
+    assert "不描述候选卡、字段绑定或系统判断过程" in prompt
     assert "原字段位于 invalid_values 时不得复述名称" in prompt
     assert "禁止使用“错误原因是”“推荐调整为”“字段不存在”“不支持查询”等表达" in prompt
+
+
+def test_cross_domain_candidate_fields_remain_bound_to_their_device_type():
+    context = build_recommendation_context(
+        {
+            "intention": "查信息",
+            "question": "查询运行状态正常的设备",
+            "properties": ["运行状态"],
+        },
+        refuse_info=ErrorCode.INTENT_GUIDE_CROSS_DOMAIN_QUERY.to_info(),
+        llm_refuse_message="涉及多个业务域",
+    )
+    ranked = recommend_capabilities(context)
+    server = next(
+        item.candidate for item in ranked if item.candidate.capability_id == "server:device_info"
+    )
+    network = next(
+        item.candidate
+        for item in ranked
+        if item.candidate.capability_id == "network_device:device_info"
+    )
+    assert "运行状态" in server.properties
+    assert "运行状态" not in network.properties
+    assert "状态" in network.properties
 
 
 def test_dynamic_fragments_have_stable_order_and_are_not_duplicated():
