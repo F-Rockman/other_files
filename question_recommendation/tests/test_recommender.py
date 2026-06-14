@@ -1229,6 +1229,8 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "多意图拆分",
         "多定位备选条件拆分",
         "委婉表达",
+        "不写成错误分析报告或推荐系统处理日志",
+        "可以先……",
         "必须输出正好 3 条推荐",
     ):
         assert expected in prompt
@@ -1243,6 +1245,27 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
     ):
         assert dynamic_heading not in prompt
     assert "{recommendation_context_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
+
+
+def test_core_prompt_requires_actionable_natural_explain():
+    prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    for forbidden_style in (
+        "错误原因是",
+        "失败原因是",
+        "推荐调整为",
+        "建议调整为",
+        "推荐方向是",
+        "基于上述原因",
+        "针对该错误",
+        "系统建议",
+    ):
+        assert f"“{forbidden_style}”" in prompt
+    assert "使用一到两句连贯自然的话" in prompt
+    assert "不完整复述原问题" in prompt
+    assert "直接告诉用户可以先查什么、确认什么或减少什么条件" in prompt
+    assert "不解释系统为什么选择这三条推荐" in prompt
+    assert "不要每次机械使用同一句式" in prompt
+    assert "当前条件下暂未匹配到对应的网络设备，可以先查看网络设备列表" in prompt
 
 
 def test_normal_runtime_prompt_loads_weak_path_and_is_clearly_shorter():
@@ -1368,7 +1391,8 @@ def test_metadata_fragment_requires_nonempty_column_description():
     assert "实时元数据没有的字段不得推荐" in usable_metadata
     assert "元数据不能扩展设备、业务域、父子关系" in usable_metadata
     assert "必须保留原设备类型、父子关系、定位条件、时间、聚合和子网范围" in usable_metadata
-    assert "已按相近查询内容调整" in usable_metadata
+    assert "可以先尝试相近的查询内容" in usable_metadata
+    assert "不得描述“推荐已调整”或系统处理过程" in usable_metadata
 
 
 def test_dynamic_fragments_have_stable_order_and_are_not_duplicated():
