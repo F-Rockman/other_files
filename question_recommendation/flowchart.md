@@ -10,8 +10,8 @@ flowchart TD
     IN["📥 上游输入<br/>查询意图 + 用户原文 + 设备/子部件<br/>指标/时间/告警 + 拒答信息"]
 
     IN --> R1{"上游是否返回<br/>结构化拒答？"}
-    R1 -- 否 --> R2{"LLM 是否有拒答原因？"}
-    R1 -- 是 --> R3["根据错误码确定恢复策略"]
+    R1 -- 否 --> R2{"大模型是否有拒答原因？"}
+    R1 -- 是 --> R3["根据错误码确定恢复策略<br/>追问补全 / 歧义消解 / 剔除无效<br/>简化查询 / 调整范围 / 基础引导"]
     R2 -- 无拒答 --> R4["不设定恢复策略<br/>（正常推荐）"]
     R2 -- 有拒答 --> R5["设定为基础引导"]
     R3 --> R6["根据失效规则标记无效值<br/>（如找不到 IP、指标不存在）"]
@@ -22,70 +22,95 @@ flowchart TD
     R7 --> CTX["📋 推荐上下文<br/>查询意图 / 用户原文 / 设备列表<br/>子部件 / 指标 / 时间 / 子网范围<br/>告警 / 聚合方式 / 关联表<br/>恢复策略 / 拒答详情 / 无效值"]
 
     %% ═══════════════════════════════════════════════
-    %% 第二阶段：能力候选召回
+    %% 第二阶段：元数据加载
     %% ═══════════════════════════════════════════════
-    CTX --> LOAD1["加载逻辑表元数据<br/>（有表名时从 YAML 读取）"]
-    LOAD1 --> LOAD2["加载能力卡片<br/>（从本地 JSON 缓存）"]
-    LOAD2 --> RECALL["🔍 召回候选能力"]
+    CTX --> HAS_TABLE{"有逻辑表名？"}
+    HAS_TABLE -- 有 --> LOAD_META["从元数据缓存<br/>加载逻辑表结构"]
+    HAS_TABLE -- 无 --> LOAD_CAP["加载能力卡片<br/>（从本地缓存读取）"]
+    LOAD_META --> LOAD_CAP
 
-    RECALL --> P0{"用户查询意图<br/>是否已识别？"}
+    %% ═══════════════════════════════════════════════
+    %% 第三阶段：能力候选召回（三条路径）
+    %% ═══════════════════════════════════════════════
+    LOAD_CAP --> RECALL["🔍 召回候选能力"]
 
-    P0 -- 未识别 --> PATH_A["❓ 自由探索路径"]
-    P0 -- 已识别 --> P1{"是否处于<br/>拒答恢复状态？"}
-    P1 -- 是 --> PATH_B["🔄 拒答引导路径"]
-    P1 -- 否 --> PATH_C["🎯 精准匹配路径"]
+    RECALL --> P0{"查询意图<br/>是否已识别？"}
 
+    P0 -- 未识别 --> PATH_A["❓ 自由探索路径<br/>无明确方向时<br/>优先特殊类 → 子部件 → 通用设备"]
+    P0 -- 已识别 --> P1{"是否处于拒答恢复状态<br/>且无结构化定位信息？"}
+    P1 -- 是 --> PATH_B["🔄 拒答引导路径<br/>从用户原文推断方向"]
+    P1 -- 否 --> PATH_C["🎯 精准匹配路径<br/>按意图精确筛选"]
+
+    %% PATH_A：三级级联
     PATH_A --> A1{"上下文中有<br/>设备或子部件？"}
     A1 -- 有 --> A2["按设备/子部件类型<br/>筛选匹配的查询领域"]
     A1 -- 无 --> A3["从用户原文中<br/>智能识别设备/子部件"]
     A2 --> A4{"匹配到的领域类型？"}
     A3 --> A4
-    A4 -- 告警/链路/子网 --> A5["推荐特殊类问句"]
-    A4 -- 子部件 --> A6["推荐子部件信息/统计/指标问句"]
-    A4 -- 普通设备 --> A7["推荐设备信息/统计/指标问句"]
+    A4 -- 告警/链路/子网 --> A5["推荐特殊类问句<br/>（最高优先，直接返回）"]
+    A4 -- 子部件 --> A6{"子部件候选有结果？"}
+    A4 -- 普通设备 --> A7{"通用设备候选有结果？"}
+    A6 -- 有 --> A6Y["推荐子部件信息/统计/指标问句"]
+    A6 -- 无 --> A6N["回退到普通设备候选"]
+    A7 -- 有 --> A7Y["推荐设备信息/统计/指标问句"]
+    A7 -- 无 --> A7N["回退到无对象基础方向"]
+    A6N --> A7Y
+    A6Y --> DONE["✅ 候选生成完成"]
+    A7Y --> DONE
+    A7N --> DONE
+    A5 --> DONE
 
-    PATH_B --> B1["从用户原文中<br/>推断查询方向"]
-    B1 --> B2["生成匹配方向的候选<br/>+ 相邻相关候选"]
-    B2 --> B3{"指标类候选<br/>全部无匹配？"}
-    B3 -- 是 --> B4["放宽指标匹配条件<br/>补充更多候选"]
-    B3 -- 否 --> DONE["✅ 候选生成完成"]
-    B4 --> DONE
+    %% PATH_B：原文推断 + 领域卡匹配
+    PATH_B --> B1["从用户原文中<br/>推断查询方向与领域"]
+    B1 --> B2{"找到匹配的<br/>领域卡片？"}
+    B2 -- 否 --> PATH_C
+    B2 -- 是 --> B3["生成匹配方向的候选<br/>+ 相邻相关候选"]
+    B3 --> B4{"指标类候选<br/>全部无匹配？"}
+    B4 -- 否 --> DONE
+    B4 -- 是 --> B5["放宽指标匹配条件<br/>（同设备/子部件下任意指标）<br/>补充更多候选"]
+    B5 --> DONE
 
+    %% PATH_C：精确匹配
     PATH_C --> C1["按设备/子部件类型<br/>精确筛选查询领域"]
     C1 --> C2["确定主查询类型<br/>（见下方路由规则）"]
     C2 --> C3["生成主候选<br/>+ 相邻相关候选<br/>+ 特殊类候选"]
     C3 --> DONE
 
-    A5 --> DONE
-    A6 --> DONE
-    A7 --> DONE
+    %% ═══════════════════════════════════════════════
+    %% 第四阶段：字段支持度分析
+    %% ═══════════════════════════════════════════════
+    DONE --> HAS_METADATA{"有可用实时<br/>元数据？"}
+    HAS_METADATA -- 有 --> F0["字段来自元数据白名单<br/>（跳过确定性分析）"]
+    HAS_METADATA -- 无 --> F1["🧩 确定性字段分析<br/>比对原查询项与所有候选白名单<br/>列出未被任何候选支持的原属性/KPI"]
+    F0 --> SCORE_PHASE
+    F1 --> SCORE_PHASE
 
     %% ═══════════════════════════════════════════════
-    %% 第三阶段：评分排序与筛选
+    %% 第五阶段：评分排序与筛选
     %% ═══════════════════════════════════════════════
-    DONE --> DEDUPE["去除重复候选"]
+    SCORE_PHASE["为每个候选打分"]
+    SCORE_PHASE --> DEDUPE["去除重复候选"]
     DEDUPE --> EMPTY{"候选列表为空？"}
-    EMPTY -- 是 & 基础恢复 --> FALLBACK["🛟 启用全局兜底<br/>从所有领域生成<br/>设备信息查询 + 设备数量统计"]
-    EMPTY -- 其他 --> SCORE["为每个候选打分"]
-    FALLBACK --> SCORE
+    EMPTY -- 是 & 基础引导 --> FALLBACK["🛟 启用全局兜底<br/>从所有领域生成<br/>设备信息查询 + 设备数量统计"]
+    EMPTY -- 是 & 其他策略 --> EMPTY_OUT["❌ 返回空结果<br/>不触发兜底"]
+    EMPTY -- 否 --> RANK["按分数从高到低排序"]
+    FALLBACK --> RANK
 
-    SCORE --> RANK["按分数从高到低排序"]
-    RANK --> DIVERSE["多样性筛选<br/>同类型 + 同设备 + 同子部件<br/>最多保留 2 条<br/>取总分最高的前 12 条"]
+    RANK --> DIVERSE["多样性筛选<br/>同查询类型 + 同设备类型<br/>+ 同子部件类型 最多保留 2 条<br/>按总分取前 12 条"]
 
     %% ═══════════════════════════════════════════════
-    %% 第四阶段：LLM 生成
+    %% 第六阶段：Prompt 组装与 LLM 生成
     %% ═══════════════════════════════════════════════
-    DIVERSE --> PROMPT["组装 Prompt<br/>推荐上下文 + 候选能力列表<br/>+ 逻辑表结构"]
+    DIVERSE --> PROMPT["组装 Prompt<br/>核心规则（含 explain）<br/>+ 场景片段（恢复策略对应）<br/>+ 子网/元数据条件片段<br/>+ 候选能力 JSON<br/>+ 字段分析结果（如有）"]
     PROMPT --> LLM["🤖 调用大语言模型<br/>生成推荐问句"]
     LLM --> PARSE["解析返回结果"]
     PARSE --> VALID{"返回格式有效？"}
     VALID -- 有效 --> OUT["✅ 输出 3 条推荐问句<br/>+ 面向用户的解释说明"]
-    VALID -- 无效 --> EMPTY_OUT["❌ 返回空结果"]
+    VALID -- 无效 --> EMPTY_OUT2["❌ 返回空结果"]
 
     %% ═══════════════════════════════════════════════
     %% 样式
     %% ═══════════════════════════════════════════════
-    classDef phase fill:#1a1a2e,color:#fff,stroke:#333,stroke-width:2px
     classDef entry fill:#2563eb,color:#fff,stroke:#1d4ed8,stroke-width:2px
     classDef ctx fill:#16a34a,color:#fff,stroke:#15803d,stroke-width:2px
     classDef decision fill:#f59e0b,color:#000,stroke:#d97706,stroke-width:2px
@@ -93,6 +118,7 @@ flowchart TD
     classDef pathA fill:#7c3aed,color:#fff,stroke:#6d28d9,stroke-width:1px
     classDef pathB fill:#dc2626,color:#fff,stroke:#b91c1c,stroke-width:1px
     classDef pathC fill:#059669,color:#fff,stroke:#047857,stroke-width:1px
+    classDef field fill:#0d9488,color:#fff,stroke:#0f766e,stroke-width:1px
     classDef outOk fill:#16a34a,color:#fff,stroke:#15803d,stroke-width:2px
     classDef outEmpty fill:#6b7280,color:#fff,stroke:#4b5563,stroke-width:2px
     classDef fallback fill:#f97316,color:#fff,stroke:#ea580c,stroke-width:1px
@@ -100,15 +126,17 @@ flowchart TD
 
     class IN entry
     class CTX ctx
-    class R1,R2,P0,P1,A1,A4,B3,EMPTY,VALID decision
-    class LOAD1,LOAD2,R3,R4,R5,R6,R7,A2,A3,B1,B2,C1,C2,C3,DEDUPE,SCORE,RANK,DIVERSE,PROMPT,PARSE process
-    class PATH_A,A5,A6,A7 pathA
-    class PATH_B,B4 pathB
+    class R1,R2,P0,P1,A1,A4,A6,A7,B2,B4,EMPTY,HAS_TABLE,HAS_METADATA,VALID decision
+    class LOAD_META,LOAD_CAP,R3,R4,R5,R6,R7,A2,A3,B1,B3,B5,C1,C2,C3,DEDUPE,SCORE_PHASE,RANK,DIVERSE,PROMPT,PARSE process
+    class PATH_A,A5,A6Y,A7Y pathA
+    class PATH_B,B4X pathB
     class PATH_C pathC
+    class F0,F1 field
     class OUT outOk
-    class EMPTY_OUT,FALLBACK fallback
+    class EMPTY_OUT,EMPTY_OUT2,FALLBACK fallback
     class LLM llm
     class RECALL process
+    class A6N,A7N fallback
 ```
 
 ## 主查询类型路由规则
@@ -139,7 +167,23 @@ flowchart TD
 | 逻辑表元数据命中 | +30 | 表名/字段名在候选提示中出现 |
 | 静态优先级 | 可变 | 能力卡片的固有优先级 |
 
-排序后取前 **12 条**，且同查询类型 + 同设备 + 同子部件的组合最多保留 **2 条**，保证推荐多样性。
+排序后取前 **12 条**，且同查询类型 + 同设备类型 + 同子部件类型的组合最多保留 **2 条**，保证推荐多样性。
+
+## 三条召回路径说明
+
+| 路径 | 触发条件 | 作用 | 回退策略 |
+|------|---------|------|---------|
+| **自由探索** | 查询意图未识别 | 从上下文或原文推断方向，按三级优先（特殊类 → 子部件 → 通用设备）召回候选 | 无候选时回退到无对象基础方向 |
+| **拒答引导** | 处于恢复状态且无结构化定位信息 | 从用户原文识别领域卡并生成候选 | 找不到领域卡 → 回退到精准匹配路径；指标全空 → 放宽匹配条件补充 |
+| **精准匹配** | 查询意图已识别的正常流程 | 按意图 + 设备/子部件类型精确筛选，生成主/相邻/特殊三类候选 | 无候选 → 仅基础引导策略触发全局兜底 |
+
+## 字段支持度分析
+
+无可用实时元数据时，在候选召回与 Prompt 组装之间执行确定性字段分析：
+- 将原查询中的**属性**和 **KPI** 与所有最终候选的白名单逐项比对
+- 精确命中的保留；未命中的列入 `unsupported_properties` 或 `unsupported_kpis`
+- 分析结果随候选一起传给 Prompt，指导 LLM 在绑定候选内选择相近字段或回退到不依赖具体字段的方向
+- 有实时元数据时跳过此步骤，字段以元数据为准
 
 ## 恢复策略说明
 
@@ -147,9 +191,11 @@ flowchart TD
 
 | 策略 | 含义 | 典型场景 |
 |------|------|---------|
-| **基础引导** | 常规推荐 | SQL 生成失败、字段检索失败 |
+| **基础引导** | 常规推荐，无候选时触发全局兜底 | SQL 生成失败、字段检索失败 |
 | **追问补全** | 引导用户补充缺失信息 | 缺少查询对象/指标/时间范围 |
 | **歧义消解** | 引导用户在多个选项中明确意图 | 设备名/IP/指标存在多个候选 |
 | **剔除无效** | 从上下文中移除无法识别的信息 | 设备找不到、指标不存在 |
 | **简化查询** | 推荐更简单的问法 | SQL 执行报错、引擎错误 |
 | **调整范围** | 调整查询范围（如时间跨度） | 查询超时 |
+
+仅**基础引导**策略在候选为空时触发全局兜底；其他策略无候选时返回空结果，不会越界推荐。
