@@ -786,6 +786,51 @@ def test_special_candidate_uses_objects_without_subcomponent_pollution():
     assert "subcomponent_types" not in alarm.to_dict()
 
 
+def test_special_candidate_keeps_supported_alias_from_question():
+    ranked = recommend_capabilities(_empty_intention_basic_context("查询交换机告警"))
+    alarm = next(item for item in ranked if item.candidate.capability_id == "alarm_query")
+
+    assert alarm.candidate.device_types == ["交换机"]
+
+
+def test_special_candidate_does_not_inherit_unknown_device_term_from_question():
+    ranked = recommend_capabilities(
+        _empty_intention_basic_context("机框设备告警的数量和明细都需要查看")
+    )
+    alarm = next(item for item in ranked if item.candidate.capability_id == "alarm_query")
+
+    assert alarm.candidate.objects == ["告警"]
+    assert alarm.candidate.subcomponent_types == []
+    assert "机框设备" not in alarm.candidate.device_types
+    assert "机框设备" not in alarm.to_dict().get("device_types", [])
+
+
+def test_special_candidate_keeps_generic_device_terms_unexcluded():
+    ranked = recommend_capabilities(_empty_intention_basic_context("查询所有设备告警"))
+    alarm = next(item for item in ranked if item.candidate.capability_id == "alarm_query")
+
+    assert "所有设备" not in alarm.candidate.device_types
+
+
+def test_structured_unsupported_device_still_filters_special_card():
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查告警",
+            devices=[DeviceCondition(device_type="机框设备")],
+        )
+    )
+
+    assert "alarm_query" not in [item.candidate.capability_id for item in ranked]
+
+
+def test_special_candidate_excludes_known_unsupported_device_term():
+    ranked = recommend_capabilities(_empty_intention_basic_context("查询FITAP告警"))
+    alarm = next(item for item in ranked if item.candidate.capability_id == "alarm_query")
+
+    assert alarm.candidate.device_types != ["FITAP"]
+    assert "FITAP" not in alarm.candidate.device_types
+
+
 def test_subnet_scope_keeps_device_info_primary_and_adds_relation_candidate():
     context = RecommendationContext(
         intention="查信息",
@@ -1235,6 +1280,8 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "每条推荐必须绑定一个具体 candidate_capability",
         "禁止把多张候选卡的字段并集当作通用白名单",
         "invalid_values",
+        "objects 表示告警、链路、子网等特殊能力对象，不是设备子部件",
+        "不得从原始 question 继承未出现在候选 device_types 中的设备词",
         "只有绑定候选 locators 支持的设备定位类型才可继承",
         "结果形态与语义去重",
         "原问题未明确列表或数量时，不主动推断或强制选择",
