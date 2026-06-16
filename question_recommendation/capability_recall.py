@@ -175,9 +175,7 @@ def _basic_special_candidates(
         )
     if not device_values:
         device_values = domain_card_standard_device_types(matched_domain_cards)
-    special_context = _basic_special_context(
-        context.question, device_values, matched_special_cards
-    )
+    special_context = _basic_special_context(context.question, device_values)
     candidates = []
     for special_card in matched_special_cards:
         candidates.extend(
@@ -194,16 +192,11 @@ def _basic_special_candidates(
 def _basic_special_context(
     question: str,
     device_types: Sequence[str],
-    special_cards: Sequence[SpecialCapabilitySpec],
 ) -> RecommendationContext:
     """构造仅用于特殊卡匹配的空意图 Basic 上下文。"""
-    special_objects = []
-    for special_card in special_cards:
-        special_objects.extend(special_card.objects)
     return RecommendationContext(
         question=question,
         devices=device_conditions_for_types(device_types),
-        subcomponent_types=special_objects,
     )
 
 

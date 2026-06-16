@@ -72,13 +72,23 @@ def _context_match_score(
         score += 160
     if has_overlap(context_device_types(context), candidate.device_types):
         score += 120
-    if has_overlap(context.subcomponent_types, candidate.subcomponent_types):
+    if _object_matches_context(context, candidate):
         score += 100
     if context.kpis and has_overlap(context.kpis, candidate.metrics):
         score += 60
     if context.properties and has_overlap(context.properties, candidate.properties):
         score += 40
     return score
+
+
+def _object_matches_context(
+    context: RecommendationContext,
+    candidate: CapabilityCandidate,
+) -> bool:
+    """判断候选的子部件或特殊对象是否命中上下文对象。"""
+    if has_overlap(context.subcomponent_types, candidate.subcomponent_types):
+        return True
+    return has_overlap(context.subcomponent_types, candidate.objects)
 
 
 def _metadata_matches(
@@ -132,4 +142,5 @@ def _candidate_group_key(candidate: CapabilityCandidate) -> Tuple[str, str, str]
     subcomponent_type = (
         candidate.subcomponent_types[0] if candidate.subcomponent_types else ""
     )
-    return candidate.capability_type, device_type, subcomponent_type
+    object_type = candidate.objects[0] if candidate.objects else subcomponent_type
+    return candidate.capability_type, device_type, object_type

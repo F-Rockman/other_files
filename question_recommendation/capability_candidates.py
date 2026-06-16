@@ -260,7 +260,7 @@ def _special_candidate(
         capability_type=special_card.capability_type,
         domain=special_card.domain,
         device_types=matched_types or special_card.device_types,
-        subcomponent_types=special_card.objects,
+        objects=special_card.objects,
         properties=special_card.properties,
         table_hints=special_card.table_hints,
         examples=special_card.examples,
@@ -322,7 +322,9 @@ def _special_query_direction_matches(
 ) -> bool:
     """判断资源或关系特殊能力是否满足额外查询方向。"""
     if values_equal(special_card.capability_type, RESOURCE_QUERY):
-        return is_subnet_context(context)
+        return is_subnet_context(context) or contains_any(
+            context.question, special_card.objects
+        )
     if values_equal(special_card.capability_type, RELATION_QUERY):
         return _relation_special_matches(special_card, context, matched_types)
     return True
