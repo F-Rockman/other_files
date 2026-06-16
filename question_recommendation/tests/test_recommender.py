@@ -1281,7 +1281,9 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "禁止把多张候选卡的字段并集当作通用白名单",
         "invalid_values",
         "objects 表示告警、链路、子网等特殊能力对象，不是设备子部件",
+        "原始 question 不是特殊能力设备词的继承来源",
         "不得从原始 question 继承未出现在候选 device_types 中的设备词",
+        "禁止生成“候选外设备 + objects”的组合",
         "只有绑定候选 locators 支持的设备定位类型才可继承",
         "结果形态与语义去重",
         "原问题未明确列表或数量时，不主动推断或强制选择",
@@ -1412,6 +1414,8 @@ def test_empty_intention_uses_basic_fragment_for_other_strategies():
     assert "当前场景：空 intention Basic" in prompt
     assert "当前场景：clarify" not in prompt
     assert "当前场景：无恢复要求" not in prompt
+    assert "绑定特殊能力候选时，设备表达仍只能来自" in prompt
+    assert "不能从 question 继承候选外设备词" in prompt
 
 
 @pytest.mark.parametrize(

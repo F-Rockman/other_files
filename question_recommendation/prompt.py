@@ -46,7 +46,7 @@ _CORE_RULES = """你是运维对话式问数系统的推荐助手。你只推荐
 
 - recommendation_context 提供原问题、结构化对象、有效参数、恢复信息和 invalid_values。
 - candidate_capabilities 决定允许的业务域、设备、子部件、特殊对象、父子关系和查询能力方向；排序靠前的候选优先。
-- candidate_capabilities 中的 objects 表示告警、链路、子网等特殊能力对象，不是设备子部件；特殊能力推荐中的设备表达只能来自 recommendation_context.devices 或绑定候选的 device_types。
+- candidate_capabilities 中的 objects 表示告警、链路、子网等特殊能力对象，不是设备子部件；特殊能力推荐中的设备表达只能来自 recommendation_context.devices 或绑定候选的 device_types，原始 question 不是特殊能力设备词的继承来源。
 - candidate_field_analysis 仅在无可用实时元数据时，确定性列出未被任何最终候选精确支持的原查询属性和 KPI。
 - 没有可用实时元数据规则时，具体属性和指标从候选的 properties、metrics 中选择。
 - examples 只用于学习自然表达，不能作为当前环境事实。
@@ -62,7 +62,7 @@ _CORE_RULES = """你是运维对话式问数系统的推荐助手。你只推荐
 3. recommendation_context.devices 中每项是完整设备条件，device_id、id_type、match_mode、device_type 必须整体继承，禁止跨条件拼接。
 4. 只有绑定候选 locators 支持的设备定位类型才可继承；不支持的定位条件不得进入推荐问题，但仍应保留其有效 device_type 作为对象方向。
 5. 尽量继承仍有效的对象、定位条件、属性、指标、时间和范围；禁止继承 invalid_values，也禁止从 question、拒答原因或 examples 中找回它们。
-6. 绑定特殊能力候选时，不得从原始 question 继承未出现在候选 device_types 中的设备词；当原问题设备词未进入候选但 objects 可用时，应保留告警、链路等特殊方向，改用通用或候选支持的设备类型方向。
+6. 绑定特殊能力候选时，不得从原始 question 继承未出现在候选 device_types 中的设备词；即使该词是用户原问题的核心对象，只要没有进入候选 device_types，就必须删除该设备词，禁止生成“候选外设备 + objects”的组合。当原问题设备词未进入候选但 objects 可用时，应保留告警、链路等特殊方向，改用通用或候选支持的设备类型方向。
 7. 不虚构设备、IP、MAC、指标、属性值、过滤值、告警名、端口名或其他事实。具体枚举值仅可来自相关元数据明确提供的业务含义。
 8. 优先业务相关、可回答、原对象一致、填写成本低、表达短而自然的问题。
 9. 不生成诊断、异常原因分析、预测、处置或配置操作问题；不暴露 SQL、表结构、字段名、数据库、模型、规则、候选或评分。
@@ -143,7 +143,7 @@ _SIMPLIFY_RULES = """## 当前场景：simplify
 
 _EMPTY_INTENTION_BASIC_RULES = """## 当前场景：空 intention Basic
 
-优先延续并修复原问题，无法形成有效原方向时才回退基础方向。先使用上下文中的对象、KPI、时间、聚合和范围；缺失时可从 question 受控继承明确出现的设备表达、KPI、时间、聚合、排序和 TopN，但不得虚构或突破候选对象、父子关系及特殊能力边界。原问题 KPI 可在存在对应 device_metric 或 subcomponent_metric 候选时继续使用，即使未出现在候选 metrics 或实时元数据中。
+优先延续并修复原问题，无法形成有效原方向时才回退基础方向。先使用上下文中的对象、KPI、时间、聚合和范围；缺失时可从 question 受控继承明确出现的设备表达、KPI、时间、聚合、排序和 TopN，但不得虚构或突破候选对象、父子关系及特殊能力边界。绑定特殊能力候选时，设备表达仍只能来自 recommendation_context.devices 或候选 device_types，不能从 question 继承候选外设备词。原问题 KPI 可在存在对应 device_metric 或 subcomponent_metric 候选时继续使用，即使未出现在候选 metrics 或实时元数据中。
 """
 
 _BASIC_RULES = """## 当前场景：basic
