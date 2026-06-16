@@ -1326,8 +1326,12 @@ def test_simplify_fragment_overrides_empty_intention_basic():
     assert "当前场景：simplify" in prompt
     assert "当前场景：空 intention Basic" not in prompt
     assert "每条推荐必须删除至少一个真实查询条件" in prompt
-    assert "删除“展示趋势”“趋势”“查看趋势”等查询形态词不算有效简化" in prompt
+    assert "删除“展示趋势”“趋势”“趋势图”“查看趋势”等查询形态词不算有效简化" in prompt
     assert "查指标时无论是否有时间范围" in prompt
+    assert "有无展示趋势视为同一指标查询" in prompt
+    assert "不能只靠省略、删除、补充或改写趋势表达生成推荐" in prompt
+    assert "推荐问题与原问题只差趋势表达时视为语义一致" in prompt
+    assert "三条推荐之间也不得只靠趋势表达差异区分" in prompt
     assert "TopN 是查询形态，不算有效查询条件" in prompt
     assert "删除 TopN、Top5、排名最高等表达不算有效简化" in prompt
     assert "不得只把 KPI 做轻微泛化" in prompt
