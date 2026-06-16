@@ -17,7 +17,6 @@ from .capability_matching import (
     contains_any,
     context_device_types,
     dedupe_candidates,
-    domain_card_alias_supported,
     examples_for_type,
     has_overlap,
     is_subnet_context,
@@ -33,6 +32,11 @@ from .models import (
     RecommendationContext,
     SpecialCapabilitySpec,
     SubcomponentCapabilitySpec,
+)
+from .special_device_terms import (
+    analyze_special_device_terms,
+    empty_special_device_term_analysis,
+    special_device_term_supported,
 )
 
 
@@ -255,16 +259,36 @@ def _special_candidate(
     matched_types = _matched_special_device_types(
         context_device_types(context), special_card.device_types, domain_cards
     )
+    analysis = _special_text_device_analysis(context, special_card, domain_cards)
     return CapabilityCandidate(
         capability_id=special_card.capability_id,
         capability_type=special_card.capability_type,
         domain=special_card.domain,
-        device_types=matched_types or special_card.device_types,
+        device_types=(
+            matched_types
+            or analysis.compatible_device_terms
+            or special_card.device_types
+        ),
         objects=special_card.objects,
         properties=special_card.properties,
         table_hints=special_card.table_hints,
         examples=special_card.examples,
         priority=special_card.priority,
+    )
+
+
+def _special_text_device_analysis(
+    context: RecommendationContext,
+    special_card: SpecialCapabilitySpec,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+):
+    """无结构化设备时分析原问题设备词与特殊卡的兼容性。"""
+    if context_device_types(context):
+        return empty_special_device_term_analysis()
+    return analyze_special_device_terms(
+        context.question,
+        special_card.device_types,
+        domain_cards,
     )
 
 
@@ -373,10 +397,7 @@ def _matched_special_device_types(
     supported_set = normalized_set(supported)
     matched = []
     for value in values:
-        if normalize_match_value(value) in supported_set:
-            matched.append(value)
-            continue
-        if domain_card_alias_supported(value, supported_set, domain_cards):
+        if special_device_term_supported(value, supported_set, domain_cards):
             matched.append(value)
     return matched
 

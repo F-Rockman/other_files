@@ -42,6 +42,7 @@ from .models import (
     SpecialCapabilitySpec,
     SubcomponentCapabilitySpec,
 )
+from .special_device_terms import special_device_term_supported
 
 
 def recall_candidates(
@@ -175,9 +176,14 @@ def _basic_special_candidates(
         )
     if not device_values:
         device_values = domain_card_standard_device_types(matched_domain_cards)
-    special_context = _basic_special_context(context.question, device_values)
     candidates = []
     for special_card in matched_special_cards:
+        compatible_device_values = _supported_special_device_values(
+            device_values, special_card, domain_cards
+        )
+        special_context = _basic_special_context(
+            context.question, compatible_device_values
+        )
         candidates.extend(
             special_candidates(
                 special_context,
@@ -187,6 +193,21 @@ def _basic_special_candidates(
             )
         )
     return candidates
+
+
+def _supported_special_device_values(
+    device_values: Sequence[str],
+    special_card: SpecialCapabilitySpec,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[str]:
+    """仅保留能被特殊卡支持的文本设备方向。"""
+    supported_values = []
+    for device_value in device_values:
+        if special_device_term_supported(
+            device_value, special_card.device_types, domain_cards
+        ):
+            supported_values.append(device_value)
+    return supported_values
 
 
 def _basic_special_context(
