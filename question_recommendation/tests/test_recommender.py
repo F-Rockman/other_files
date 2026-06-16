@@ -1234,6 +1234,9 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "多定位备选条件拆分",
         "不得生成同比、环比、较上期、较同期",
         "即使原始 question 明确包含这类对比表达",
+        "同类型变换最多生成 1 条推荐",
+        "例如已有一条推荐使用指标替换，其余推荐不得再使用指标替换",
+        "simplify 禁止指标替换，则以更严格限制为准",
         "必须输出正好 3 条推荐",
     ):
         assert expected in prompt
@@ -1485,6 +1488,9 @@ def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
     assert "可以从当前绑定候选选择一个语义相近字段" in prompt
     assert "相近字段不得继承原字段绑定的过滤值" in prompt
     assert "禁止生成“属性1取值A的设备类型B”或“属性2取值A的设备类型B”" in prompt
+    assert "同类型相近字段替换最多 1 条" in prompt
+    assert "已有一条指标替换推荐时，其余推荐不得继续做指标替换" in prompt
+    assert "应转为剔除冲突字段后的同对象查询或基础信息方向" in prompt
     assert "原属性或指标精确命中绑定候选白名单时" in prompt
     assert "属性1取值A的设备类型A" in prompt
 
