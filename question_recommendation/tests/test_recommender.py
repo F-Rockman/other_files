@@ -1325,7 +1325,20 @@ def test_simplify_fragment_overrides_empty_intention_basic():
     prompt = _build_system_prompt(RecommendationContext(recovery_strategy="simplify"))
     assert "当前场景：simplify" in prompt
     assert "当前场景：空 intention Basic" not in prompt
-    assert "每条推荐必须删除至少一个条件" in prompt
+    assert "每条推荐必须删除至少一个真实查询条件" in prompt
+    assert "删除“展示趋势”“趋势”“查看趋势”等查询形态词不算有效简化" in prompt
+    assert "查指标时无论是否有时间范围" in prompt
+    assert "TopN 是查询形态，不算有效查询条件" in prompt
+    assert "删除 TopN、Top5、排名最高等表达不算有效简化" in prompt
+    assert "不得只把 KPI 做轻微泛化" in prompt
+    assert "禁止指标替换" in prompt
+    assert "不得推荐查询同对象的指标B" in prompt
+    assert "不得用相近指标、同类指标或其他性能指标补足三条" in prompt
+    assert "按顺序退化补足" in prompt
+    assert "先保留原指标继续删除其他复杂条件" in prompt
+    assert "再删除指标条件并保留设备、子部件、子网、时间等非指标有效条件" in prompt
+    assert "推荐详情或基础信息方向" in prompt
+    assert "不得跳到无关对象" in prompt
 
 
 def test_empty_intention_uses_basic_fragment_for_other_strategies():
