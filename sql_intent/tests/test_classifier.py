@@ -111,7 +111,10 @@ class TestPromptConstant:
         assert "字段名 + 为/等于/是/叫/包含/大于/小于/在" in SQL_INTENT_SYSTEM_PROMPT
         assert "查询名称为的AA服务器信息" in SQL_INTENT_SYSTEM_PROMPT
         assert "“名称为”后缺少名称值" in SQL_INTENT_SYSTEM_PROMPT
-        assert "不能把后面的“AA服务器信息”补成名称值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询领域A状态为的设备数量" in SQL_INTENT_SYSTEM_PROMPT
+        assert "“状态为”后缺少状态值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "名称、状态、类型、区域、领域、厂商、型号、IP、MAC、ID" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不能把后面的“AA服务器信息”“设备数量”等对象或结果描述补成条件值" in SQL_INTENT_SYSTEM_PROMPT
         assert "不能因为具体实体标识可选而放行" in SQL_INTENT_SYSTEM_PROMPT
 
     def test_special_character_filter_value_rule_present(self):
