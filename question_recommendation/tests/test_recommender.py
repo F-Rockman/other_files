@@ -776,6 +776,16 @@ def test_special_capabilities_are_preserved(context, expected_id):
     assert expected_id in _candidate_ids(context)
 
 
+def test_special_candidate_uses_objects_without_subcomponent_pollution():
+    ranked = recommend_capabilities(RecommendationContext(intention="查告警"))
+    alarm = next(item for item in ranked if item.candidate.capability_id == "alarm_query")
+
+    assert alarm.candidate.objects == ["告警"]
+    assert alarm.candidate.subcomponent_types == []
+    assert alarm.to_dict()["objects"] == ["告警"]
+    assert "subcomponent_types" not in alarm.to_dict()
+
+
 def test_subnet_scope_keeps_device_info_primary_and_adds_relation_candidate():
     context = RecommendationContext(
         intention="查信息",

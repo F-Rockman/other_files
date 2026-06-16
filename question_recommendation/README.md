@@ -280,7 +280,7 @@ result = recommend_questions_chat(
 | `capability_type` | 特殊能力类型 |
 | `domain` | 业务域；子网等跨领域特殊能力可以为空 |
 | `device_types` | 支持的设备类型；有明确设备类型时用于硬过滤 |
-| `objects` | 支持的关联对象，候选中映射为 `subcomponent_types` |
+| `objects` | 支持的特殊对象，候选中作为 `objects` 传给 LLM，不写入 `subcomponent_types` |
 | `properties` | 特殊对象可查询的属性 |
 | `table_hints` | 内部元数据相关度提示 |
 | `examples` | 自然问法示例 |
@@ -417,7 +417,8 @@ match_score =
 | `capability_type` | 六类骨架或特殊能力类型 |
 | `domain` | 业务域 |
 | `device_types` | 候选允许的标准设备类型 |
-| `subcomponent_types` | 候选允许的标准子部件或关联对象类型 |
+| `subcomponent_types` | 候选允许的标准子部件类型 |
+| `objects` | 特殊能力的对象，例如告警、链路、子网或关联对象 |
 | `locators` | 候选允许继承的定位类型 |
 | `properties` | 通用信息候选或特殊能力可查询的属性 |
 | `metrics` | 指标候选匹配后的 KPI 名称；非指标候选为空 |
