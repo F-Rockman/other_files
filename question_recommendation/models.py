@@ -401,6 +401,7 @@ class CapabilityCandidate:
     domain: str = ""
     device_types: List[str] = field(default_factory=list)
     subcomponent_types: List[str] = field(default_factory=list)
+    objects: List[str] = field(default_factory=list)
     locators: List[str] = field(default_factory=list)
     properties: List[str] = field(default_factory=list)
     metrics: List[str] = field(default_factory=list)
