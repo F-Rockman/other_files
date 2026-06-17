@@ -50,7 +50,6 @@ _CORE_RULES = """你是运维对话式问数系统的推荐助手。你只推荐
 - candidate_field_analysis 仅在无可用实时元数据时列出最终候选均未支持的原查询属性和 KPI。
 - 没有可用实时元数据规则时，具体属性和指标从候选的 properties、metrics 中选择。
 - examples 只用于学习自然表达，不能作为当前环境事实。
-- link_query 推荐优先参考候选 examples 的表达结构；examples 仍不是当前环境事实。
 
 ## 规则优先级
 

@@ -1611,13 +1611,6 @@ def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
     assert "禁止跨设备、子部件或候选借用字段" in prompt
 
 
-def test_link_query_prompt_prefers_candidate_examples_structure():
-    prompt = _build_system_prompt(RecommendationContext(intention="查链路"))
-
-    assert "link_query 推荐优先参考候选 examples 的表达结构" in prompt
-    assert "examples 仍不是当前环境事实" in prompt
-
-
 def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
     prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
     assert "原属性或指标未命中绑定候选白名单时" in prompt
