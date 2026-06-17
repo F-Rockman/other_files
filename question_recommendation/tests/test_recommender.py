@@ -1317,6 +1317,7 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "objects 表示告警、链路、子网等特殊能力对象，不是设备子部件",
         "原始 question 不是特殊能力设备词的继承来源",
         "不得从原始 question 继承未出现在候选 device_types 中的设备词",
+        "未结构化且未被候选支持的模糊修饰词不得继承",
         "禁止生成“候选外设备 + objects”的组合",
         "只有绑定候选 locators 支持的设备定位类型才可继承",
         "结果形态与语义去重",
@@ -1482,6 +1483,30 @@ def test_empty_intention_uses_basic_fragment_for_other_strategies():
     assert "当前场景：无恢复要求" not in prompt
     assert "绑定特殊能力候选时，设备表达仍只能来自" in prompt
     assert "不能从 question 继承候选外设备词" in prompt
+
+
+def test_out_of_scope_alarm_question_does_not_support_unstructured_modifier():
+    context = build_recommendation_context(
+        {"question": "电源相关的告警信息在哪里"},
+        refuse_info=ErrorInfo(
+            key="intent_reject_out_of_scope_query",
+            level="warning",
+            stage="intent",
+            message="非问数场景，询问位置而非查询数据",
+        ),
+    )
+    ranked = recommend_capabilities(context)
+    candidate = ranked[0].candidate
+
+    assert context.to_dict() == {
+        "question": "电源相关的告警信息在哪里",
+        "recovery_strategy": "basic",
+        "refusal_message": "非问数场景，询问位置而非查询数据",
+    }
+    assert candidate.capability_id == "alarm_query"
+    assert "电源" not in candidate.objects
+    assert "电源" not in candidate.properties
+    assert "电源" not in candidate.device_types
 
 
 @pytest.mark.parametrize(
