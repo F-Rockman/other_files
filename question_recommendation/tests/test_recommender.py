@@ -1286,14 +1286,16 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "禁止生成“候选外设备 + objects”的组合",
         "只有绑定候选 locators 支持的设备定位类型才可继承",
         "结果形态与语义去重",
-        "原问题未明确列表或数量时，不主动推断或强制选择",
+        "推荐形态优先级为：列表 > 数量 > 其他基础信息方向",
+        "该偏好不得覆盖原始意图、恢复策略或候选能力边界",
         "原问题查数量时不得推荐查信息",
         "明确缺失属性剔除",
         "多意图拆分",
         "多定位备选条件拆分",
         "不得生成同比、环比、较上期、较同期",
         "即使原始 question 明确包含这类对比表达",
-        "必须输出正好 3 条推荐",
+        "输出 1 到 3 条推荐即可",
+        "禁止为了凑满 3 条生成无关对象",
     ):
         assert expected in prompt
     for dynamic_heading in (
@@ -1325,7 +1327,9 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "优先用自然连接表达" in prompt
     assert "不复述 invalid_values" in prompt
     assert "恰好包含一个非空值" in prompt
-    assert "当前可查询的设备类型A信息中暂未匹配到属性1相关内容" in prompt
+    assert "设备类型A不支持属性1属性查询" in prompt
+    assert "设备类型A不支持指标1指标查询" in prompt
+    assert "设备类型A的子部件A不支持属性1属性查询" in prompt
     assert "设备类型A、设备类型B、设备A、属性1、指标1、IP地址A" in prompt
     assert "暂未匹配到对应对象" in prompt
     assert "\u201c设备不存在\u201d" in prompt
@@ -1344,7 +1348,7 @@ def test_core_prompt_requires_actionable_natural_explain():
         "设备不存在",
         "字段不存在",
         "对象没有该属性/指标",
-        "不支持查询该字段/指标",
+        "不支持查询该字段",
         "暂不支持该查询",
     ):
         assert f"\u201c{forbidden_output}\u201d" in prompt

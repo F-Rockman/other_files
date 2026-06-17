@@ -351,7 +351,8 @@ result = recommend_questions_chat(
 - 推荐器自动加载内置能力卡，确定性过滤并排序 Top 12；召回过程不调用 LLM 或 Embedding。
 - 推荐器根据 `context.tables` 和 `logical_model_path_provider` 自动读取
   `{table_name}.logical.yaml`，只提取表名、表描述、列名和列描述。
-- 调用器只解析 LLM 返回结构，不过滤或补足推荐内容。
+- 调用器只解析 LLM 返回结构，不过滤或补足推荐内容；`recommends`
+  输出 1 到 3 条即可，候选不足或质量低时不强行凑满。
 
 ### 依赖
 
