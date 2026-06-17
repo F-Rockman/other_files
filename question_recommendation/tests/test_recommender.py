@@ -1325,15 +1325,36 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "不责备用户，不使用带有指责" in prompt
     assert "\u201c错误原因是\u201d" in prompt
     assert "优先用自然连接表达" in prompt
-    assert "不复述 invalid_values" in prompt
+    assert "通常不复述 invalid_values" in prompt
+    assert "设备定位未查询到场景" in prompt
     assert "恰好包含一个非空值" in prompt
     assert "设备类型A不支持属性1属性查询" in prompt
     assert "设备类型A不支持指标1指标查询" in prompt
     assert "设备类型A的子部件A不支持属性1属性查询" in prompt
-    assert "设备类型A、设备类型B、设备A、属性1、指标1、IP地址A" in prompt
+    assert "当前未查询到IP地址为A的设备" in prompt
+    assert "当前未查询到MAC地址为A的设备" in prompt
+    assert "当前未查询到名称为A的设备" in prompt
+    assert "PREFIX 表达为\"以A开头\"" in prompt
+    assert "SUFFIX 表达为\"以A结尾\"" in prompt
+    assert "FUZZY 表达为\"包含A\"" in prompt
+    assert "序列号为A" in prompt
+    assert "设备编码为A" in prompt
+    assert "资产编号为A" in prompt
+    assert "当前未查询到与A匹配的设备" in prompt
+    assert "不存在设备A到设备B的关联关系" in prompt
+    assert "当前未查询到这些对象之间的关联关系" in prompt
+    assert "设备类型A“属性1”不存在“取值A”这一取值" in prompt
+    assert "“属性1”不存在“取值A”这一取值" in prompt
+    assert "当前过滤条件不存在该取值" in prompt
+    assert "设备类型A、设备类型B、设备A、设备B、属性1、指标1、取值A、IP地址A、MAC地址A、名称A" in prompt
     assert "暂未匹配到对应对象" in prompt
     assert "\u201c设备不存在\u201d" in prompt
     assert "explain 是否包含当前提问、当前原因和下一步方向" in prompt
+    assert "当前未查询到过滤条件" not in prompt
+    assert "其他类型" not in prompt
+    assert "标识为A" not in prompt
+    assert "当前查询条件下未查询到相关数据" not in prompt
+    assert "结果为空" not in prompt
     for forbidden_output in (
         "错误原因是",
         "失败原因是",
@@ -1375,13 +1396,15 @@ def test_dynamic_fragments_do_not_define_explain_wording():
         assert "推荐调整为" not in fragment
 
 
-def test_normal_runtime_prompt_loads_weak_path_and_is_clearly_shorter():
+def test_normal_runtime_prompt_loads_only_normal_fragment():
     prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
     assert "当前场景：无恢复要求" in prompt
     assert "信息/列表 → 数量/统计 → 指标 → 关联能力" in prompt
     assert "趋势、聚合、排序和 TopN" in prompt
     assert "禁止主动虚构" in prompt
-    assert len(prompt) < 6000
+    assert "当前场景：simplify" not in prompt
+    assert "当前场景：basic" not in prompt
+    assert "当前场景：空 intention Basic" not in prompt
 
 
 def test_simplify_fragment_overrides_empty_intention_basic():
@@ -1540,7 +1563,7 @@ def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
     )
     assert "当前场景：无可用实时元数据" in prompt
     assert "字段白名单" in prompt
-    assert "每条推荐先绑定一张具体候选卡" in prompt
+    assert "每条推荐仍先绑定一张具体候选卡" in prompt
     assert "多张候选卡字段的并集不是通用白名单" in prompt
     assert "每条推荐必须明确表达绑定候选的具体设备类型" in prompt
     assert "属性和指标名称匹配忽略英文字母大小写" in prompt
