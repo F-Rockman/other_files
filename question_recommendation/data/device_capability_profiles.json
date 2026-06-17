@@ -294,11 +294,11 @@
       "capability_id": "network_link",
       "capability_type": "link_query",
       "domain": "网络",
-      "device_types": ["网络设备"],
+      "device_types": ["网络设备","服务器","存储设备","FC交换机","OLT","ONU","FITAP","终端设备"],
       "objects": ["链路"],
       "properties": ["链路状态","A端网元名称","Z端网元名称"],
       "table_hints": ["链路","拓扑","link"],
-      "examples": ["查询两台网络设备之间的链路","查询网络设备接口相连的对端设备"],
+      "examples": ["查询所有链路的信息","查询链路的状态","查询链路的A端网元名称","查询链路的Z端网元名称","查询网络设备的链路状态","查询网络设备的链路A端网元名称","查询网络设备的链路Z端网元名称","查询网络设备的对端设备"],
       "priority": 95
     },
     {

@@ -325,6 +325,27 @@ def test_capability_configuration_is_valid():
         "resource_query",
         "relation_query",
     }
+    network_link = next(item for item in specials if item.capability_id == "network_link")
+    assert set(network_link.device_types) == {
+        "网络设备",
+        "服务器",
+        "存储设备",
+        "FC交换机",
+        "OLT",
+        "ONU",
+        "FITAP",
+        "终端设备",
+    }
+    assert {
+        "查询所有链路的信息",
+        "查询链路的状态",
+        "查询链路的A端网元名称",
+        "查询链路的Z端网元名称",
+        "查询网络设备的链路状态",
+        "查询网络设备的链路A端网元名称",
+        "查询网络设备的链路Z端网元名称",
+        "查询网络设备的对端设备",
+    }.issubset(set(network_link.examples))
     removed_fields = {
         "filter_fields",
         "group_by_fields",
@@ -774,6 +795,19 @@ def test_metric_query_form_does_not_filter_named_metric(context):
 )
 def test_special_capabilities_are_preserved(context, expected_id):
     assert expected_id in _candidate_ids(context)
+
+
+@pytest.mark.parametrize("device_type", ["服务器", "存储设备", "FITAP"])
+def test_link_query_supports_cross_domain_device_types(device_type):
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查链路",
+            devices=[DeviceCondition(device_type=device_type)],
+        )
+    )
+
+    assert ranked[0].candidate.capability_id == "network_link"
+    assert ranked[0].candidate.device_types == [device_type]
 
 
 def test_special_candidate_uses_objects_without_subcomponent_pollution():
@@ -1577,6 +1611,13 @@ def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
     assert "禁止跨设备、子部件或候选借用字段" in prompt
 
 
+def test_link_query_prompt_prefers_candidate_examples_structure():
+    prompt = _build_system_prompt(RecommendationContext(intention="查链路"))
+
+    assert "link_query 推荐优先参考候选 examples 的表达结构" in prompt
+    assert "examples 仍不是当前环境事实" in prompt
+
+
 def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
     prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
     assert "原属性或指标未命中绑定候选白名单时" in prompt
@@ -2218,6 +2259,29 @@ def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monk
     assert '"match_score"' not in prompt
     assert '"table_hints"' not in prompt
     assert '"priority"' not in prompt
+
+
+def test_chat_prompt_contains_link_query_examples_without_templates():
+    context = RecommendationContext(
+        intention="查链路",
+        devices=[DeviceCondition(device_type="网络设备")],
+    )
+    candidate_capabilities = [
+        item.to_dict() for item in recommend_capabilities(context, limit=1)
+    ]
+
+    messages = _build_chat_messages(context, [], candidate_capabilities)
+    user_prompt = messages[1]["content"]
+
+    assert "network_link" in user_prompt
+    assert "candidate_templates" not in user_prompt
+    for example in (
+        "查询所有链路的信息",
+        "查询链路的A端网元名称",
+        "查询网络设备的链路状态",
+        "查询网络设备的对端设备",
+    ):
+        assert example in user_prompt
 
 
 def test_chat_prompt_contains_structured_subnet_scope_and_relation_candidate():
