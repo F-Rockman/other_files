@@ -1371,6 +1371,10 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "设备类型A不支持属性1属性查询" in prompt
     assert "设备类型A不支持指标1指标查询" in prompt
     assert "设备类型A的子部件A不支持属性1属性查询" in prompt
+    assert "对象A不支持能力A查询" in prompt
+    assert "对象A不支持查询方向A查询" in prompt
+    assert "设备类型A的子部件A不支持查询方向A" in prompt
+    assert "允许并优先使用\"对象 + 不支持 + 属性/指标/能力\"" in prompt
     assert "当前未查询到IP地址为A的设备" in prompt
     assert "当前未查询到MAC地址为A的设备" in prompt
     assert "当前未查询到名称为A的设备" in prompt
@@ -1387,9 +1391,11 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "“属性1”不存在“取值A”这一取值" in prompt
     assert "当前过滤条件不存在该取值" in prompt
     assert "设备类型A、设备类型B、设备A、设备B、属性1、指标1、取值A、IP地址A、MAC地址A、名称A" in prompt
-    assert "暂未匹配到对应对象" in prompt
+    assert "无对象归属的委婉兜底表达" in prompt
     assert "\u201c设备不存在\u201d" in prompt
     assert "explain 是否包含当前提问、当前原因和下一步方向" in prompt
+    assert "暂未匹配到对应对象" not in prompt
+    assert "暂未识别到可用关联" not in prompt
     assert "当前未查询到过滤条件" not in prompt
     assert "其他类型" not in prompt
     assert "标识为A" not in prompt
@@ -1411,6 +1417,7 @@ def test_core_prompt_requires_actionable_natural_explain():
         "对象没有该属性/指标",
         "不支持查询该字段",
         "暂不支持该查询",
+        "不支持该查询",
     ):
         assert f"\u201c{forbidden_output}\u201d" in prompt
     explain_section = prompt.split("## explain", 1)[1].split("## 输出与自检", 1)[0]
