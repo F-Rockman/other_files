@@ -31,6 +31,7 @@ from question_recommendation import (
     MetadataColumn,
     MetadataTable,
     RecommendationContext,
+    SpecialCapabilitySpec,
     SubnetScope,
     SubcomponentCapabilitySpec,
     build_recommendation_context,
@@ -336,6 +337,7 @@ def test_capability_configuration_is_valid():
         "FITAP",
         "终端设备",
     }
+    assert network_link.trigger_terms == ["对端设备", "对端", "对端网元"]
     assert {
         "查询所有链路的信息",
         "查询链路的状态",
@@ -818,6 +820,53 @@ def test_special_candidate_uses_objects_without_subcomponent_pollution():
     assert alarm.candidate.subcomponent_types == []
     assert alarm.to_dict()["objects"] == ["告警"]
     assert "subcomponent_types" not in alarm.to_dict()
+    assert "trigger_terms" not in alarm.to_dict()
+
+
+def test_special_capability_trigger_terms_recall_link_without_pollution():
+    ranked = recommend_capabilities(
+        _empty_intention_basic_context("查询Mac为的网络设备的对端设备数量")
+    )
+    link = next(item for item in ranked if item.candidate.capability_id == "network_link")
+
+    assert link.candidate.objects == ["链路"]
+    assert link.candidate.subcomponent_types == []
+    assert link.candidate.device_types == ["网络设备"]
+    assert "trigger_terms" not in link.to_dict()
+
+
+def test_special_capability_objects_still_recall_link():
+    ranked = recommend_capabilities(
+        _empty_intention_basic_context("查询网络设备链路状态")
+    )
+    link = next(item for item in ranked if item.candidate.capability_id == "network_link")
+
+    assert link.candidate.objects == ["链路"]
+    assert link.candidate.device_types == ["网络设备"]
+
+
+def test_special_trigger_terms_do_not_bypass_known_unsupported_device():
+    ranked = recommend_capabilities(
+        _empty_intention_basic_context("查询测试设备的对端设备"),
+        domain_cards=[
+            DeviceCapabilityProfile(
+                profile_id="test_device",
+                domain="测试",
+                device_types=["测试设备"],
+            )
+        ],
+        special_cards=[
+            SpecialCapabilitySpec(
+                capability_id="network_link",
+                capability_type="link_query",
+                device_types=["网络设备"],
+                objects=["链路"],
+                trigger_terms=["对端设备"],
+            )
+        ],
+    )
+
+    assert "network_link" not in [item.candidate.capability_id for item in ranked]
 
 
 def test_special_candidate_keeps_supported_alias_from_question():
@@ -1309,6 +1358,7 @@ def test_top_twelve_selection_is_stable():
 
 def test_core_prompt_keeps_global_and_text_interpretation_rules():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
+    assert "trigger_terms" not in prompt
     for expected in (
         "candidate_capabilities 决定允许的业务域",
         "每条推荐必须绑定一个具体 candidate_capability",
