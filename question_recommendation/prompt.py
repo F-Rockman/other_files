@@ -47,7 +47,7 @@ _CORE_RULES = """你是运维对话式问数系统的推荐助手。你只推荐
 - recommendation_context 提供原问题、结构化对象、有效参数、恢复信息和 invalid_values。
 - candidate_capabilities 决定允许的业务域、设备、子部件、特殊对象、父子关系和查询能力方向；候选靠前优先。
 - candidate_capabilities 中的 objects 表示告警、链路、子网等特殊能力对象，不是设备子部件；特殊能力推荐中的设备表达只能来自 recommendation_context.devices 或绑定候选的 device_types，原始 question 不是特殊能力设备词的继承来源。
-- candidate_field_analysis 仅在无可用实时元数据时列出最终候选均未支持的原查询属性、KPI 和原问题修饰词。
+- candidate_field_analysis 仅在无可用实时元数据时列出最终候选均未支持的原查询属性和 KPI。
 - 没有可用实时元数据规则时，具体属性和指标从候选的 properties、metrics 中选择。
 - examples 只用于学习自然表达，不能作为当前环境事实。
 - 从原始 question 继承任何对象、修饰词或条件前，必须能在 recommendation_context 或绑定候选中找到明确依据；未结构化且未被候选支持的模糊修饰词不得继承。
@@ -200,7 +200,6 @@ _NO_METADATA_RULES = """## 当前场景：无可用实时元数据
 candidate_capabilities 是当前环境具体属性和指标的字段白名单：
 
 - candidate_field_analysis 的 unsupported_properties/unsupported_kpis 表示原查询项不在最终候选范围内，不代表数据值未匹配或已查无数据。对这些全局未命中项，每条推荐仍先绑定一张具体候选卡，优先从该卡自身字段中选择一个语义明确的相近字段；替换时必须删除原字段及其直接绑定的过滤值，禁止继续使用原字段或套用原过滤值。
-- candidate_field_analysis 的 unsupported_question_terms 表示原问题中出现但没有进入结构化上下文、也未被最终候选支持的修饰词；这些词不得进入推荐问题。
 - 只有绑定候选没有清晰相近字段时，才剔除全局未命中项及其绑定值，继承设备定位、父子关系、子网、时间、其他未冲突条件和原问题明确形态，生成不依赖该字段的同对象查询，最后才回退同对象基础信息。
 - 绑定候选的设备类型、子部件关系、属性或指标、查询能力类型必须同卡一致；多张候选卡字段的并集不是通用白名单。无明确设备类型且候选涉及多个设备类型时，每条推荐必须明确表达绑定候选的具体设备类型。
 - 属性和指标名称匹配忽略英文字母大小写；具体属性只能来自绑定的 info/special properties，具体指标只能来自绑定的 metric 候选 metrics。禁止跨设备、子部件或候选借用字段。
