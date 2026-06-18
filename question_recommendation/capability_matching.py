@@ -342,9 +342,27 @@ def _single_term_occurrences(
     matches = []
     start = normalized_text.find(normalized_term)
     while start >= 0:
-        matches.append((term, start, start + len(normalized_term)))
+        end = start + len(normalized_term)
+        if not _ascii_term_embedded(normalized_text, normalized_term, start, end):
+            matches.append((term, start, end))
         start = normalized_text.find(normalized_term, start + 1)
     return matches
+
+
+def _ascii_term_embedded(
+    normalized_text: str,
+    normalized_term: str,
+    start: int,
+    end: int,
+) -> bool:
+    """判断纯 ASCII 词是否嵌在更长英文数字词内部。"""
+    if not (normalized_term.isascii() and normalized_term.isalnum()):
+        return False
+    before = start > 0 and normalized_text[start - 1].isascii()
+    before = before and normalized_text[start - 1].isalnum()
+    after = end < len(normalized_text) and normalized_text[end].isascii()
+    after = after and normalized_text[end].isalnum()
+    return before or after
 
 
 def _is_covered_by_longer_term(

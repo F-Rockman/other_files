@@ -363,6 +363,7 @@ class SpecialCapabilitySpec:
     domain: str = ""
     device_types: List[str] = field(default_factory=list)
     objects: List[str] = field(default_factory=list)
+    trigger_terms: List[str] = field(default_factory=list)
     properties: List[str] = field(default_factory=list)
     table_hints: List[str] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
@@ -381,6 +382,7 @@ class SpecialCapabilitySpec:
             domain=str(data.get("domain", "") or "").strip(),
             device_types=_as_list(data.get("device_types")),
             objects=_as_list(data.get("objects")),
+            trigger_terms=_as_list(data.get("trigger_terms")),
             properties=_as_list(data.get("properties")),
             table_hints=_as_list(data.get("table_hints")),
             examples=_as_list(data.get("examples")),
