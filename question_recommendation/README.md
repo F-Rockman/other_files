@@ -281,6 +281,7 @@ result = recommend_questions_chat(
 | `domain` | 业务域；子网等跨领域特殊能力可以为空 |
 | `device_types` | 支持的设备类型；有明确设备类型时用于硬过滤 |
 | `objects` | 支持的特殊对象，候选中作为 `objects` 传给 LLM，不写入 `subcomponent_types` |
+| `trigger_terms` | 内部召回触发词；只用于让“对端设备/对端”等自然说法命中特殊能力，不传给 LLM |
 | `properties` | 特殊对象可查询的属性 |
 | `table_hints` | 内部元数据相关度提示 |
 | `examples` | 自然问法示例 |
@@ -296,6 +297,8 @@ result = recommend_questions_chat(
 特殊能力场景下，原问题中的已知设备词只匹配能力卡显式列出的设备类型和别名；推荐模块
 不从文本中抽取未知设备实体，也不把未列举的不同写法自动视为同一设备词。最终推荐只能
 使用结构化设备或候选 `device_types` 中的设备表达。
+`trigger_terms` 仅作为召回入口，不会写入候选 `objects`、`subcomponent_types` 或 Prompt。
+例如链路能力的 `objects` 仍是“链路”，但可以通过“对端设备”“对端”等触发词召回。
 
 所有能力卡字段匹配均忽略英文字母大小写，包括设备类型与别名、子部件类型与别名、
 定位方式、属性、指标、特殊能力对象和 `table_hints`。匹配仍是精确值或既有包含规则，

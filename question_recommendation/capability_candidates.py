@@ -346,8 +346,8 @@ def _special_query_direction_matches(
 ) -> bool:
     """判断资源或关系特殊能力是否满足额外查询方向。"""
     if values_equal(special_card.capability_type, RESOURCE_QUERY):
-        return is_subnet_context(context) or contains_any(
-            context.question, special_card.objects
+        return is_subnet_context(context) or _special_text_matches(
+            context.question, special_card
         )
     if values_equal(special_card.capability_type, RELATION_QUERY):
         return _relation_special_matches(special_card, context, matched_types)
@@ -385,7 +385,15 @@ def _relation_special_matches(
         return True
     if has_overlap(special_card.objects, context.subcomponent_types):
         return True
-    return contains_any(context.question, special_card.objects)
+    return _special_text_matches(context.question, special_card)
+
+
+def _special_text_matches(
+    text: str,
+    special_card: SpecialCapabilitySpec,
+) -> bool:
+    """判断原问题是否命中特殊卡真实对象或内部触发词。"""
+    return contains_any(text, special_card.objects + special_card.trigger_terms)
 
 
 def _matched_special_device_types(

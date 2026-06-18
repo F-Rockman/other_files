@@ -172,12 +172,17 @@ def _special_cards_matching_text(
     text: str,
     special_cards: Sequence[SpecialCapabilitySpec],
 ) -> List[SpecialCapabilitySpec]:
-    """返回对象词出现在原问题中的特殊卡。"""
+    """返回对象词或内部触发词出现在原问题中的特殊卡。"""
     matched = []
     for special_card in special_cards:
-        if contains_any(text, special_card.objects):
+        if _special_card_text_matches(text, special_card):
             matched.append(special_card)
     return matched
+
+
+def _special_card_text_matches(text: str, special_card: SpecialCapabilitySpec) -> bool:
+    """判断原问题是否命中特殊卡真实对象或内部触发词。"""
+    return contains_any(text, special_card.objects + special_card.trigger_terms)
 
 
 def _basic_special_candidates(
@@ -201,6 +206,10 @@ def _basic_special_candidates(
         compatible_device_values = _supported_special_device_values(
             device_values, special_card, domain_cards
         )
+        if _trigger_only_with_incompatible_device(
+            context.question, special_card, device_values, compatible_device_values
+        ):
+            continue
         special_context = _basic_special_context(
             context.question, compatible_device_values
         )
@@ -213,6 +222,20 @@ def _basic_special_candidates(
             )
         )
     return candidates
+
+
+def _trigger_only_with_incompatible_device(
+    question: str,
+    special_card: SpecialCapabilitySpec,
+    device_values: Sequence[str],
+    compatible_device_values: Sequence[str],
+) -> bool:
+    """命中触发词但已知设备词不兼容时，不让触发词绕过设备约束。"""
+    if not device_values or compatible_device_values:
+        return False
+    if contains_any(question, special_card.objects):
+        return False
+    return contains_any(question, special_card.trigger_terms)
 
 
 def _supported_special_device_values(
