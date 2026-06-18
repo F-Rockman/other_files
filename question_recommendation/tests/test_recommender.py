@@ -1096,7 +1096,7 @@ def test_recovery_question_direction_does_not_override_structured_object():
     assert all(item.candidate.domain == "服务器" for item in ranked)
 
 
-def test_question_direction_does_not_change_non_recovery_recall():
+def test_regular_recall_uses_question_direction_without_structured_object():
     ranked = recommend_capabilities(
         RecommendationContext(
             intention="查指标",
@@ -1105,7 +1105,7 @@ def test_question_direction_does_not_change_non_recovery_recall():
         )
     )
     assert not any(item.candidate.capability_type == DEVICE_METRIC for item in ranked)
-    assert len({item.candidate.domain for item in ranked}) > 1
+    assert {item.candidate.domain for item in ranked} == {"网络"}
 
 
 def test_recovery_without_question_direction_keeps_global_recall():
@@ -2149,6 +2149,159 @@ def test_empty_intention_basic_keeps_separate_explicit_device_objects():
         _candidate_ids(_empty_intention_basic_context("查询服务器和网络设备列表"))
     )
     assert {"server:device_info", "network_device:device_info"}.issubset(ids)
+
+
+def _network_and_fatap_cards():
+    network_card = DeviceCapabilityProfile(
+        profile_id="network_device",
+        domain="网络",
+        device_types=["网络设备"],
+        aliases=["路由器", "交换机", "FAT AP"],
+        metrics=["CPU利用率"],
+        subcomponents=[
+            SubcomponentCapabilitySpec(types=["接口"], metrics=["带宽利用率"])
+        ],
+        priority=95,
+    )
+    fatap_card = DeviceCapabilityProfile(
+        profile_id="fatap",
+        domain="网络",
+        device_types=["FATAP"],
+        metrics=["CPU利用率"],
+        priority=88,
+    )
+    return [network_card, fatap_card]
+
+
+@pytest.mark.parametrize(
+    ("question", "expected_ids"),
+    [
+        (
+            "查询网络设备列表",
+            {
+                "network_device:device_info",
+                "network_device:device_count",
+                "network_device:device_metric",
+            },
+        ),
+        (
+            "查询网络相关设备数量",
+            {
+                "network_device:device_info",
+                "network_device:device_count",
+                "network_device:device_metric",
+            },
+        ),
+        (
+            "查询Fat AP列表",
+            {
+                "network_device:device_info",
+                "network_device:device_count",
+                "network_device:device_metric",
+            },
+        ),
+        (
+            "查询FATAP列表",
+            {"fatap:device_info", "fatap:device_count", "fatap:device_metric"},
+        ),
+        (
+            "查询交换机列表",
+            {
+                "network_device:device_info",
+                "network_device:device_count",
+                "network_device:device_metric",
+            },
+        ),
+        (
+            "查询网络设备和 FatAP 数量",
+            {
+                "network_device:device_info",
+                "network_device:device_count",
+                "network_device:device_metric",
+                "fatap:device_info",
+                "fatap:device_count",
+                "fatap:device_metric",
+            },
+        ),
+    ],
+)
+def test_regular_recall_resolves_device_type_over_alias_conflicts(
+    question, expected_ids
+):
+    ids = set(
+        _candidate_ids(
+            RecommendationContext(intention="查信息", question=question),
+            domain_cards=_network_and_fatap_cards(),
+            special_cards=[],
+        )
+    )
+    assert ids == expected_ids
+
+
+def test_regular_recall_keeps_global_candidates_without_clear_device_term():
+    ids = set(
+        _candidate_ids(
+            RecommendationContext(intention="查信息", question="查询设备列表"),
+            domain_cards=_network_and_fatap_cards(),
+            special_cards=[],
+        )
+    )
+    assert {
+        "network_device:device_info",
+        "fatap:device_info",
+    }.issubset(ids)
+
+
+def test_regular_recall_prefers_structured_device_over_question_text():
+    ids = set(
+        _candidate_ids(
+            RecommendationContext(
+                intention="查信息",
+                question="查询网络设备列表",
+                devices=[DeviceCondition(device_type="FATAP")],
+            ),
+            domain_cards=_network_and_fatap_cards(),
+            special_cards=[],
+        )
+    )
+    assert ids == {"fatap:device_info", "fatap:device_count", "fatap:device_metric"}
+
+
+def test_regular_recall_filters_question_subcomponent_by_parent_compatibility():
+    ids = set(
+        _candidate_ids(
+            RecommendationContext(intention="查信息", question="查询网络设备接口数量"),
+            domain_cards=_network_and_fatap_cards(),
+            special_cards=[],
+        )
+    )
+    assert ids == {
+        "network_device:接口:subcomponent_info",
+        "network_device:接口:subcomponent_count",
+        "network_device:接口:subcomponent_metric",
+    }
+
+
+def test_device_term_matching_does_not_normalize_unlisted_spellings():
+    network_card = DeviceCapabilityProfile(
+        profile_id="network_device",
+        domain="网络",
+        device_types=["网络设备"],
+        aliases=["Fat AP"],
+    )
+    fatap_card = DeviceCapabilityProfile(
+        profile_id="fatap",
+        domain="网络",
+        device_types=["FATAP"],
+    )
+    ids = set(
+        _candidate_ids(
+            RecommendationContext(intention="查信息", question="查询Fat AP列表"),
+            domain_cards=[network_card, fatap_card],
+            special_cards=[],
+        )
+    )
+    assert ids == {"network_device:device_info", "network_device:device_count"}
 
 
 @pytest.mark.parametrize(

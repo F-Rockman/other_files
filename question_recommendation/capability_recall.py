@@ -70,17 +70,37 @@ def _regular_candidates(
     special_cards: Sequence[SpecialCapabilitySpec],
 ) -> List[CapabilityCandidate]:
     """召回已有结构化对象下的主能力和相邻能力。"""
-    matched_domain_cards = matching_domain_cards(context, domain_cards)
-    primary_type = resolve_primary_capability_type(context)
+    matched_domain_cards, recall_context = _regular_match_context(
+        context, domain_cards
+    )
+    primary_type = resolve_primary_capability_type(recall_context)
     candidates = primary_candidates(
-        context, matched_domain_cards, special_cards, primary_type
+        recall_context, matched_domain_cards, special_cards, primary_type
     )
     candidates.extend(
         adjacent_candidates(
-            context, matched_domain_cards, special_cards, primary_type
+            recall_context, matched_domain_cards, special_cards, primary_type
         )
     )
     return candidates
+
+
+def _regular_match_context(
+    context: RecommendationContext,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> Tuple[List[DeviceCapabilityProfile], RecommendationContext]:
+    """常规召回无结构化对象时，用原问题设备词收敛临时上下文。"""
+    if context_device_types(context) or context.subcomponent_types:
+        return matching_domain_cards(context, domain_cards), context
+    matched_cards, matched_subcomponents = _recovery_direction_matches(
+        context.question, domain_cards
+    )
+    if not matched_cards:
+        return list(domain_cards), context
+    direction_context = _build_direction_context(
+        context, matched_cards, matched_subcomponents
+    )
+    return matched_cards, direction_context
 
 
 def _empty_intention_basic_candidates(

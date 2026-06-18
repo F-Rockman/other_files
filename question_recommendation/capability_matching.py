@@ -17,6 +17,7 @@ from .models import (
     RecommendationContext,
     SubcomponentCapabilitySpec,
 )
+from .capability_device_terms import match_domain_cards_by_device_terms
 
 
 def context_device_types(context: RecommendationContext) -> List[str]:
@@ -68,7 +69,7 @@ def matching_domain_cards(
     context: RecommendationContext,
     domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
-    """按明确设备类型或子部件对象过滤设备规格。"""
+    """按结构化对象或原问题明确设备词过滤设备规格。"""
     device_types = context_device_types(context)
     if device_types:
         return _domain_cards_matching_device_types(domain_cards, device_types)
@@ -76,6 +77,10 @@ def matching_domain_cards(
         return _domain_cards_matching_subcomponents(
             domain_cards, context.subcomponent_types
         )
+    if context.question:
+        matched = domain_cards_matching_question_direction(context.question, domain_cards)
+        if matched:
+            return matched
     return list(domain_cards)
 
 
@@ -181,33 +186,89 @@ def domain_cards_matching_question_direction(
     domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
     """按原问题中的业务域、设备类型或别名匹配领域卡。"""
-    object_card_ids = domain_card_ids(domain_cards_matching_text(text, domain_cards))
+    object_cards = domain_cards_matching_text(text, domain_cards)
+    matched_domains = _uncovered_domain_terms(text, domain_cards)
+    if not matched_domains:
+        return object_cards
+    matched_domain_cards = []
+    for domain in matched_domains:
+        generic_cards = _generic_domain_cards(domain, domain_cards)
+        if generic_cards:
+            matched_domain_cards.extend(generic_cards)
+            continue
+        for domain_card in domain_cards:
+            if normalize_match_value(domain_card.domain) == domain:
+                matched_domain_cards.append(domain_card)
+    return dedupe_domain_cards(object_cards + matched_domain_cards)
+
+
+def _uncovered_domain_terms(
+    text: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[str]:
+    """返回未被更长设备词覆盖的业务域词。"""
+    normalized_text = normalize_match_value(text)
     domains = [domain_card.domain for domain_card in domain_cards]
-    matched_domains = normalized_set(specific_terms_in_text(text, domains))
+    domain_matches = _term_occurrences(normalized_text, domains)
+    device_matches = _term_occurrences(
+        normalized_text, domain_card_device_terms(domain_cards)
+    )
+    matched_domains = []
+    for domain, start, end in domain_matches:
+        if _is_covered_by_any_term(start, end, device_matches):
+            continue
+        normalized_domain = normalize_match_value(domain)
+        if normalized_domain and normalized_domain not in matched_domains:
+            matched_domains.append(normalized_domain)
+    return matched_domains
+
+
+def _is_covered_by_any_term(
+    start: int,
+    end: int,
+    matches: Sequence[Tuple[str, int, int]],
+) -> bool:
+    """判断文本范围是否被任一更长词项覆盖。"""
+    for term, other_start, other_end in matches:
+        if other_start > start or other_end < end:
+            continue
+        if other_end - other_start > end - start:
+            return True
+    return False
+
+
+def _generic_domain_cards(
+    domain: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[DeviceCapabilityProfile]:
+    """返回业务域下的泛设备卡，避免展开同域专用卡。"""
     matched_domain_cards = []
     for domain_card in domain_cards:
-        if domain_card.profile_id in object_card_ids:
-            matched_domain_cards.append(domain_card)
+        if normalize_match_value(domain_card.domain) != domain:
             continue
-        if normalize_match_value(domain_card.domain) in matched_domains:
+        if _card_is_generic_for_domain(domain_card, domain):
             matched_domain_cards.append(domain_card)
     return matched_domain_cards
+
+
+def _card_is_generic_for_domain(
+    domain_card: DeviceCapabilityProfile,
+    domain: str,
+) -> bool:
+    """判断设备类型是否直接表示该业务域的泛对象。"""
+    generic_terms = {domain, f"{domain}设备"}
+    for device_type in domain_card.device_types:
+        if normalize_match_value(device_type) in generic_terms:
+            return True
+    return False
 
 
 def domain_cards_matching_text(
     text: str,
     domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[DeviceCapabilityProfile]:
-    """按文本中未被更长对象词覆盖的设备类型或别名匹配领域卡。"""
-    matched_terms = normalized_set(
-        specific_terms_in_text(text, domain_card_device_terms(domain_cards))
-    )
-    matched_domain_cards = []
-    for domain_card in domain_cards:
-        card_terms = normalized_set(domain_card.device_types + domain_card.aliases)
-        if matched_terms.intersection(card_terms):
-            matched_domain_cards.append(domain_card)
-    return matched_domain_cards
+    """按设备类型强命中优先于别名弱命中的规则匹配领域卡。"""
+    return match_domain_cards_by_device_terms(text, domain_cards)
 
 
 def subcomponents_matching_text(
