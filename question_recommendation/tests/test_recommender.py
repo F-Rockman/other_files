@@ -1318,6 +1318,7 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "原始 question 不是特殊能力设备词的继承来源",
         "不得从原始 question 继承未出现在候选 device_types 中的设备词",
         "未结构化且未被候选支持的模糊修饰词不得继承",
+        "原查询属性、KPI 和原问题修饰词",
         "禁止生成“候选外设备 + objects”的组合",
         "只有绑定候选 locators 支持的设备定位类型才可继承",
         "结果形态与语义去重",
@@ -1497,6 +1498,11 @@ def test_out_of_scope_alarm_question_does_not_support_unstructured_modifier():
     )
     ranked = recommend_capabilities(context)
     candidate = ranked[0].candidate
+    messages = _build_chat_messages(
+        context,
+        [],
+        [item.to_dict() for item in ranked],
+    )
 
     assert context.to_dict() == {
         "question": "电源相关的告警信息在哪里",
@@ -1507,6 +1513,8 @@ def test_out_of_scope_alarm_question_does_not_support_unstructured_modifier():
     assert "电源" not in candidate.objects
     assert "电源" not in candidate.properties
     assert "电源" not in candidate.device_types
+    assert "unsupported_question_terms" in messages[1]["content"]
+    assert '"电源"' in messages[1]["content"]
 
 
 @pytest.mark.parametrize(
@@ -1730,6 +1738,23 @@ def test_candidate_field_analysis_is_disabled_by_usable_metadata():
     assert analyze_candidate_fields(context, [], metadata) == {
         "unsupported_properties": [],
         "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_marks_unsupported_related_question_terms():
+    context = RecommendationContext(question="电源相关的告警信息在哪里")
+    candidates = [
+        {
+            "objects": ["告警"],
+            "properties": ["告警名称", "告警级别", "告警状态"],
+            "examples": ["查询服务器告警列表"],
+        }
+    ]
+
+    assert analyze_candidate_fields(context, candidates) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+        "unsupported_question_terms": ["电源"],
     }
 
 
