@@ -17,6 +17,7 @@ from .capability_matching import (
     contains_any,
     context_device_types,
     dedupe_candidates,
+    domain_card_has_matching_subcomponent,
     examples_for_type,
     has_overlap,
     is_subnet_context,
@@ -256,25 +257,80 @@ def _special_candidate(
     domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> CapabilityCandidate:
     """将一张匹配的特殊卡转换为候选能力。"""
-    matched_types = _matched_special_device_types(
-        context_device_types(context), special_card.device_types, domain_cards
+    device_types = _special_candidate_device_types(
+        context, special_card, domain_cards
     )
-    analysis = _special_text_device_analysis(context, special_card, domain_cards)
     return CapabilityCandidate(
         capability_id=special_card.capability_id,
         capability_type=special_card.capability_type,
         domain=special_card.domain,
-        device_types=(
-            matched_types
-            or analysis.compatible_device_terms
-            or special_card.device_types
-        ),
+        device_types=device_types,
         objects=special_card.objects,
         properties=special_card.properties,
         table_hints=special_card.table_hints,
         examples=special_card.examples,
         priority=special_card.priority,
     )
+
+
+def _special_candidate_device_types(
+    context: RecommendationContext,
+    special_card: SpecialCapabilitySpec,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[str]:
+    """计算特殊候选最终允许的设备类型，避免子部件场景暴露全量设备。"""
+    device_types = context_device_types(context)
+    matched_types = _matched_special_device_types(
+        device_types, special_card.device_types, domain_cards
+    )
+    if device_types:
+        return matched_types
+    parent_types = _subcomponent_parent_device_types(
+        context, special_card, domain_cards
+    )
+    if context.subcomponent_types:
+        return parent_types
+    analysis = _special_text_device_analysis(context, special_card, domain_cards)
+    return analysis.compatible_device_terms or special_card.device_types
+
+
+def _subcomponent_parent_device_types(
+    context: RecommendationContext,
+    special_card: SpecialCapabilitySpec,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[str]:
+    """返回同时支持上下文子部件和特殊能力的父设备类型。"""
+    if not context.subcomponent_types:
+        return []
+    parent_types: List[str] = []
+    for domain_card in domain_cards:
+        if not domain_card_has_matching_subcomponent(
+            domain_card, context.subcomponent_types
+        ):
+            continue
+        _append_supported_device_types(
+            parent_types, domain_card, special_card, domain_cards
+        )
+    return parent_types
+
+
+def _append_supported_device_types(
+    result: List[str],
+    domain_card: DeviceCapabilityProfile,
+    special_card: SpecialCapabilitySpec,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> None:
+    """将领域卡中被特殊卡支持的父设备类型追加到结果。"""
+    seen = normalized_set(result)
+    for device_type in domain_card.device_types:
+        if normalize_match_value(device_type) in seen:
+            continue
+        if not special_device_term_supported(
+            device_type, special_card.device_types, domain_cards
+        ):
+            continue
+        seen.add(normalize_match_value(device_type))
+        result.append(device_type)
 
 
 def _special_text_device_analysis(
@@ -334,7 +390,7 @@ def _special_matches_context(
     )
     if not _special_device_types_match(special_card, device_types, matched_types):
         return False
-    if not _special_objects_match(special_card, context):
+    if not _special_subcomponent_scope_matches(special_card, context, domain_cards):
         return False
     return _special_query_direction_matches(special_card, context, matched_types)
 
@@ -365,14 +421,15 @@ def _special_device_types_match(
     return True
 
 
-def _special_objects_match(
+def _special_subcomponent_scope_matches(
     special_card: SpecialCapabilitySpec,
     context: RecommendationContext,
+    domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> bool:
-    """判断上下文子部件是否满足特殊卡对象约束。"""
-    if special_card.objects and context.subcomponent_types:
-        return has_overlap(special_card.objects, context.subcomponent_types)
-    return True
+    """无明确设备的子部件场景必须能找到兼容父设备。"""
+    if context_device_types(context) or not context.subcomponent_types:
+        return True
+    return bool(_subcomponent_parent_device_types(context, special_card, domain_cards))
 
 
 def _relation_special_matches(

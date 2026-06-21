@@ -914,6 +914,97 @@ def test_special_candidate_excludes_known_unsupported_device_term():
     assert "FITAP" not in alarm.candidate.device_types
 
 
+def test_special_candidate_constrains_devices_by_subcomponent_parents():
+    domain_cards, alarm_card = _optical_module_alarm_cards()
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查告警",
+            question="查询光模块有哪些告警",
+            subcomponent_types=["光模块"],
+        ),
+        domain_cards=domain_cards,
+        special_cards=[alarm_card],
+    )
+    alarm = next(item for item in ranked if item.candidate.capability_id == "alarm_query")
+
+    assert alarm.candidate.device_types == ["网络设备", "服务器"]
+    assert alarm.candidate.subcomponent_types == []
+    assert alarm.candidate.objects == ["告警"]
+    assert "FATAP" not in alarm.candidate.device_types
+
+
+def test_special_candidate_structured_device_has_priority_over_subcomponent_parents():
+    domain_cards, alarm_card = _optical_module_alarm_cards()
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查告警",
+            question="查询网络设备光模块有哪些告警",
+            devices=[DeviceCondition(device_type="网络设备")],
+            subcomponent_types=["光模块"],
+        ),
+        domain_cards=domain_cards,
+        special_cards=[alarm_card],
+    )
+    alarm = next(item for item in ranked if item.candidate.capability_id == "alarm_query")
+
+    assert alarm.candidate.device_types == ["网络设备"]
+    assert alarm.candidate.subcomponent_types == []
+    assert alarm.candidate.objects == ["告警"]
+
+
+def test_special_candidate_requires_subcomponent_parent_when_device_is_missing():
+    ranked = recommend_capabilities(
+        RecommendationContext(
+            intention="查告警",
+            question="查询光模块有哪些告警",
+            subcomponent_types=["光模块"],
+        ),
+        domain_cards=[
+            DeviceCapabilityProfile(
+                profile_id="fatap",
+                device_types=["FATAP"],
+            )
+        ],
+        special_cards=[
+            SpecialCapabilitySpec(
+                capability_id="alarm_query",
+                capability_type="alarm_query",
+                device_types=["FATAP"],
+                objects=["告警"],
+            )
+        ],
+    )
+
+    assert "alarm_query" not in [item.candidate.capability_id for item in ranked]
+
+
+def _optical_module_alarm_cards():
+    optical_module = SubcomponentCapabilitySpec(types=["光模块"])
+    domain_cards = [
+        DeviceCapabilityProfile(
+            profile_id="network_device",
+            device_types=["网络设备"],
+            subcomponents=[optical_module],
+        ),
+        DeviceCapabilityProfile(
+            profile_id="server",
+            device_types=["服务器"],
+            subcomponents=[optical_module],
+        ),
+        DeviceCapabilityProfile(
+            profile_id="fatap",
+            device_types=["FATAP"],
+        ),
+    ]
+    alarm_card = SpecialCapabilitySpec(
+        capability_id="alarm_query",
+        capability_type="alarm_query",
+        device_types=["网络设备", "服务器", "FATAP"],
+        objects=["告警"],
+    )
+    return domain_cards, alarm_card
+
+
 def test_subnet_scope_keeps_device_info_primary_and_adds_relation_candidate():
     context = RecommendationContext(
         intention="查信息",
