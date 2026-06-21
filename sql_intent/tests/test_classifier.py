@@ -106,6 +106,23 @@ class TestPromptConstant:
         assert "服务器操作系统" in SQL_INTENT_SYSTEM_PROMPT
         assert "不能以缺少指标、属性或查询动作为由拒答" in SQL_INTENT_SYSTEM_PROMPT
 
+    def test_causal_terms_can_be_data_filters(self):
+        assert "因果词作为筛选条件" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询导致环路的告警和设备信息" in SQL_INTENT_SYSTEM_PROMPT
+        assert "“导致环路”是告警筛选条件或告警原因字段值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不等于原因分析或根因分析" in SQL_INTENT_SYSTEM_PROMPT
+        assert "关联实体字段扩展" in SQL_INTENT_SYSTEM_PROMPT
+        assert "告警字段和设备字段可通过同一明细查询或 JOIN 同行输出" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不要把“告警和设备信息”误判为两个独立查询目标" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_emotional_expression_does_not_block_query(self):
+        assert "情绪表达不改变查询意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "烦死了，帮我查一下交换机告警" in SQL_INTENT_SYSTEM_PROMPT
+        assert "急死了，查询离线设备数量" in SQL_INTENT_SYSTEM_PROMPT
+        assert "这破系统又出问题了，看看CPU利用率大于90的设备" in SQL_INTENT_SYSTEM_PROMPT
+        assert "情绪词只是语气噪声，不改变问数意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "只有用户要求安慰、情绪疏导、投诉文案、客服回复、评价或建议等非数据查询输出时，才拒答" in SQL_INTENT_SYSTEM_PROMPT
+
     def test_explicit_condition_operator_requires_value(self):
         assert "显式条件关系词后必须有明确条件值" in SQL_INTENT_SYSTEM_PROMPT
         assert "字段名 + 为/等于/是/叫/包含/大于/小于/在" in SQL_INTENT_SYSTEM_PROMPT
