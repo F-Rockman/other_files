@@ -4,7 +4,7 @@
       "profile_id": "network_device",
       "domain": "网络",
       "device_types": ["网络设备"],
-      "aliases": ["路由器","交换机","AC","WAC","防火墙","FATAP"],
+      "aliases": ["路由器","交换机","AC","WAC","防火墙"],
       "locators": ["IP","NAME"],
       "properties": ["名称","IP地址","SN","状态","型号","子网","厂商","软件版本"],
       "metrics": ["CPU利用率","响应时间","带宽利用率"],
@@ -52,6 +52,52 @@
       "table_hints": ["网络设备","network_device"],
       "examples": ["查询当前网络设备列表","查询网络设备数量","查询网络设备CPU利用率趋势"],
       "priority": 95
+    },
+    {
+      "profile_id": "fatap",
+      "domain": "网络",
+      "device_types": ["FATAP"],
+      "aliases": [],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","SN","状态","型号","子网","厂商","软件版本"],
+      "metrics": ["CPU利用率","响应时间","带宽利用率"],
+      "subcomponents": [
+        {
+          "types": ["接口"],
+          "aliases": ["端口"],
+          "properties": ["名称","状态","型号","位置","接口名称","端口类型"],
+          "metrics": ["接收速率","发送速率","带宽利用率"],
+          "table_hints": ["FATAP接口","FATAP端口","fatap_interface","fatap_port"],
+          "examples": ["查询FATAP接口列表","查询FATAP接口数量","查询FATAP接口带宽利用率趋势"],
+          "priority": 8
+        },
+        {
+          "types": ["单板"],
+          "properties": ["名称","状态","型号","位置","温度"],
+          "metrics": ["单板CPU利用率","单板内存利用率","温度"],
+          "table_hints": ["FATAP单板","fatap_board"],
+          "examples": ["查询FATAP单板列表","查询FATAP单板CPU利用率趋势"],
+          "priority": 5
+        },
+        {
+          "types": ["光模块"],
+          "properties": ["名称","状态","型号","位置","温度","接收功率","发送功率"],
+          "metrics": ["发送功率","接收功率","温度"],
+          "table_hints": ["FATAP光模块","fatap_optical_module"],
+          "examples": ["查询FATAP光模块列表","查询FATAP光模块接收功率趋势"],
+          "priority": 10
+        },
+        {
+          "types": ["机框"],
+          "properties": ["名称","状态","型号","位置"],
+          "table_hints": ["FATAP机框","fatap_chassis"],
+          "examples": ["查询FATAP机框列表","查询FATAP机框数量"],
+          "priority": 2
+        }
+      ],
+      "table_hints": ["FATAP"],
+      "examples": ["查询当前FATAP列表","查询FATAP数量","查询FATAP CPU利用率趋势"],
+      "priority": 90
     },
     {
       "profile_id": "server",
