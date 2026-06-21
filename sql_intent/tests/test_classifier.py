@@ -123,6 +123,22 @@ class TestPromptConstant:
         assert "情绪词只是语气噪声，不改变问数意图" in SQL_INTENT_SYSTEM_PROMPT
         assert "只有用户要求安慰、情绪疏导、投诉文案、客服回复、评价或建议等非数据查询输出时，才拒答" in SQL_INTENT_SYSTEM_PROMPT
 
+    def test_rhetorical_question_does_not_block_query(self):
+        assert "反问语气不改变查询意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "难道没有离线设备吗？" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不是让你查一下交换机告警吗？" in SQL_INTENT_SYSTEM_PROMPT
+        assert "这不就是要看终端设备IP吗？" in SQL_INTENT_SYSTEM_PROMPT
+        assert "反问/反诘语气只是表达方式，不改变问数意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "只有明确要求为什么/原因/根因/建议/解决方案等非数据输出时，才拒答" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_feedback_terms_can_be_display_actions(self):
+        assert "反馈/立即反馈是查询结果展示动作" in SQL_INTENT_SYSTEM_PROMPT
+        assert "立即反馈离线设备数量" in SQL_INTENT_SYSTEM_PROMPT
+        assert "把交换机告警立即反馈给我" in SQL_INTENT_SYSTEM_PROMPT
+        assert "反馈一下CPU利用率大于90的设备" in SQL_INTENT_SYSTEM_PROMPT
+        assert "反馈、立即反馈、返回、展示、显示、给我看等词表示把查询结果返回/展示给用户" in SQL_INTENT_SYSTEM_PROMPT
+        assert "只有明确要求提交反馈、创建反馈单、客服回复、投诉反馈文案等非数据查询动作或文本输出时，才拒答" in SQL_INTENT_SYSTEM_PROMPT
+
     def test_explicit_condition_operator_requires_value(self):
         assert "显式条件关系词后必须有明确条件值" in SQL_INTENT_SYSTEM_PROMPT
         assert "字段名 + 为/等于/是/叫/包含/大于/小于/在" in SQL_INTENT_SYSTEM_PROMPT
