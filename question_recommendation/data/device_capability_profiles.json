@@ -360,10 +360,10 @@
     {
       "capability_id": "subnet_relation",
       "capability_type": "relation_query",
-      "device_types": ["网络设备","存储设备","FC交换机","服务器","OLT","ONU","FITAP","终端设备"],
+      "device_types": ["网络设备","存储设备","FC交换机","服务器","OLT","ONU","FITAP"],
       "objects": ["子网"],
       "table_hints": ["子网","subnet"],
-      "examples": ["查询子网的直接下级子网","查询子网下的网络设备列表","查询子网下的存储设备列表","查询子网下的服务器列表","查询子网下的OLT列表","查询子网下的FITAP列表","查询子网下的终端设备列表"],
+      "examples": ["查询子网的直接下级子网","查询子网下的网络设备列表","查询子网下的存储设备列表","查询子网下的服务器列表","查询子网下的OLT列表","查询子网下的FITAP列表"],
       "priority": 88
     },
     {

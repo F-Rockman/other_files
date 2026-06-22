@@ -1197,8 +1197,6 @@ def test_subnet_special_capabilities_have_no_fixed_domain():
         "fitap",
         "ap",
         "fc交换机",
-        "终端设备",
-        "终端",
     ],
 )
 def test_subnet_relation_supports_cross_domain_device_types_and_aliases(device_type):
