@@ -563,7 +563,17 @@ def test_device_profiles_reflect_cross_domain_device_classification():
     domain_cards, _ = load_capability_cards()
     profiles = {profile.profile_id: profile for profile in domain_cards}
     assert profiles["fc_switch"].domain == "存储"
-    assert {"WAC", "防火墙", "FATAP"}.issubset(profiles["network_device"].aliases)
+    assert {"WAC", "防火墙"}.issubset(profiles["network_device"].aliases)
+    assert "FATAP" not in profiles["network_device"].aliases
+    assert profiles["fatap"].domain == "网络"
+    assert profiles["fatap"].device_types == ["FATAP"]
+    assert profiles["fatap"].aliases == []
+    assert {spec.types[0] for spec in profiles["fatap"].subcomponents} == {
+        "接口",
+        "单板",
+        "光模块",
+        "机框",
+    }
     assert "ap" not in profiles
     assert profiles["fitap"].domain == "无线"
     assert profiles["fitap"].device_types == ["FITAP"]
@@ -1100,7 +1110,6 @@ def test_subnet_special_capabilities_have_no_fixed_domain():
         "路由器",
         "WAC",
         "防火墙",
-        "FATAP",
         "存储设备",
         "FC交换机",
         "服务器",
@@ -1112,7 +1121,6 @@ def test_subnet_special_capabilities_have_no_fixed_domain():
         "olt",
         "fitap",
         "ap",
-        "fatap",
         "fc交换机",
         "终端设备",
         "终端",
@@ -2262,6 +2270,9 @@ def test_empty_intention_basic_subcomponent_recalls_compatible_parent_basics():
         "network_device:光模块:subcomponent_info",
         "network_device:光模块:subcomponent_count",
         "network_device:光模块:subcomponent_metric",
+        "fatap:光模块:subcomponent_info",
+        "fatap:光模块:subcomponent_count",
+        "fatap:光模块:subcomponent_metric",
         "server:光模块:subcomponent_info",
         "server:光模块:subcomponent_count",
     }
@@ -2463,11 +2474,7 @@ def test_device_term_matching_does_not_normalize_unlisted_spellings():
     [
         (
             "查询FATAP列表",
-            {
-                "network_device:device_info",
-                "network_device:device_count",
-                "network_device:device_metric",
-            },
+            {"fatap:device_info", "fatap:device_count", "fatap:device_metric"},
         ),
         (
             "查询FITAP列表",
