@@ -1599,15 +1599,28 @@ def test_simplify_fragment_overrides_empty_intention_basic():
     prompt = _build_system_prompt(RecommendationContext(recovery_strategy="simplify"))
     assert "当前场景：simplify" in prompt
     assert "当前场景：空 intention Basic" not in prompt
-    assert "每条推荐必须删除至少一个真实查询条件" in prompt
-    assert "删除“展示趋势”“趋势”“趋势图”“查看趋势”等查询形态词不算有效简化" in prompt
+    assert "先区分核心语义和附加约束" in prompt
+    assert "核心语义必须保留，不能替换、泛化或改变" in prompt
+    assert "主查询对象和用户原始对象表达" in prompt
+    assert "禁止替换成父类、子类、相近对象或其他候选对象" in prompt
+    assert "查设备仍查设备，查告警仍查告警，查链路仍查链路，查指标仍查指标" in prompt
+    assert "对象关系，例如父子对象、链路两端、告警所属对象等关系不能被改写" in prompt
+    assert "范围角色" in prompt
+    assert "删除后可以不出现，但不能变成新的查询目标" in prompt
+    assert "附加约束可以删除，用来降低复杂度" in prompt
+    assert "时间、子网范围、定位条件、过滤条件、聚合、分组、排序" in prompt
+    assert "多余对象、多余 KPI、多余属性、多余设备条件" in prompt
+    assert "每条 simplify 推荐必须删除至少一个附加约束" in prompt
+    assert "无可删附加约束时允许少于 3 条" in prompt
+    assert "列表、数量、趋势、TopN 等结果形态变化本身不算有效简化" in prompt
+    assert "不得只把列表改数量、数量改列表" in prompt
+    assert "展示趋势”“趋势”“趋势图”“查看趋势”等查询形态词也不算有效简化" in prompt
     assert "查指标时无论是否有时间范围" in prompt
     assert "有无展示趋势视为同一指标查询" in prompt
     assert "不能只靠省略、删除、补充或改写趋势表达生成推荐" in prompt
     assert "推荐问题与原问题只差趋势表达时视为语义一致" in prompt
     assert "三条推荐之间也不得只靠趋势表达差异区分" in prompt
-    assert "TopN 是查询形态，不算有效查询条件" in prompt
-    assert "删除 TopN、Top5、排名最高等表达不算有效简化" in prompt
+    assert "补充或删除 TopN、Top5、排名最高等表达" in prompt
     assert "不得只把 KPI 做轻微泛化" in prompt
     assert "禁止指标替换" in prompt
     assert "不得推荐查询同对象的指标B" in prompt
