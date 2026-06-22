@@ -1074,6 +1074,81 @@ def test_subnet_scope_adds_relation_without_changing_metric_primary():
     assert "subnet_relation" in ids
 
 
+def test_simplify_device_scope_keeps_device_family_and_filters_subnet_targets():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询子网名称为核心层下的防火墙设备数量",
+        devices=[DeviceCondition(id_type="OTHER", device_type="防火墙")],
+        subnet=SubnetScope(name="核心层"),
+        recovery_strategy="simplify",
+    )
+    ids = _candidate_ids(context)
+    assert {
+        "network_device:device_info",
+        "network_device:device_count",
+        "network_device:device_metric",
+    }.issubset(ids)
+    assert "subnet_resource" not in ids
+    assert "subnet_relation" not in ids
+
+
+def test_simplify_empty_intention_uses_device_family_instead_of_subnet_target():
+    context = RecommendationContext(
+        question="查询子网名称为核心层下的防火墙设备数量",
+        devices=[DeviceCondition(id_type="OTHER", device_type="防火墙")],
+        subnet=SubnetScope(name="核心层"),
+        recovery_strategy="simplify",
+    )
+    ids = _candidate_ids(context)
+    assert "network_device:device_info" in ids
+    assert "network_device:device_count" in ids
+    assert "subnet_resource" not in ids
+    assert "subnet_relation" not in ids
+
+
+def test_simplify_subcomponent_scope_filters_unrelated_special_targets():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询核心层下的光模块信息",
+        subcomponent_types=["光模块"],
+        subnet=SubnetScope(name="核心层"),
+        recovery_strategy="simplify",
+    )
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+    assert candidates
+    assert all(
+        item.capability_type
+        in {SUBCOMPONENT_INFO, SUBCOMPONENT_COUNT, SUBCOMPONENT_METRIC}
+        for item in candidates
+    )
+    assert "subnet_relation" not in [item.capability_id for item in candidates]
+
+
+@pytest.mark.parametrize(
+    ("context", "expected_id"),
+    [
+        (
+            RecommendationContext(
+                intention="查告警",
+                devices=[DeviceCondition(device_type="服务器")],
+                recovery_strategy="simplify",
+            ),
+            "alarm_query",
+        ),
+        (
+            RecommendationContext(
+                intention="查链路",
+                devices=[DeviceCondition(device_type="网络设备")],
+                recovery_strategy="simplify",
+            ),
+            "network_link",
+        ),
+    ],
+)
+def test_simplify_special_intents_keep_their_task_family(context, expected_id):
+    assert _candidate_ids(context) == [expected_id]
+
+
 def test_subnet_scope_does_not_add_incompatible_relation_candidate():
     context = RecommendationContext(
         intention="查信息",
@@ -1608,6 +1683,10 @@ def test_simplify_fragment_overrides_empty_intention_basic():
     assert "当前场景：simplify" in prompt
     assert "当前场景：空 intention Basic" not in prompt
     assert "先区分核心语义和附加约束" in prompt
+    assert "同任务族内可能同时包含列表、数量、详情、属性或指标等相邻形态" in prompt
+    assert "不代表可以只靠形态切换生成推荐" in prompt
+    assert "候选标准设备类型只证明能力边界" in prompt
+    assert "优先使用 recommendation_context.devices[].device_type 中的原始对象表达" in prompt
     assert "核心语义必须保留，不能替换、泛化或改变" in prompt
     assert "主查询对象和用户原始对象表达" in prompt
     assert "禁止替换成父类、子类、相近对象或其他候选对象" in prompt

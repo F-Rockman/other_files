@@ -43,6 +43,7 @@ from .models import (
     SubcomponentCapabilitySpec,
 )
 from .special_device_terms import special_device_term_supported
+from .refusal_rules import SIMPLIFY
 
 
 def recall_candidates(
@@ -134,7 +135,7 @@ def _empty_intention_basic_candidates(
 
 def _uses_empty_intention_basic_direction(context: RecommendationContext) -> bool:
     """判断是否应忽略恢复策略并直接复用空意图 Basic。"""
-    return not context.intention
+    return not context.intention and context.recovery_strategy != SIMPLIFY
 
 
 def _empty_intention_object_matches(
