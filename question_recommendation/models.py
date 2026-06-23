@@ -266,6 +266,8 @@ class SubcomponentCapabilitySpec:
     aliases: List[str] = field(default_factory=list)
     properties: List[str] = field(default_factory=list)
     metrics: List[str] = field(default_factory=list)
+    property_sources: List[str] = field(default_factory=list)
+    metric_sources: List[str] = field(default_factory=list)
     table_hints: List[str] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
     priority: int = 0
@@ -284,6 +286,8 @@ class SubcomponentCapabilitySpec:
             aliases=_as_list(data.get("aliases")),
             properties=_as_list(data.get("properties")),
             metrics=_as_list(data.get("metrics")),
+            property_sources=_as_list(data.get("property_sources")),
+            metric_sources=_as_list(data.get("metric_sources")),
             table_hints=_as_list(data.get("table_hints")),
             examples=_as_list(data.get("examples")),
             priority=_as_int(data.get("priority")),
@@ -312,6 +316,8 @@ class DeviceCapabilityProfile:
     locators: List[str] = field(default_factory=list)
     properties: List[str] = field(default_factory=list)
     metrics: List[str] = field(default_factory=list)
+    property_sources: List[str] = field(default_factory=list)
+    metric_sources: List[str] = field(default_factory=list)
     subcomponents: List[SubcomponentCapabilitySpec] = field(default_factory=list)
     table_hints: List[str] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
@@ -332,6 +338,8 @@ class DeviceCapabilityProfile:
             locators=_as_list(data.get("locators")),
             properties=_as_list(data.get("properties")),
             metrics=_as_list(data.get("metrics")),
+            property_sources=_as_list(data.get("property_sources")),
+            metric_sources=_as_list(data.get("metric_sources")),
             subcomponents=[
                 SubcomponentCapabilitySpec.from_dict(item)
                 for item in data.get("subcomponents", [])
@@ -365,6 +373,7 @@ class SpecialCapabilitySpec:
     objects: List[str] = field(default_factory=list)
     trigger_terms: List[str] = field(default_factory=list)
     properties: List[str] = field(default_factory=list)
+    property_sources: List[str] = field(default_factory=list)
     table_hints: List[str] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
     priority: int = 0
@@ -384,6 +393,7 @@ class SpecialCapabilitySpec:
             objects=_as_list(data.get("objects")),
             trigger_terms=_as_list(data.get("trigger_terms")),
             properties=_as_list(data.get("properties")),
+            property_sources=_as_list(data.get("property_sources")),
             table_hints=_as_list(data.get("table_hints")),
             examples=_as_list(data.get("examples")),
             priority=_as_int(data.get("priority")),

@@ -60,6 +60,20 @@ def _network_interface_context(**overrides):
     return RecommendationContext.from_dict(data)
 
 
+def _write_logical_yaml(tmp_path, table_name, fields):
+    (tmp_path / f"{table_name}.logical.yaml").write_text(
+        json.dumps(
+            {
+                "name": table_name,
+                "description_cn": table_name,
+                "schema": {"fields": fields},
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_build_context_keeps_only_consumed_fields():
     context = build_recommendation_context(
         {
@@ -368,6 +382,119 @@ def test_load_capability_cards_returns_domain_and_special_cards():
     assert special_cards
     assert all(item.profile_id for item in domain_cards)
     assert all(item.capability_id for item in special_cards)
+
+
+def test_capability_models_parse_metadata_sources():
+    domain_card = DeviceCapabilityProfile.from_dict(
+        {
+            "profile_id": "custom_device",
+            "property_sources": ["device_property"],
+            "metric_sources": ["device_metric"],
+            "subcomponents": [
+                {
+                    "types": ["接口"],
+                    "property_sources": ["interface_property"],
+                    "metric_sources": ["interface_metric"],
+                }
+            ],
+        }
+    )
+    special_card = SpecialCapabilitySpec.from_dict(
+        {"capability_id": "custom_special", "property_sources": ["alarm_property"]}
+    )
+
+    assert domain_card.property_sources == ["device_property"]
+    assert domain_card.metric_sources == ["device_metric"]
+    assert domain_card.subcomponents[0].property_sources == ["interface_property"]
+    assert domain_card.subcomponents[0].metric_sources == ["interface_metric"]
+    assert special_card.property_sources == ["alarm_property"]
+
+
+def test_load_capability_cards_expands_business_names_from_sources(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setitem(
+        sys.modules,
+        "yaml",
+        SimpleNamespace(safe_load=lambda stream: json.load(stream)),
+    )
+    _write_logical_yaml(
+        tmp_path,
+        "device_property",
+        [
+            {"name": "status", "businessName_cn": "运行状态"},
+            {"name": "empty", "businessName_cn": ""},
+            {"name": "fallback", "description_cn": "不能作为能力字段"},
+        ],
+    )
+    _write_logical_yaml(
+        tmp_path,
+        "device_metric",
+        [
+            {"name": "cpu", "businessName_cn": "CPU利用率"},
+            {"name": "name_only"},
+        ],
+    )
+    _write_logical_yaml(
+        tmp_path,
+        "interface_property",
+        [{"name": "if_name", "businessName_cn": "接口名称"}],
+    )
+    _write_logical_yaml(
+        tmp_path,
+        "interface_metric",
+        [{"name": "in_rate", "businessName_cn": "入流量"}],
+    )
+    monkeypatch.setattr(
+        capability_loader_module,
+        "_load_capability_document",
+        lambda: {
+            "device_profiles": [
+                {
+                    "profile_id": "custom_device",
+                    "properties": ["名称", "运行状态"],
+                    "metrics": ["CPU利用率"],
+                    "property_sources": ["device_property", "missing", "../unsafe"],
+                    "metric_sources": ["device_metric"],
+                    "subcomponents": [
+                        {
+                            "types": ["接口"],
+                            "properties": ["接口状态"],
+                            "metrics": ["入流量"],
+                            "property_sources": ["interface_property"],
+                            "metric_sources": ["interface_metric"],
+                        }
+                    ],
+                }
+            ],
+            "special_capabilities": [
+                {
+                    "capability_id": "custom_special",
+                    "properties": ["告警级别"],
+                    "property_sources": ["device_property"],
+                }
+            ],
+        },
+    )
+
+    domain_cards, special_cards = load_capability_cards(lambda: tmp_path)
+    domain_card = domain_cards[0]
+    subcomponent = domain_card.subcomponents[0]
+    special_card = special_cards[0]
+
+    assert domain_card.properties == ["名称", "运行状态"]
+    assert domain_card.metrics == ["CPU利用率"]
+    assert subcomponent.properties == ["接口状态", "接口名称"]
+    assert subcomponent.metrics == ["入流量"]
+    assert special_card.properties == ["告警级别", "运行状态"]
+    assert domain_card.property_sources == []
+    assert domain_card.metric_sources == []
+    assert subcomponent.property_sources == []
+    assert subcomponent.metric_sources == []
+    assert special_card.property_sources == []
+    assert "不能作为能力字段" not in domain_card.properties
+    assert "fallback" not in domain_card.properties
 
 
 def test_recommend_capabilities_loads_builtin_document_once_for_relation(monkeypatch):
@@ -2769,6 +2896,65 @@ def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monk
     assert '"match_score"' not in prompt
     assert '"table_hints"' not in prompt
     assert '"priority"' not in prompt
+
+
+def test_chat_recommendation_expands_capability_sources_from_business_name(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setitem(
+        sys.modules,
+        "yaml",
+        SimpleNamespace(safe_load=lambda stream: json.load(stream)),
+    )
+    _write_logical_yaml(
+        tmp_path,
+        "dynamic_device_property",
+        [{"name": "status", "businessName_cn": "动态状态"}],
+    )
+    _write_logical_yaml(
+        tmp_path,
+        "dynamic_device_metric",
+        [{"name": "cpu", "businessName_cn": "动态CPU利用率"}],
+    )
+    monkeypatch.setattr(
+        capability_loader_module,
+        "_load_capability_document",
+        lambda: {
+            "device_profiles": [
+                {
+                    "profile_id": "dynamic_device",
+                    "domain": "测试",
+                    "device_types": ["动态设备"],
+                    "locators": ["IP"],
+                    "property_sources": ["dynamic_device_property"],
+                    "metric_sources": ["dynamic_device_metric"],
+                    "priority": 100,
+                }
+            ],
+            "special_capabilities": [],
+        },
+    )
+    llm_chat_client = MagicMock(
+        return_value=json.dumps(
+            {"recommends": ["查询动态设备动态CPU利用率"], "explain": "继续查看指标。"},
+            ensure_ascii=False,
+        )
+    )
+
+    recommend_questions_chat(
+        RecommendationContext(intention="查指标", devices=[DeviceCondition(device_type="动态设备")]),
+        llm_chat_client,
+        logical_model_path_provider=lambda: tmp_path,
+    )
+    prompt = llm_chat_client.call_args[0][0][1]["content"]
+
+    assert '"properties": [\n      "动态状态"\n    ]' in prompt
+    assert '"metrics": [\n      "动态CPU利用率"\n    ]' in prompt
+    assert "property_sources" not in prompt
+    assert "metric_sources" not in prompt
+    assert "description_cn" not in prompt
+    assert '"name": "cpu"' not in prompt
 
 
 def test_chat_prompt_contains_link_query_examples_without_templates():

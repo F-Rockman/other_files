@@ -37,6 +37,7 @@ def recommend_questions_chat(
     candidate_capabilities = recommend_capabilities(
         normalized_context,
         metadata_tables=metadata_tables,
+        logical_model_path_provider=logical_model_path_provider,
         limit=12,
     )
     messages = _build_chat_messages(

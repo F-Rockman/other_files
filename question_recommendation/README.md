@@ -436,6 +436,37 @@ match_score =
 优先级。LLM 最终收到 `capability_id`、`capability_type`、业务域、对象、定位方式、属性、
 指标和示例。
 
+## 能力卡字段来源
+
+能力卡的 `properties` 和 `metrics` 可以继续手写，也可以通过来源逻辑表动态扩展：
+
+| 配置字段 | 可配置位置 | 加载结果 |
+|---|---|---|
+| `property_sources` | 设备卡、子部件卡、特殊能力卡 | 从逻辑模型字段 `businessName_cn` 追加到 `properties` |
+| `metric_sources` | 设备卡、子部件卡 | 从逻辑模型字段 `businessName_cn` 追加到 `metrics` |
+
+来源名就是逻辑表名，不带 `.logical.yaml` 后缀。加载时使用
+`logical_model_path_provider` 返回的目录，并读取 `{source}.logical.yaml`：
+
+```json
+{
+  "profile_id": "storage_device",
+  "properties": ["名称"],
+  "property_sources": ["StorageDeviceBase"],
+  "metrics": ["容量利用率"],
+  "metric_sources": ["StorageDeviceMetric"]
+}
+```
+
+加载规则：
+
+- 手写字段在前，逻辑模型字段在后，按顺序去重。
+- 只读取 `schema.fields[].businessName_cn`，为空时跳过。
+- 不使用物理列名 `name`，也不使用 `description_cn` 兜底。
+- 逻辑模型文件缺失、来源名非法或文件内容不符合结构时跳过该来源。
+- 来源字段只在加载阶段使用，最终传给 LLM 的候选能力只包含展开后的
+  `properties` 和 `metrics`。
+
 ## 子网范围推荐
 
 当 `RecommendationContext.subnet` 存在时：

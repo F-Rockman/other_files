@@ -1,6 +1,6 @@
 """六类能力卡推荐的稳定公共入口。"""
 
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from .capability_candidates import global_basic_fallback_candidates
 from .capability_constants import (
@@ -20,6 +20,7 @@ from .capability_matching import context_device_types, dedupe_candidates, is_sub
 from .capability_ranking import RankedCapability, rank_candidates, select_diverse
 from .capability_recall import recall_candidates
 from .capability_routing import resolve_primary_capability_type
+from .metadata_loader import PathProvider
 from .models import (
     CapabilityCandidate,
     DeviceCapabilityProfile,
@@ -45,13 +46,14 @@ def recommend_capabilities(
     metadata_tables: Sequence[MetadataTable] = (),
     domain_cards: Sequence[DeviceCapabilityProfile] = (),
     special_cards: Sequence[SpecialCapabilitySpec] = (),
+    logical_model_path_provider: Optional[PathProvider] = None,
     limit: int = 12,
 ) -> List[RankedCapability]:
     """根据标准上下文生成、过滤、排序并选择动态候选能力。"""
     if limit <= 0:
         return []
     resolved_domain_cards, resolved_special_cards = _resolve_capability_cards(
-        domain_cards, special_cards
+        domain_cards, special_cards, logical_model_path_provider
     )
     candidates = dedupe_candidates(
         recall_candidates(context, resolved_domain_cards, resolved_special_cards)
@@ -66,13 +68,16 @@ def recommend_capabilities(
 def _resolve_capability_cards(
     domain_cards: Sequence[DeviceCapabilityProfile],
     special_cards: Sequence[SpecialCapabilitySpec],
+    logical_model_path_provider: Optional[PathProvider],
 ) -> Tuple[List[DeviceCapabilityProfile], List[SpecialCapabilitySpec]]:
     """保留已注入卡片，并通过一次文件读取补齐缺失卡片。"""
     resolved_domain_cards = list(domain_cards)
     resolved_special_cards = list(special_cards)
     if resolved_domain_cards and resolved_special_cards:
         return resolved_domain_cards, resolved_special_cards
-    loaded_domain_cards, loaded_special_cards = load_capability_cards()
+    loaded_domain_cards, loaded_special_cards = load_capability_cards(
+        logical_model_path_provider
+    )
     if not resolved_domain_cards:
         resolved_domain_cards = loaded_domain_cards
     if not resolved_special_cards:
