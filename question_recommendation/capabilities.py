@@ -45,14 +45,14 @@ def recommend_capabilities(
     metadata_tables: Sequence[MetadataTable] = (),
     domain_cards: Sequence[DeviceCapabilityProfile] = (),
     special_cards: Sequence[SpecialCapabilitySpec] = (),
-    logical_model_path_provider: Optional[str] = None,
+    logical_model_dir: Optional[str] = None,
     limit: int = 12,
 ) -> List[RankedCapability]:
     """根据标准上下文生成、过滤、排序并选择动态候选能力。"""
     if limit <= 0:
         return []
     resolved_domain_cards, resolved_special_cards = _resolve_capability_cards(
-        domain_cards, special_cards, logical_model_path_provider
+        domain_cards, special_cards, logical_model_dir
     )
     candidates = dedupe_candidates(
         recall_candidates(context, resolved_domain_cards, resolved_special_cards)
@@ -67,16 +67,14 @@ def recommend_capabilities(
 def _resolve_capability_cards(
     domain_cards: Sequence[DeviceCapabilityProfile],
     special_cards: Sequence[SpecialCapabilitySpec],
-    logical_model_path_provider: Optional[str],
+    logical_model_dir: Optional[str],
 ) -> Tuple[List[DeviceCapabilityProfile], List[SpecialCapabilitySpec]]:
     """保留已注入卡片，并通过一次文件读取补齐缺失卡片。"""
     resolved_domain_cards = list(domain_cards)
     resolved_special_cards = list(special_cards)
     if resolved_domain_cards and resolved_special_cards:
         return resolved_domain_cards, resolved_special_cards
-    loaded_domain_cards, loaded_special_cards = load_capability_cards(
-        logical_model_path_provider
-    )
+    loaded_domain_cards, loaded_special_cards = load_capability_cards(logical_model_dir)
     if not resolved_domain_cards:
         resolved_domain_cards = loaded_domain_cards
     if not resolved_special_cards:

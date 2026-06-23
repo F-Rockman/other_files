@@ -28,7 +28,6 @@ from question_recommendation import (
     AlarmCondition,
     DeviceCondition,
     DeviceCapabilityProfile,
-    LogicalMetadataError,
     MetadataColumn,
     MetadataTable,
     RecommendationContext,
@@ -37,10 +36,14 @@ from question_recommendation import (
     SubcomponentCapabilitySpec,
     build_recommendation_context,
     load_capability_cards,
-    load_logical_metadata,
     recommend_capabilities,
     recommend_questions_chat,
     resolve_primary_capability_type,
+)
+from question_recommendation.logical_model_reader import (
+    business_names_from_document,
+    load_logical_model_document,
+    load_metadata_tables,
 )
 from question_recommendation.recommender import _build_chat_messages, _parse_llm_response
 from question_recommendation.refusal_rules import get_refusal_recovery_rule
@@ -424,6 +427,11 @@ def test_load_capability_cards_expands_business_names_from_sources(
         "device_property",
         [
             {"name": "status", "businessName_cn": "运行状态"},
+            {
+                "name": "hidden",
+                "businessName_cn": "隐藏状态",
+                "properties": {"ui": json.dumps({"displayPriority": "never"})},
+            },
             {"name": "empty", "businessName_cn": ""},
             {"name": "fallback", "description_cn": "不能作为能力字段"},
         ],
@@ -433,6 +441,11 @@ def test_load_capability_cards_expands_business_names_from_sources(
         "device_metric",
         [
             {"name": "cpu", "businessName_cn": "CPU利用率"},
+            {
+                "name": "hidden_rate",
+                "businessName_cn": "隐藏利用率",
+                "properties": {"ui": json.dumps({"displayPriority": "never"})},
+            },
             {"name": "name_only"},
         ],
     )
@@ -478,7 +491,7 @@ def test_load_capability_cards_expands_business_names_from_sources(
         },
     )
 
-    domain_cards, special_cards = load_capability_cards(str(tmp_path))
+    domain_cards, special_cards = load_capability_cards(logical_model_dir=str(tmp_path))
     domain_card = domain_cards[0]
     subcomponent = domain_card.subcomponents[0]
     special_card = special_cards[0]
@@ -495,6 +508,8 @@ def test_load_capability_cards_expands_business_names_from_sources(
     assert special_card.property_sources == []
     assert "不能作为能力字段" not in domain_card.properties
     assert "fallback" not in domain_card.properties
+    assert "隐藏状态" not in domain_card.properties
+    assert "隐藏利用率" not in domain_card.metrics
 
 
 def test_recommend_capabilities_loads_builtin_document_once_for_relation(monkeypatch):
@@ -2866,6 +2881,11 @@ def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monk
                 "schema": {
                     "fields": [
                         {"name": "status", "description_cn": "接口状态"},
+                        {
+                            "name": "hidden",
+                            "description_cn": "隐藏接口字段",
+                            "properties": {"ui": json.dumps({"displayPriority": "never"})},
+                        },
                     ]
                 },
             },
@@ -2885,13 +2905,14 @@ def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monk
     result = recommend_questions_chat(
         _network_interface_context(tables=["network_interface"]),
         llm_chat_client,
-        logical_model_path_provider=str(tmp_path),
+        logical_model_dir=str(tmp_path),
     )
 
     assert result["recommends"] == ["查询网络设备接口列表"]
     prompt = llm_chat_client.call_args[0][0][1]["content"]
     assert "network_device:接口:subcomponent_info" in prompt
     assert '"table_name": "network_interface"' in prompt
+    assert "隐藏接口字段" not in prompt
     assert "candidate_templates" not in prompt
     assert '"match_score"' not in prompt
     assert '"table_hints"' not in prompt
@@ -2910,12 +2931,26 @@ def test_chat_recommendation_expands_capability_sources_from_business_name(
     _write_logical_yaml(
         tmp_path,
         "dynamic_device_property",
-        [{"name": "status", "businessName_cn": "动态状态"}],
+        [
+            {"name": "status", "businessName_cn": "动态状态"},
+            {
+                "name": "hidden",
+                "businessName_cn": "动态隐藏状态",
+                "properties": {"ui": json.dumps({"displayPriority": "never"})},
+            },
+        ],
     )
     _write_logical_yaml(
         tmp_path,
         "dynamic_device_metric",
-        [{"name": "cpu", "businessName_cn": "动态CPU利用率"}],
+        [
+            {"name": "cpu", "businessName_cn": "动态CPU利用率"},
+            {
+                "name": "hidden_cpu",
+                "businessName_cn": "动态隐藏CPU",
+                "properties": {"ui": json.dumps({"displayPriority": "never"})},
+            },
+        ],
     )
     monkeypatch.setattr(
         capability_loader_module,
@@ -2945,12 +2980,14 @@ def test_chat_recommendation_expands_capability_sources_from_business_name(
     recommend_questions_chat(
         RecommendationContext(intention="查指标", devices=[DeviceCondition(device_type="动态设备")]),
         llm_chat_client,
-        logical_model_path_provider=str(tmp_path),
+        logical_model_dir=str(tmp_path),
     )
     prompt = llm_chat_client.call_args[0][0][1]["content"]
 
     assert '"properties": [\n      "动态状态"\n    ]' in prompt
     assert '"metrics": [\n      "动态CPU利用率"\n    ]' in prompt
+    assert "动态隐藏状态" not in prompt
+    assert "动态隐藏CPU" not in prompt
     assert "property_sources" not in prompt
     assert "metric_sources" not in prompt
     assert "description_cn" not in prompt
@@ -3079,7 +3116,10 @@ def test_metadata_table_serializes_grouped_columns():
     }
 
 
-def test_load_logical_metadata_skips_missing_and_unsafe_tables(tmp_path, monkeypatch):
+def test_logical_model_reader_skips_missing_unsafe_and_invalid_tables(
+    tmp_path,
+    monkeypatch,
+):
     monkeypatch.setitem(sys.modules, "yaml", SimpleNamespace(safe_load=lambda stream: json.load(stream)))
     (tmp_path / "device.logical.yaml").write_text(
         json.dumps(
@@ -3092,7 +3132,11 @@ def test_load_logical_metadata_skips_missing_and_unsafe_tables(tmp_path, monkeyp
         ),
         encoding="utf-8",
     )
-    metadata = load_logical_metadata(["device", "missing", "../unsafe", "device"], lambda: tmp_path)
+    (tmp_path / "broken.logical.yaml").write_text("{invalid", encoding="utf-8")
+    metadata = load_metadata_tables(
+        ["device", "missing", "../unsafe", "broken", "device"],
+        str(tmp_path),
+    )
     assert [table.to_dict() for table in metadata] == [
         {
             "table_name": "device",
@@ -3105,38 +3149,100 @@ def test_load_logical_metadata_skips_missing_and_unsafe_tables(tmp_path, monkeyp
             ],
         }
     ]
+    assert load_metadata_tables(["device"], str(tmp_path / "missing")) == []
 
 
-def test_load_logical_metadata_returns_one_group_per_table(tmp_path, monkeypatch):
+def test_logical_model_reader_filters_ui_hidden_fields(tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, "yaml", SimpleNamespace(safe_load=lambda stream: json.load(stream)))
+    _write_logical_yaml(
+        tmp_path,
+        "device",
+        [
+            {
+                "name": "hidden",
+                "description_cn": "隐藏字段",
+                "businessName_cn": "隐藏业务字段",
+                "properties": {"ui": json.dumps({"displayPriority": "never"})},
+            },
+            {"name": "no_properties", "description_cn": "无属性配置", "businessName_cn": "无属性配置"},
+            {
+                "name": "no_ui",
+                "description_cn": "无UI配置",
+                "businessName_cn": "无UI配置",
+                "properties": {},
+            },
+            {
+                "name": "none_ui",
+                "description_cn": "空UI配置",
+                "businessName_cn": "空UI配置",
+                "properties": {"ui": None},
+            },
+            {
+                "name": "bad_ui",
+                "description_cn": "非法UI配置",
+                "businessName_cn": "非法UI配置",
+                "properties": {"ui": "{bad"},
+            },
+            {
+                "name": "no_priority",
+                "description_cn": "无优先级配置",
+                "businessName_cn": "无优先级配置",
+                "properties": {"ui": json.dumps({"name": "visible"})},
+            },
+            {
+                "name": "visible_priority",
+                "description_cn": "展示优先级配置",
+                "businessName_cn": "展示优先级配置",
+                "properties": {"ui": json.dumps({"displayPriority": "always"})},
+            },
+        ],
+    )
+
+    document = load_logical_model_document(str(tmp_path), "device")
+    business_names = business_names_from_document(document)
+    metadata = load_metadata_tables(["device"], str(tmp_path))[0]
+
+    assert "隐藏业务字段" not in business_names
+    assert "隐藏字段" not in [
+        column.column_description for column in metadata.columns
+    ]
+    assert business_names == [
+        "无属性配置",
+        "无UI配置",
+        "空UI配置",
+        "非法UI配置",
+        "无优先级配置",
+        "展示优先级配置",
+    ]
+    assert [column.column_name for column in metadata.columns] == [
+        "no_properties",
+        "no_ui",
+        "none_ui",
+        "bad_ui",
+        "no_priority",
+        "visible_priority",
+    ]
+
+
+def test_logical_model_reader_returns_one_group_per_table(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "yaml", SimpleNamespace(safe_load=lambda stream: json.load(stream)))
     for table_name, description in (("device", "设备"), ("metric", "设备指标")):
+        _write_logical_yaml(
+            tmp_path,
+            table_name,
+            [
+                {"name": "first", "description_cn": "字段一"},
+                {"name": "second", "description_cn": "字段二"},
+            ],
+        )
+        document = json.loads((tmp_path / f"{table_name}.logical.yaml").read_text())
+        document["description_cn"] = description
         (tmp_path / f"{table_name}.logical.yaml").write_text(
-            json.dumps(
-                {
-                    "name": table_name,
-                    "description_cn": description,
-                    "schema": {
-                        "fields": [
-                            {"name": "first", "description_cn": "字段一"},
-                            {"name": "second", "description_cn": "字段二"},
-                        ]
-                    },
-                },
-                ensure_ascii=False,
-            ),
+            json.dumps(document, ensure_ascii=False),
             encoding="utf-8",
         )
 
-    metadata = load_logical_metadata(["device", "metric"], lambda: tmp_path)
+    metadata = load_metadata_tables(["device", "metric"], str(tmp_path))
 
     assert [table.table_name for table in metadata] == ["device", "metric"]
     assert [len(table.columns) for table in metadata] == [2, 2]
-
-
-def test_load_logical_metadata_rejects_invalid_directory(tmp_path):
-    try:
-        load_logical_metadata(["device"], lambda: tmp_path / "missing")
-    except LogicalMetadataError as exc:
-        assert "不存在或不是目录" in str(exc)
-    else:
-        raise AssertionError("expected LogicalMetadataError")

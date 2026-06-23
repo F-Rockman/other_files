@@ -91,7 +91,7 @@ context = build_recommendation_context(
 result = recommend_questions_chat(
     context,
     llm_chat_client=my_llm_chat_client,
-    logical_model_path_provider="/data/logical-models",
+    logical_model_dir="/data/logical-models",
 )
 ```
 
@@ -445,9 +445,8 @@ match_score =
 | `property_sources` | 设备卡、子部件卡、特殊能力卡 | 从逻辑模型字段 `businessName_cn` 追加到 `properties` |
 | `metric_sources` | 设备卡、子部件卡 | 从逻辑模型字段 `businessName_cn` 追加到 `metrics` |
 
-来源名就是逻辑表名，不带 `.logical.yaml` 后缀。加载时使用
-`logical_model_path_provider` 是逻辑模型目录路径字符串，推荐器会读取
-`{source}.logical.yaml`：
+来源名就是逻辑表名，不带 `.logical.yaml` 后缀。`logical_model_dir` 是逻辑模型目录
+路径字符串，推荐器会读取 `{source}.logical.yaml`：
 
 ```json
 {
@@ -463,6 +462,8 @@ match_score =
 
 - 手写字段在前，逻辑模型字段在后，按顺序去重。
 - 只读取 `schema.fields[].businessName_cn`，为空时跳过。
+- 如果字段同级 `properties.ui` 是 JSON 字符串，且其中 `displayPriority` 为
+  `never`，该字段不会追加到能力卡，也不会出现在实时元数据中。
 - 不使用物理列名 `name`，也不使用 `description_cn` 兜底。
 - 逻辑模型文件缺失、来源名非法或文件内容不符合结构时跳过该来源。
 - 来源字段只在加载阶段使用，最终传给 LLM 的候选能力只包含展开后的

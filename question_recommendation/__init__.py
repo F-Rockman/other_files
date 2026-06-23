@@ -13,7 +13,6 @@ from .capabilities import (
     resolve_primary_capability_type,
 )
 from .context_builder import build_recommendation_context
-from .metadata_loader import LogicalMetadataError, load_logical_metadata
 from .models import (
     AlarmCondition,
     CapabilityCandidate,
@@ -59,8 +58,6 @@ __all__ = [
     "load_capability_cards",
     "resolve_primary_capability_type",
     "recommend_capabilities",
-    "LogicalMetadataError",
-    "load_logical_metadata",
     "QuestionRecommendationError",
     "recommend_questions_chat",
     "RefusalRecoveryRule",

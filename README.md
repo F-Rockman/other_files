@@ -39,7 +39,7 @@ python_utils/
 │   ├── models.py          # 推荐上下文、能力规格、元数据模型
 │   ├── capabilities.py    # 六类查询骨架的确定性召回与排序
 │   ├── data/              # 设备与特殊能力规格
-│   ├── metadata_loader.py # 根据意图表名读取 .logical.yaml
+│   ├── logical_model_reader.py # 根据逻辑表名读取 .logical.yaml
 │   ├── recommender.py     # Chat LLM 调用与 JSON 结构解析
 │   ├── config.py          # 配置常量
 │   ├── requirements.txt   # 推荐模块依赖
@@ -337,7 +337,7 @@ def my_llm_chat_client(messages: list[dict]) -> str:
 result = recommend_questions_chat(
     context,
     my_llm_chat_client,
-    logical_model_path_provider=lambda: "/data/logical-models",
+    logical_model_dir="/data/logical-models",
 )
 # {"recommends": [...], "explain": "..."}
 ```
@@ -349,7 +349,7 @@ result = recommend_questions_chat(
 - 上游与推荐模块共同使用 `query_errors.ErrorInfo`；恢复策略只由稳定错误 key
   决定，拒答详情不会参与分类或无效值提取。
 - 推荐器自动加载内置能力卡，确定性过滤并排序 Top 12；召回过程不调用 LLM 或 Embedding。
-- 推荐器根据 `context.tables` 和 `logical_model_path_provider` 自动读取
+- 推荐器根据 `context.tables` 和 `logical_model_dir` 自动读取
   `{table_name}.logical.yaml`，只提取表名、表描述、列名和列描述。
 - 调用器只解析 LLM 返回结构，不过滤或补足推荐内容；`recommends`
   输出 1 到 3 条即可，候选不足或质量低时不强行凑满。

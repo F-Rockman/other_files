@@ -2,13 +2,13 @@
 
 import json
 import re
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
 from .capabilities import recommend_capabilities
 from .config import EXPLAIN_FIELD, LLM_CHAT_CALL_ERROR_REASON, RECOMMENDS_FIELD
 from .field_analysis import analyze_candidate_fields
-from .models import MetadataColumn, MetadataTable, RecommendationContext
+from .logical_model_reader import load_metadata_tables
+from .models import MetadataTable, RecommendationContext
 from .prompt import QUESTION_RECOMMENDATION_USER_TEMPLATE, _build_system_prompt
 from .simplify_analysis import analyze_simplify_constraints
 
@@ -20,7 +20,7 @@ class QuestionRecommendationError(Exception):
 def recommend_questions_chat(
     context: Any,
     llm_chat_client: Callable[[List[Dict[str, str]]], str],
-    logical_model_path_provider: Optional[str] = None,
+    logical_model_dir: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     根据标准化 RecommendationContext 生成推荐问题。
@@ -30,14 +30,14 @@ def recommend_questions_chat(
     """
     normalized_context = _normalize_context(context)
     metadata_tables = (
-        _load_logical_metadata(normalized_context.tables, logical_model_path_provider)
-        if normalized_context.tables and logical_model_path_provider
+        load_metadata_tables(normalized_context.tables, logical_model_dir)
+        if normalized_context.tables and logical_model_dir
         else []
     )
     candidate_capabilities = recommend_capabilities(
         normalized_context,
         metadata_tables=metadata_tables,
-        logical_model_path_provider=logical_model_path_provider,
+        logical_model_dir=logical_model_dir,
         limit=12,
     )
     messages = _build_chat_messages(
@@ -141,105 +141,6 @@ def _normalize_context(value: Any) -> RecommendationContext:
     if isinstance(value, Mapping):
         return RecommendationContext.from_dict(value)
     raise TypeError("context 必须是 RecommendationContext 或兼容字典")
-
-
-def _load_logical_metadata(
-    table_names: Sequence[str],
-    logical_model_path: str,
-) -> List[MetadataTable]:
-    """按逻辑表名从目录字符串下读取 ``{table}.logical.yaml``。"""
-    base_dir = _logical_model_base_dir(logical_model_path)
-    if base_dir is None:
-        return []
-    result: List[MetadataTable] = []
-    for table_name in _dedupe_texts(table_names):
-        file_path = _logical_file_path(base_dir, table_name)
-        if file_path is None or not file_path.is_file():
-            continue
-        metadata_table = _load_metadata_table(file_path)
-        if metadata_table is not None:
-            result.append(metadata_table)
-    return result
-
-
-def _logical_model_base_dir(logical_model_path: str) -> Optional[Path]:
-    """将目录字符串转换为逻辑模型目录；无效路径按无元数据处理。"""
-    if not logical_model_path:
-        return None
-    base_dir = Path(logical_model_path).expanduser().resolve()
-    return base_dir if base_dir.is_dir() else None
-
-
-def _logical_file_path(base_dir: Path, table_name: str) -> Optional[Path]:
-    """构造安全的逻辑模型文件路径，拒绝路径穿越和子目录表名。"""
-    if not table_name or Path(table_name).name != table_name:
-        return None
-    candidate = (base_dir / f"{table_name}.logical.yaml").resolve()
-    if candidate.parent != base_dir:
-        return None
-    return candidate
-
-
-def _load_metadata_table(file_path: Path) -> Optional[MetadataTable]:
-    """读取单个逻辑模型文件并转换为按表组织的元数据。"""
-    try:
-        import yaml
-
-        with file_path.open("r", encoding="utf-8") as file:
-            document = yaml.safe_load(file)
-    except Exception:
-        return None
-    return _extract_metadata_table(document)
-
-
-def _extract_metadata_table(document: Any) -> Optional[MetadataTable]:
-    """从逻辑模型文档提取推荐 Prompt 使用的表列描述。"""
-    if not isinstance(document, Mapping):
-        return None
-    table_name = _text(document.get("name"))
-    schema = document.get("schema")
-    if not table_name or not isinstance(schema, Mapping):
-        return None
-    fields = schema.get("fields")
-    if not isinstance(fields, list):
-        return None
-    return MetadataTable(
-        table_name=table_name,
-        table_description=_text(document.get("description_cn")),
-        columns=_extract_metadata_columns(fields),
-    )
-
-
-def _extract_metadata_columns(fields: Sequence[Any]) -> List[MetadataColumn]:
-    """从字段列表提取物理列名和列描述，保持既有 Prompt 输入结构。"""
-    columns: List[MetadataColumn] = []
-    for field in fields:
-        if not isinstance(field, Mapping):
-            continue
-        column_name = _text(field.get("name"))
-        if column_name:
-            columns.append(
-                MetadataColumn(
-                    column_name=column_name,
-                    column_description=_text(field.get("description_cn")),
-                )
-            )
-    return columns
-
-
-def _dedupe_texts(values: Sequence[Any]) -> List[str]:
-    """按输入顺序清理并去重文本。"""
-    result: List[str] = []
-    for value in values:
-        text = _text(value)
-        if text and text not in result:
-            result.append(text)
-    return result
-
-
-def _text(value: Any) -> str:
-    """将任意值转换为去除首尾空白的文本。"""
-    return "" if value is None else str(value).strip()
 
 
 def _json_dumps(value: Any) -> str:
