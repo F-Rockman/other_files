@@ -25,6 +25,7 @@ from question_recommendation import (
     SUBCOMPONENT_COUNT,
     SUBCOMPONENT_INFO,
     SUBCOMPONENT_METRIC,
+    AlarmCondition,
     DeviceCondition,
     DeviceCapabilityProfile,
     LogicalMetadataError,
@@ -45,6 +46,7 @@ from question_recommendation.recommender import _build_chat_messages, _parse_llm
 from question_recommendation.refusal_rules import get_refusal_recovery_rule
 from question_recommendation.field_analysis import analyze_candidate_fields
 from question_recommendation.prompt import _build_system_prompt
+from question_recommendation.simplify_analysis import analyze_simplify_constraints
 
 
 def _network_interface_context(**overrides):
@@ -1692,12 +1694,16 @@ def test_simplify_fragment_overrides_empty_intention_basic():
     assert "对象关系，例如父子对象、链路两端、告警所属对象等关系不能被改写" in prompt
     assert "范围角色" in prompt
     assert "删除后可以不出现，但不能变成新的查询目标" in prompt
-    assert "附加约束可以删除，用来降低复杂度" in prompt
+    assert "可删除附加约束只以 simplify_analysis.removable_constraints 为准" in prompt
+    assert "该清单是本场景唯一明确可删条件列表" in prompt
     assert "时间、子网范围、定位条件、过滤条件、聚合、分组、排序" in prompt
     assert "多余对象、多余 KPI、多余属性、多余设备条件" in prompt
-    assert "每条 simplify 推荐必须删除至少一个附加约束" in prompt
+    assert "每条 simplify 推荐必须删除 removable_constraints 中至少一项" in prompt
+    assert "不在 removable_constraints 中的内容" in prompt
+    assert "不得被当成复杂条件、失败原因或可删除约束" in prompt
     assert "无可删附加约束时允许少于 3 条" in prompt
-    assert "列表、数量、趋势、TopN 等结果形态变化本身不算有效简化" in prompt
+    assert "列表、数量、有哪些、以列表形式展示、趋势、展示趋势、TopN" in prompt
+    assert "结果形态表达不是复杂条件" in prompt
     assert "不得只把列表改数量、数量改列表" in prompt
     assert "展示趋势”“趋势”“趋势图”“查看趋势”等查询形态词也不算有效简化" in prompt
     assert "查指标时无论是否有时间范围" in prompt
@@ -1977,6 +1983,95 @@ def test_candidate_field_analysis_is_disabled_by_usable_metadata():
         "unsupported_properties": [],
         "unsupported_kpis": [],
     }
+
+
+def test_simplify_analysis_collects_only_removable_constraints():
+    context = RecommendationContext(
+        recovery_strategy="simplify",
+        devices=[
+            DeviceCondition(
+                device_id="1.1.1.1",
+                id_type="IP",
+                match_mode="EXACT",
+                device_type="防火墙",
+            ),
+            DeviceCondition(device_type="网络设备"),
+        ],
+        subcomponent_types=["光模块"],
+        subnet=SubnetScope(name="核心层"),
+        properties=["运行状态"],
+        kpis=["KPI1", "KPI2", "KPI3"],
+        time="近一小时",
+        alarm=AlarmCondition(alarm_type="LEVEL", alarm_value="严重"),
+        aggregations=["avg", "count", "top_n", "sum"],
+    )
+
+    analysis = analyze_simplify_constraints(context)
+
+    assert analysis == {
+        "removable_constraints": [
+            {"type": "subnet", "value": "核心层", "role": "range"},
+            {"type": "time", "value": "近一小时", "role": "time_range"},
+            {
+                "type": "device_locator",
+                "value": "1.1.1.1",
+                "role": "locator",
+                "id_type": "IP",
+                "match_mode": "EXACT",
+                "device_type": "防火墙",
+            },
+            {
+                "type": "alarm",
+                "value": "严重",
+                "role": "filter",
+                "alarm_type": "LEVEL",
+            },
+            {"type": "aggregation", "value": "avg", "role": "aggregation"},
+            {"type": "aggregation", "value": "sum", "role": "aggregation"},
+            {"type": "extra_kpi", "value": "KPI2", "role": "extra_kpi"},
+            {"type": "extra_kpi", "value": "KPI3", "role": "extra_kpi"},
+        ]
+    }
+    serialized = json.dumps(analysis, ensure_ascii=False)
+    assert "网络设备" not in serialized
+    assert "光模块" not in serialized
+    assert "运行状态" not in serialized
+    assert "KPI1" not in serialized
+    assert "count" not in serialized
+    assert "top_n" not in serialized
+
+
+def test_simplify_analysis_is_empty_outside_simplify():
+    context = RecommendationContext(
+        recovery_strategy="basic",
+        subnet=SubnetScope(name="核心层"),
+        time="近一小时",
+    )
+
+    assert analyze_simplify_constraints(context) == {"removable_constraints": []}
+
+
+def test_chat_prompt_contains_simplify_analysis_without_shape_phrases():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询核心层子网下的防火墙设备，以列表形式展示",
+        devices=[DeviceCondition(id_type="OTHER", device_type="防火墙")],
+        subnet=SubnetScope(name="核心层"),
+        recovery_strategy="simplify",
+        refusal_message="查询语句生成失败，请换一种更明确或者减少问题复杂度的问法重试。",
+        refusal_detail="查询语句生成失败，请换一种更明确或者减少问题复杂度的问法重试。",
+    )
+
+    messages = _build_chat_messages(context, [], [])
+    user_prompt = messages[1]["content"]
+    simplify_section = user_prompt.split(
+        "确定性简化分析 simplify_analysis：", 1
+    )[1]
+
+    assert "确定性简化分析 simplify_analysis" in user_prompt
+    assert '"type": "subnet"' in simplify_section
+    assert '"value": "核心层"' in simplify_section
+    assert "以列表形式展示" not in simplify_section
 
 
 def test_chat_prompt_prioritizes_similar_fields_for_globally_unsupported_item():

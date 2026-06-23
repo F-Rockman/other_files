@@ -10,6 +10,7 @@ from .field_analysis import analyze_candidate_fields
 from .metadata_loader import PathProvider, load_logical_metadata
 from .models import MetadataTable, RecommendationContext
 from .prompt import QUESTION_RECOMMENDATION_USER_TEMPLATE, _build_system_prompt
+from .simplify_analysis import analyze_simplify_constraints
 
 
 class QuestionRecommendationError(Exception):
@@ -62,6 +63,7 @@ def _build_chat_messages(
     field_analysis = analyze_candidate_fields(
         context, candidate_capabilities, metadata_tables
     )
+    simplify_analysis = analyze_simplify_constraints(context)
     user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
         recommendation_context_json=_json_dumps(context.to_dict()),
         candidate_capabilities_json=_json_dumps(candidate_capabilities),
@@ -70,6 +72,10 @@ def _build_chat_messages(
     user_prompt += (
         "\n\n确定性候选字段分析 candidate_field_analysis：\n"
         + _json_dumps(field_analysis)
+    )
+    user_prompt += (
+        "\n\n确定性简化分析 simplify_analysis：\n"
+        + _json_dumps(simplify_analysis)
     )
     system_prompt = _build_system_prompt(context, metadata_tables)
     return [
