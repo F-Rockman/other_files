@@ -478,7 +478,7 @@ def test_load_capability_cards_expands_business_names_from_sources(
         },
     )
 
-    domain_cards, special_cards = load_capability_cards(lambda: tmp_path)
+    domain_cards, special_cards = load_capability_cards(str(tmp_path))
     domain_card = domain_cards[0]
     subcomponent = domain_card.subcomponents[0]
     special_card = special_cards[0]
@@ -2885,7 +2885,7 @@ def test_chat_recommendation_auto_loads_capabilities_and_metadata(tmp_path, monk
     result = recommend_questions_chat(
         _network_interface_context(tables=["network_interface"]),
         llm_chat_client,
-        logical_model_path_provider=lambda: tmp_path,
+        logical_model_path_provider=str(tmp_path),
     )
 
     assert result["recommends"] == ["查询网络设备接口列表"]
@@ -2945,7 +2945,7 @@ def test_chat_recommendation_expands_capability_sources_from_business_name(
     recommend_questions_chat(
         RecommendationContext(intention="查指标", devices=[DeviceCondition(device_type="动态设备")]),
         llm_chat_client,
-        logical_model_path_provider=lambda: tmp_path,
+        logical_model_path_provider=str(tmp_path),
     )
     prompt = llm_chat_client.call_args[0][0][1]["content"]
 

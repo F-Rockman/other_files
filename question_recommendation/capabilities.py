@@ -20,7 +20,6 @@ from .capability_matching import context_device_types, dedupe_candidates, is_sub
 from .capability_ranking import RankedCapability, rank_candidates, select_diverse
 from .capability_recall import recall_candidates
 from .capability_routing import resolve_primary_capability_type
-from .metadata_loader import PathProvider
 from .models import (
     CapabilityCandidate,
     DeviceCapabilityProfile,
@@ -46,7 +45,7 @@ def recommend_capabilities(
     metadata_tables: Sequence[MetadataTable] = (),
     domain_cards: Sequence[DeviceCapabilityProfile] = (),
     special_cards: Sequence[SpecialCapabilitySpec] = (),
-    logical_model_path_provider: Optional[PathProvider] = None,
+    logical_model_path_provider: Optional[str] = None,
     limit: int = 12,
 ) -> List[RankedCapability]:
     """根据标准上下文生成、过滤、排序并选择动态候选能力。"""
@@ -68,7 +67,7 @@ def recommend_capabilities(
 def _resolve_capability_cards(
     domain_cards: Sequence[DeviceCapabilityProfile],
     special_cards: Sequence[SpecialCapabilitySpec],
-    logical_model_path_provider: Optional[PathProvider],
+    logical_model_path_provider: Optional[str],
 ) -> Tuple[List[DeviceCapabilityProfile], List[SpecialCapabilitySpec]]:
     """保留已注入卡片，并通过一次文件读取补齐缺失卡片。"""
     resolved_domain_cards = list(domain_cards)

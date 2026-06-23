@@ -91,7 +91,7 @@ context = build_recommendation_context(
 result = recommend_questions_chat(
     context,
     llm_chat_client=my_llm_chat_client,
-    logical_model_path_provider=lambda: "/data/logical-models",
+    logical_model_path_provider="/data/logical-models",
 )
 ```
 
@@ -446,7 +446,8 @@ match_score =
 | `metric_sources` | 设备卡、子部件卡 | 从逻辑模型字段 `businessName_cn` 追加到 `metrics` |
 
 来源名就是逻辑表名，不带 `.logical.yaml` 后缀。加载时使用
-`logical_model_path_provider` 返回的目录，并读取 `{source}.logical.yaml`：
+`logical_model_path_provider` 是逻辑模型目录路径字符串，推荐器会读取
+`{source}.logical.yaml`：
 
 ```json
 {

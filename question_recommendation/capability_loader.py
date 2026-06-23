@@ -5,7 +5,6 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from .metadata_loader import LogicalMetadataError, PathProvider
 from .models import (
     DeviceCapabilityProfile,
     SpecialCapabilitySpec,
@@ -14,7 +13,7 @@ from .models import (
 
 
 def load_capability_cards(
-    logical_model_path_provider: Optional[PathProvider] = None,
+    logical_model_path_provider: Optional[str] = None,
 ) -> Tuple[
     List[DeviceCapabilityProfile],
     List[SpecialCapabilitySpec],
@@ -51,7 +50,7 @@ def _load_capability_document() -> Dict[str, Any]:
 def _expand_capability_card_sources(
     domain_cards: List[DeviceCapabilityProfile],
     special_cards: List[SpecialCapabilitySpec],
-    logical_model_path_provider: PathProvider,
+    logical_model_path_provider: str,
 ) -> None:
     """按来源逻辑表扩展能力卡属性和指标，并清空来源字段避免传给 LLM。"""
     field_cache: Dict[str, List[str]] = {}
@@ -71,7 +70,7 @@ def _expand_capability_card_sources(
 
 def _expand_device_card_sources(
     domain_card: DeviceCapabilityProfile,
-    logical_model_path_provider: PathProvider,
+    logical_model_path_provider: str,
     field_cache: Dict[str, List[str]],
 ) -> None:
     """扩展一张设备卡及其子部件卡的属性和指标。"""
@@ -101,7 +100,7 @@ def _expand_device_card_sources(
 
 def _expand_subcomponent_sources(
     subcomponent: SubcomponentCapabilitySpec,
-    logical_model_path_provider: PathProvider,
+    logical_model_path_provider: str,
     field_cache: Dict[str, List[str]],
 ) -> None:
     """扩展一张子部件能力卡的属性和指标。"""
@@ -127,7 +126,7 @@ def _expand_subcomponent_sources(
 
 def _source_business_names(
     sources: List[str],
-    logical_model_path_provider: PathProvider,
+    logical_model_path_provider: str,
     field_cache: Dict[str, List[str]],
 ) -> List[str]:
     """按来源表名读取字段业务名，并缓存同一来源结果。"""
@@ -143,30 +142,31 @@ def _source_business_names(
 
 def _load_source_business_names(
     source: str,
-    logical_model_path_provider: PathProvider,
+    logical_model_path_provider: str,
 ) -> List[str]:
     """读取单个逻辑模型文件中的 businessName_cn。"""
     base_dir = _logical_model_base_dir(logical_model_path_provider)
+    if base_dir is None:
+        return []
     file_path = _logical_file_path(base_dir, source)
     if file_path is None or not file_path.is_file():
         return []
     try:
+        import yaml
+
         with file_path.open("r", encoding="utf-8") as file:
-            document = _load_yaml_module().safe_load(file)
+            document = yaml.safe_load(file)
     except Exception:
         return []
     return _extract_business_names(document)
 
 
-def _logical_model_base_dir(logical_model_path_provider: PathProvider) -> Path:
-    """调用路径提供方法并校验逻辑模型目录。"""
-    try:
-        base_dir = Path(logical_model_path_provider()).expanduser().resolve()
-    except Exception as exc:
-        raise LogicalMetadataError(f"获取逻辑模型目录失败: {exc}") from exc
-    if not base_dir.is_dir():
-        raise LogicalMetadataError(f"逻辑模型目录不存在或不是目录: {base_dir}")
-    return base_dir
+def _logical_model_base_dir(logical_model_path_provider: str) -> Optional[Path]:
+    """将目录字符串转换为逻辑模型目录；无效路径按无来源处理。"""
+    if not logical_model_path_provider:
+        return None
+    base_dir = Path(logical_model_path_provider).expanduser().resolve()
+    return base_dir if base_dir.is_dir() else None
 
 
 def _logical_file_path(base_dir: Path, source: str) -> Optional[Path]:
@@ -177,17 +177,6 @@ def _logical_file_path(base_dir: Path, source: str) -> Optional[Path]:
     if candidate.parent != base_dir:
         return None
     return candidate
-
-
-def _load_yaml_module():
-    """延迟导入 PyYAML，并将依赖缺失转换为模块领域异常。"""
-    try:
-        import yaml
-    except ModuleNotFoundError as exc:
-        raise LogicalMetadataError(
-            "读取 .logical.yaml 需要 PyYAML，请先安装: pip install PyYAML"
-        ) from exc
-    return yaml
 
 
 def _extract_business_names(document: Any) -> List[str]:
