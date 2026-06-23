@@ -2010,12 +2010,11 @@ def test_simplify_analysis_collects_only_removable_constraints():
 
     assert analysis == {
         "removable_constraints": [
-            {"type": "subnet", "value": "核心层", "role": "range"},
-            {"type": "time", "value": "近一小时", "role": "time_range"},
+            {"type": "subnet", "value": "核心层"},
+            {"type": "time", "value": "近一小时"},
             {
                 "type": "device_locator",
                 "value": "1.1.1.1",
-                "role": "locator",
                 "id_type": "IP",
                 "match_mode": "EXACT",
                 "device_type": "防火墙",
@@ -2023,16 +2022,16 @@ def test_simplify_analysis_collects_only_removable_constraints():
             {
                 "type": "alarm",
                 "value": "严重",
-                "role": "filter",
                 "alarm_type": "LEVEL",
             },
-            {"type": "aggregation", "value": "avg", "role": "aggregation"},
-            {"type": "aggregation", "value": "sum", "role": "aggregation"},
-            {"type": "extra_kpi", "value": "KPI2", "role": "extra_kpi"},
-            {"type": "extra_kpi", "value": "KPI3", "role": "extra_kpi"},
+            {"type": "aggregation", "value": "avg"},
+            {"type": "aggregation", "value": "sum"},
+            {"type": "extra_kpi", "value": "KPI2"},
+            {"type": "extra_kpi", "value": "KPI3"},
         ]
     }
     serialized = json.dumps(analysis, ensure_ascii=False)
+    assert "role" not in serialized
     assert "网络设备" not in serialized
     assert "光模块" not in serialized
     assert "运行状态" not in serialized
