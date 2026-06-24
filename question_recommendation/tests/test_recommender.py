@@ -1976,6 +1976,8 @@ def test_empty_intention_uses_basic_fragment_for_other_strategies():
     assert "当前场景：无恢复要求" not in prompt
     assert "绑定特殊能力候选时，设备表达仍只能来自" in prompt
     assert "不能从 question 继承候选外设备词" in prompt
+    assert "空上下文多意图拆分时，只拆分原问题已有的设备定位" in prompt
+    assert "禁止补入候选中的具体设备类型或子部件类型" in prompt
 
 
 def test_out_of_scope_alarm_question_does_not_support_unstructured_modifier():
@@ -2717,16 +2719,54 @@ def test_empty_intention_basic_generic_metric_keeps_device_metric(question):
     candidates = [item.candidate for item in recommend_capabilities(context)]
 
     assert candidates
-    assert any(item.capability_type == DEVICE_METRIC for item in candidates)
-    assert all(
-        item.capability_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC}
-        for item in candidates
+    assert {item.capability_type for item in candidates} == {DEVICE_METRIC}
+    assert all(not item.subcomponent_types for item in candidates)
+    assert all("CPU利用率" in item.metrics for item in candidates)
+
+
+def test_empty_intention_basic_generic_metric_prefers_device_over_subcomponent():
+    context = _empty_intention_basic_context("查询设备功率")
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert candidates
+    assert {item.capability_type for item in candidates} == {DEVICE_METRIC}
+    assert all(not item.subcomponent_types for item in candidates)
+
+
+def test_empty_intention_basic_multi_metric_without_object_avoids_subcomponents():
+    question = (
+        "查询最近12小时，00-00-00-00-00-00设备的最高TOP1设备平均内存利用率(%)值，"
+        "查询最近12小时，B0-4F-A6-07-24-3C设备的最高TOP1设备功率(W)值"
     )
-    device_metrics = [
-        item for item in candidates if item.capability_type == DEVICE_METRIC
+    context = _empty_intention_basic_context(
+        question, llm_refuse_message="多意图：查询不同设备的不同指标"
+    )
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert candidates
+    assert all(not item.subcomponent_types for item in candidates)
+    assert {item.capability_type for item in candidates} == {DEVICE_METRIC}
+
+
+def test_empty_intention_basic_generic_property_does_not_match_subcomponent():
+    context = _empty_intention_basic_context("查询设备状态")
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert candidates
+    assert all(not item.subcomponent_types for item in candidates)
+
+
+def test_empty_intention_basic_explicit_subcomponent_property_is_preserved():
+    interface_context = _empty_intention_basic_context("查询接口状态")
+    module_context = _empty_intention_basic_context("查询光模块型号")
+
+    interface_candidates = [
+        item.candidate for item in recommend_capabilities(interface_context)
     ]
-    assert device_metrics
-    assert all("CPU利用率" in item.metrics for item in device_metrics)
+    module_candidates = [item.candidate for item in recommend_capabilities(module_context)]
+
+    assert any(item.subcomponent_types == ["接口"] for item in interface_candidates)
+    assert any(item.subcomponent_types == ["光模块"] for item in module_candidates)
 
 
 def test_empty_intention_basic_subcomponent_metric_keeps_subcomponent_owner():

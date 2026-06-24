@@ -37,19 +37,19 @@ def generic_metric_candidates(
     domain_cards: Sequence[DeviceCapabilityProfile],
     matched_domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[CapabilityCandidate]:
-    """泛指标命中时，同时保留设备指标和子部件指标候选。"""
+    """泛指标命中时优先保留设备指标，避免误补子部件方向。"""
     if context_device_types(context) or context.subcomponent_types:
         return []
     metric_domain_cards = _domain_cards_matching_device_metrics(
         context.question, matched_domain_cards or domain_cards
     )
+    if metric_domain_cards:
+        return _device_metric_candidates(context, metric_domain_cards)
     matches = generic_subcomponent_metrics_matching_text(context.question, domain_cards)
     metric_subcomponents = _constrain_matches(matched_domain_cards, matches)
-    if not metric_domain_cards and not metric_subcomponents:
+    if not metric_subcomponents:
         return []
-    candidates = _device_metric_candidates(context, metric_domain_cards)
-    candidates.extend(subcomponent_metric_candidates(context, metric_subcomponents))
-    return candidates
+    return subcomponent_metric_candidates(context, metric_subcomponents)
 
 
 def subcomponent_metric_candidates(
