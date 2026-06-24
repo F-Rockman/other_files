@@ -2133,6 +2133,8 @@ def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
     assert "具体属性只能来自绑定的" in prompt
     assert "具体指标只能来自绑定的" in prompt
     assert "禁止跨设备、子部件或候选借用字段" in prompt
+    assert "question 中疑似属性或指标的表达不是已确认字段" in prompt
+    assert "若候选字段与 question 表达不精确一致" in prompt
 
 
 def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
@@ -2344,6 +2346,28 @@ def test_chat_prompt_prioritizes_similar_fields_for_globally_unsupported_item():
     assert "只有绑定候选没有清晰相近字段时" in system_prompt
     assert "继承设备定位、父子关系、子网、时间、其他未冲突条件" in system_prompt
     assert "最后才回退同对象基础信息" in system_prompt
+
+
+def test_chat_prompt_blocks_question_field_when_context_has_no_structured_property():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询运行状态正常的设备有哪些",
+        recovery_strategy="disambiguate",
+    )
+    candidates = [
+        {"device_types": ["网络设备"], "properties": ["连接状态"]},
+        {"device_types": ["服务器"], "properties": ["健康状态"]},
+        {"device_types": ["闪存存储"], "properties": ["型号"]},
+    ]
+
+    messages = _build_chat_messages(context, [], candidates)
+    system_prompt = messages[0]["content"]
+    user_prompt = messages[1]["content"]
+
+    assert '"unsupported_properties": []' in user_prompt
+    assert "question 中疑似属性或指标的表达不是已确认字段" in system_prompt
+    assert "每条推荐仍必须从绑定候选的 properties 或 metrics 中选择具体字段" in system_prompt
+    assert "只能改用候选中的相近字段，并删除原字段绑定的过滤值" in system_prompt
 
 
 def test_dynamic_fragments_have_stable_order_and_are_not_duplicated():
