@@ -45,7 +45,11 @@ from question_recommendation.logical_model_reader import (
     load_logical_model_document,
     load_metadata_tables,
 )
-from question_recommendation.recommender import _build_chat_messages, _parse_llm_response
+from question_recommendation.recommender import (
+    _build_chat_messages,
+    _build_field_inheritance_policy,
+    _parse_llm_response,
+)
 from question_recommendation.refusal_rules import get_refusal_recovery_rule
 from question_recommendation.field_analysis import analyze_candidate_fields
 from question_recommendation.prompt import _build_system_prompt
@@ -2133,8 +2137,12 @@ def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
     assert "具体属性只能来自绑定的" in prompt
     assert "具体指标只能来自绑定的" in prompt
     assert "禁止跨设备、子部件或候选借用字段" in prompt
-    assert "question 中疑似属性或指标的表达不是已确认字段" in prompt
-    assert "若候选字段与 question 表达不精确一致" in prompt
+    assert "field_inheritance_policy.allow_question_property_inheritance=false" in prompt
+    assert "allow_question_kpi_inheritance=false" in prompt
+    assert "原始 question 中的属性表达不能直接进入推荐问题" in prompt
+    assert "原始 question 中的指标表达不能直接进入推荐问题" in prompt
+    assert "例如不能把\"属性1取值A\"改成\"属性2取值A\"" in prompt
+    assert "疑似属性或指标" not in prompt
 
 
 def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
@@ -2231,6 +2239,23 @@ def test_candidate_field_analysis_is_disabled_by_usable_metadata():
     assert analyze_candidate_fields(context, [], metadata) == {
         "unsupported_properties": [],
         "unsupported_kpis": [],
+    }
+
+
+def test_field_inheritance_policy_reflects_structured_fields():
+    empty_context = RecommendationContext()
+    structured_context = RecommendationContext(
+        properties=["运行状态"],
+        kpis=["CPU利用率"],
+    )
+
+    assert _build_field_inheritance_policy(empty_context) == {
+        "allow_question_property_inheritance": False,
+        "allow_question_kpi_inheritance": False,
+    }
+    assert _build_field_inheritance_policy(structured_context) == {
+        "allow_question_property_inheritance": True,
+        "allow_question_kpi_inheritance": True,
     }
 
 
@@ -2365,9 +2390,12 @@ def test_chat_prompt_blocks_question_field_when_context_has_no_structured_proper
     user_prompt = messages[1]["content"]
 
     assert '"unsupported_properties": []' in user_prompt
-    assert "question 中疑似属性或指标的表达不是已确认字段" in system_prompt
-    assert "每条推荐仍必须从绑定候选的 properties 或 metrics 中选择具体字段" in system_prompt
-    assert "只能改用候选中的相近字段，并删除原字段绑定的过滤值" in system_prompt
+    assert "字段继承策略 field_inheritance_policy" in user_prompt
+    assert '"allow_question_property_inheritance": false' in user_prompt
+    assert '"allow_question_kpi_inheritance": false' in user_prompt
+    assert "allow_question_property_inheritance=false" in system_prompt
+    assert "原始 question 中的属性表达不能直接进入推荐问题" in system_prompt
+    assert "疑似属性或指标" not in system_prompt
 
 
 def test_dynamic_fragments_have_stable_order_and_are_not_duplicated():
