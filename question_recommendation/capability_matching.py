@@ -17,7 +17,10 @@ from .models import (
     RecommendationContext,
     SubcomponentCapabilitySpec,
 )
-from .capability_device_terms import match_domain_cards_by_device_terms
+from .capability_device_terms import (
+    match_subcomponents_by_text,
+    match_domain_cards_by_device_terms,
+)
 
 
 def context_device_types(context: RecommendationContext) -> List[str]:
@@ -276,28 +279,15 @@ def subcomponents_matching_text(
     domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
     """按原问题中的子部件类型或别名匹配父设备与子部件规格。"""
-    matched_terms = normalized_set(
-        specific_terms_in_text(text, _subcomponent_terms(domain_cards))
-    )
-    matched_subcomponents = []
-    for domain_card in domain_cards:
-        for spec in domain_card.subcomponents:
-            spec_terms = normalized_set(spec.types + spec.aliases)
-            if matched_terms.intersection(spec_terms):
-                matched_subcomponents.append((domain_card, spec))
-    return matched_subcomponents
+    return match_subcomponents_by_text(text, domain_cards).basic
 
 
-def _subcomponent_terms(
+def subcomponent_metrics_matching_text(
+    text: str,
     domain_cards: Sequence[DeviceCapabilityProfile],
-) -> List[str]:
-    """展开全部领域卡中的子部件标准类型和别名。"""
-    terms = []
-    for domain_card in domain_cards:
-        for spec in domain_card.subcomponents:
-            terms.extend(spec.types)
-            terms.extend(spec.aliases)
-    return terms
+) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
+    """按原问题中的子部件指标匹配父设备与子部件规格。"""
+    return match_subcomponents_by_text(text, domain_cards).metric
 
 
 def specific_terms_in_text(text: str, terms: Sequence[str]) -> List[str]:

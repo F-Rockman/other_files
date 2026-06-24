@@ -1677,6 +1677,8 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
     assert "trigger_terms" not in prompt
     for expected in (
         "candidate_capabilities 决定允许的业务域",
+        "candidate_capabilities.device_types 只是能力边界证明",
+        "不等于用户已识别设备类型",
         "每条推荐必须绑定一个具体 candidate_capability",
         "禁止把多张候选卡的字段并集当作通用白名单",
         "invalid_values",
@@ -1685,6 +1687,8 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "不得从原始 question 继承未出现在候选 device_types 中的设备词",
         "未结构化且未被候选支持的模糊修饰词不得继承",
         "禁止生成“候选外设备 + objects”的组合",
+        "最终推荐不得输出候选 device_types 中的具体设备类型",
+        "应沿用“设备”等泛化表达",
         "只有绑定候选 locators 支持的设备定位类型才可继承",
         "结果形态与语义去重",
         "推荐形态优先级为：列表 > 数量 > 其他基础信息方向",
@@ -2023,7 +2027,8 @@ def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
     assert "字段白名单" in prompt
     assert "每条推荐仍先绑定一张具体候选卡" in prompt
     assert "多张候选卡字段的并集不是通用白名单" in prompt
-    assert "每条推荐必须明确表达绑定候选的具体设备类型" in prompt
+    assert "绑定候选的具体 device_types 不得进入推荐正文" in prompt
+    assert "只能使用用户原文的泛化对象或引导先明确设备类型" in prompt
     assert "属性和指标名称匹配忽略英文字母大小写" in prompt
     assert "具体属性只能来自绑定的" in prompt
     assert "具体指标只能来自绑定的" in prompt
@@ -2589,6 +2594,73 @@ def test_empty_intention_basic_subcomponent_recalls_compatible_parent_basics():
         "server:光模块:subcomponent_info",
         "server:光模块:subcomponent_count",
     }
+
+
+def test_empty_intention_basic_metric_phrase_does_not_match_memory_subcomponent():
+    context = _empty_intention_basic_context("查询设备内存利用率")
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert candidates
+    assert all("内存" not in item.subcomponent_types for item in candidates)
+    assert all(
+        item.capability_type in {DEVICE_INFO, DEVICE_COUNT, DEVICE_METRIC}
+        for item in candidates
+    )
+    assert any(item.capability_type == DEVICE_METRIC for item in candidates)
+
+
+def test_empty_intention_basic_subcomponent_filter_uses_card_metrics():
+    card = DeviceCapabilityProfile(
+        profile_id="test_device",
+        domain="测试",
+        device_types=["测试设备"],
+        subcomponents=[
+            SubcomponentCapabilitySpec(
+                types=["部件A"],
+                metrics=["部件A指标1"],
+            )
+        ],
+    )
+    special_card = SpecialCapabilitySpec(capability_id="unused")
+
+    metric_context = _empty_intention_basic_context("查询设备部件A指标1")
+    metric_candidates = [
+        item.candidate
+        for item in recommend_capabilities(
+            metric_context,
+            domain_cards=[card],
+            special_cards=[special_card],
+        )
+    ]
+    assert metric_candidates
+    assert {item.capability_type for item in metric_candidates} == {SUBCOMPONENT_METRIC}
+    assert all(item.subcomponent_types == ["部件A"] for item in metric_candidates)
+
+    subcomponent_context = _empty_intention_basic_context("查询测试设备部件A数量")
+    subcomponent_candidates = [
+        item.candidate
+        for item in recommend_capabilities(
+            subcomponent_context,
+            domain_cards=[card],
+            special_cards=[special_card],
+        )
+    ]
+    assert any(
+        item.capability_type == SUBCOMPONENT_COUNT
+        and item.subcomponent_types == ["部件A"]
+        for item in subcomponent_candidates
+    )
+
+
+def test_empty_intention_basic_explicit_memory_subcomponent_still_matches():
+    context = _empty_intention_basic_context("查询服务器内存数量")
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert any(
+        item.capability_type == SUBCOMPONENT_COUNT
+        and item.subcomponent_types == ["内存"]
+        for item in candidates
+    )
 
 
 @pytest.mark.parametrize("question", ["查询名称为", "查询状态"])

@@ -31,6 +31,7 @@ from .capability_matching import (
     domain_cards_matching_question_direction,
     matching_domain_cards,
     specific_terms_in_text,
+    subcomponent_metrics_matching_text,
     subcomponent_matches_any,
     subcomponents_matching_text,
 )
@@ -123,6 +124,11 @@ def _empty_intention_basic_candidates(
     )
     if special_result:
         return special_result
+    metric_subcomponents = _empty_intention_metric_subcomponent_matches(
+        context, domain_cards, matched_domain_cards
+    )
+    if metric_subcomponents:
+        return _basic_subcomponent_metric_candidates(context, metric_subcomponents)
     matched_subcomponents = _constrain_subcomponent_matches(
         matched_domain_cards, matched_subcomponents
     )
@@ -154,6 +160,18 @@ def _empty_intention_object_matches(
     )
     matched_subcomponents = subcomponents_matching_text(context.question, domain_cards)
     return matched_cards, matched_subcomponents
+
+
+def _empty_intention_metric_subcomponent_matches(
+    context: RecommendationContext,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    matched_domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
+    """空意图文本命中子部件指标时，返回其所属子部件规格。"""
+    if context_device_types(context) or context.subcomponent_types:
+        return []
+    matches = subcomponent_metrics_matching_text(context.question, domain_cards)
+    return _constrain_subcomponent_matches(matched_domain_cards, matches)
 
 
 def _structured_subcomponent_matches(
@@ -312,6 +330,28 @@ def _basic_subcomponent_candidates(
     return candidates
 
 
+def _basic_subcomponent_metric_candidates(
+    context: RecommendationContext,
+    matched_subcomponents: Sequence[
+        Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]
+    ],
+) -> List[CapabilityCandidate]:
+    """生成空意图 Basic 的子部件指标候选。"""
+    candidates = []
+    metric_context = replace(context, kpis=[])
+    for domain_card, subcomponent_card in matched_subcomponents:
+        candidate = subcomponent_candidate(
+            metric_context,
+            domain_card,
+            subcomponent_card,
+            SUBCOMPONENT_METRIC,
+            relax=True,
+        )
+        if candidate:
+            candidates.append(candidate)
+    return candidates
+
+
 def _basic_domain_candidates(
     context: RecommendationContext,
     matched_domain_cards: Sequence[DeviceCapabilityProfile],
@@ -373,10 +413,16 @@ def _recovery_direction_matches(
     """解析拒答原问题中的领域卡和子部件方向。"""
     matched_cards = domain_cards_matching_question_direction(question, domain_cards)
     matched_subcomponents = subcomponents_matching_text(question, domain_cards)
+    metric_subcomponents = subcomponent_metrics_matching_text(question, domain_cards)
     if matched_cards:
         matched_subcomponents = _constrain_subcomponent_matches(
             matched_cards, matched_subcomponents
         )
+        metric_subcomponents = _constrain_subcomponent_matches(
+            matched_cards, metric_subcomponents
+        )
+    if metric_subcomponents and not matched_subcomponents:
+        matched_subcomponents = metric_subcomponents
     elif matched_subcomponents:
         parent_cards = []
         for domain_card, _ in matched_subcomponents:

@@ -1,8 +1,28 @@
-"""设备词强弱归属匹配工具。"""
+"""能力词 span 匹配与设备词强弱归属匹配工具。"""
 
+from dataclasses import dataclass
 from typing import Any, Dict, List, Sequence, Tuple
 
-from .models import DeviceCapabilityProfile
+from .models import DeviceCapabilityProfile, SubcomponentCapabilitySpec
+
+
+@dataclass(frozen=True)
+class SubcomponentTextMatches:
+    """原问题文本中的子部件基础命中和子部件指标命中。"""
+
+    basic: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]
+    metric: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]
+
+
+@dataclass(frozen=True)
+class _ScopedTermMatch:
+    """带所属能力卡和文本范围的能力词命中。"""
+
+    term: str
+    start: int
+    end: int
+    domain_card: DeviceCapabilityProfile
+    subcomponent: SubcomponentCapabilitySpec
 
 
 def match_domain_cards_by_device_terms(
@@ -21,6 +41,158 @@ def match_domain_cards_by_device_terms(
         if _card_matches_alias_device_key(domain_card, matched_keys, strong_keys):
             matched_domain_cards.append(domain_card)
     return matched_domain_cards
+
+
+def match_subcomponents_by_text(
+    text: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> SubcomponentTextMatches:
+    """返回文本中可触发基础能力或指标能力的子部件命中。"""
+    normalized_text = _device_match_key(text)
+    subcomponent_matches = _subcomponent_term_matches(normalized_text, domain_cards)
+    field_matches = _field_term_matches(normalized_text, domain_cards)
+    metric_matches = _subcomponent_metric_matches(normalized_text, domain_cards)
+    return SubcomponentTextMatches(
+        basic=_dedupe_match_pairs(
+            _uncovered_subcomponent_matches(subcomponent_matches, field_matches)
+        ),
+        metric=_dedupe_match_pairs(metric_matches),
+    )
+
+
+def _subcomponent_term_matches(
+    normalized_text: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[_ScopedTermMatch]:
+    """返回全部子部件类型和别名命中。"""
+    matches: List[_ScopedTermMatch] = []
+    for domain_card in domain_cards:
+        for spec in domain_card.subcomponents:
+            matches.extend(
+                _scoped_term_occurrences(
+                    normalized_text,
+                    spec.types + spec.aliases,
+                    domain_card,
+                    spec,
+                )
+            )
+    return _longest_scoped_matches(matches)
+
+
+def _field_term_matches(
+    normalized_text: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[_ScopedTermMatch]:
+    """返回全部属性和指标命中，用于覆盖短对象词。"""
+    matches: List[_ScopedTermMatch] = []
+    for domain_card in domain_cards:
+        matches.extend(
+            _scoped_term_occurrences(
+                normalized_text, domain_card.properties + domain_card.metrics, domain_card
+            )
+        )
+        for spec in domain_card.subcomponents:
+            matches.extend(
+                _scoped_term_occurrences(
+                    normalized_text, spec.properties + spec.metrics, domain_card, spec
+                )
+            )
+    return _longest_scoped_matches(matches)
+
+
+def _subcomponent_metric_matches(
+    normalized_text: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[_ScopedTermMatch]:
+    """返回子部件指标命中。"""
+    matches: List[_ScopedTermMatch] = []
+    for domain_card in domain_cards:
+        for spec in domain_card.subcomponents:
+            matches.extend(
+                _scoped_term_occurrences(
+                    normalized_text, spec.metrics, domain_card, spec
+                )
+            )
+    return _longest_scoped_matches(matches)
+
+
+def _scoped_term_occurrences(
+    normalized_text: str,
+    terms: Sequence[str],
+    domain_card: DeviceCapabilityProfile,
+    spec: SubcomponentCapabilitySpec = SubcomponentCapabilitySpec(),
+) -> List[_ScopedTermMatch]:
+    """返回指定能力来源的一组词项命中。"""
+    matches = []
+    for term, start, end in _device_term_occurrences(normalized_text, terms):
+        matches.append(_ScopedTermMatch(term, start, end, domain_card, spec))
+    return matches
+
+
+def _longest_scoped_matches(
+    matches: Sequence[_ScopedTermMatch],
+) -> List[_ScopedTermMatch]:
+    """移除同类词项中被更长词完整覆盖的命中。"""
+    result = []
+    for match in matches:
+        if _is_scoped_match_covered(match, matches):
+            continue
+        result.append(match)
+    return result
+
+
+def _is_scoped_match_covered(
+    match: _ScopedTermMatch,
+    matches: Sequence[_ScopedTermMatch],
+) -> bool:
+    """判断一个 scoped 命中是否被更长 scoped 命中覆盖。"""
+    for other in matches:
+        if other.start > match.start or other.end < match.end:
+            continue
+        if len(other.term) > len(match.term):
+            return True
+    return False
+
+
+def _uncovered_subcomponent_matches(
+    matches: Sequence[_ScopedTermMatch],
+    field_matches: Sequence[_ScopedTermMatch],
+) -> List[_ScopedTermMatch]:
+    """过滤被更长属性或指标词覆盖的子部件基础命中。"""
+    result = []
+    for match in matches:
+        if _is_covered_by_field_match(match, field_matches):
+            continue
+        result.append(match)
+    return result
+
+
+def _is_covered_by_field_match(
+    match: _ScopedTermMatch,
+    field_matches: Sequence[_ScopedTermMatch],
+) -> bool:
+    """判断子部件词范围是否被更长属性或指标词覆盖。"""
+    for field_match in field_matches:
+        if field_match.start > match.start or field_match.end < match.end:
+            continue
+        if field_match.end - field_match.start > match.end - match.start:
+            return True
+    return False
+
+
+def _dedupe_match_pairs(
+    matches: Sequence[_ScopedTermMatch],
+) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
+    """按能力卡和子部件规格去重并保留首次命中。"""
+    result: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]] = []
+    seen = set()
+    for match in matches:
+        key = (match.domain_card.profile_id, tuple(match.subcomponent.types))
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append((match.domain_card, match.subcomponent))
+    return result
 
 
 def _domain_card_device_terms(
