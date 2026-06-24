@@ -2602,11 +2602,74 @@ def test_empty_intention_basic_metric_phrase_does_not_match_memory_subcomponent(
 
     assert candidates
     assert all("内存" not in item.subcomponent_types for item in candidates)
+    assert {item.capability_type for item in candidates} == {DEVICE_METRIC}
+    assert all("内存利用率" in item.metrics for item in candidates)
+
+
+def test_empty_intention_basic_explicit_subcomponent_metric_suppresses_device_metric():
+    context = _empty_intention_basic_context("查询单板的CPU利用率")
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert candidates
+    assert {item.capability_type for item in candidates} == {SUBCOMPONENT_METRIC}
+    assert all(item.subcomponent_types == ["单板"] for item in candidates)
+    assert all("单板CPU利用率" in item.metrics for item in candidates)
+
+
+@pytest.mark.parametrize("question", ["查询设备CPU利用率", "查询CPU利用率"])
+def test_empty_intention_basic_generic_metric_keeps_device_metric(question):
+    context = _empty_intention_basic_context(question)
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert candidates
+    assert any(item.capability_type == DEVICE_METRIC for item in candidates)
     assert all(
-        item.capability_type in {DEVICE_INFO, DEVICE_COUNT, DEVICE_METRIC}
+        item.capability_type in {DEVICE_METRIC, SUBCOMPONENT_METRIC}
         for item in candidates
     )
-    assert any(item.capability_type == DEVICE_METRIC for item in candidates)
+    device_metrics = [
+        item for item in candidates if item.capability_type == DEVICE_METRIC
+    ]
+    assert device_metrics
+    assert all("CPU利用率" in item.metrics for item in device_metrics)
+
+
+def test_empty_intention_basic_subcomponent_metric_keeps_subcomponent_owner():
+    context = _empty_intention_basic_context("查询光模块温度")
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert candidates
+    assert {item.capability_type for item in candidates} == {SUBCOMPONENT_METRIC}
+    assert all(item.subcomponent_types == ["光模块"] for item in candidates)
+    assert all("温度" in item.metrics for item in candidates)
+
+
+def test_structured_device_type_wins_over_metric_text_direction():
+    context = RecommendationContext(
+        intention="查指标",
+        question="查询网络设备CPU利用率",
+        devices=[DeviceCondition(device_type="服务器")],
+        kpis=["CPU利用率"],
+    )
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert candidates
+    assert all(item.device_types == ["服务器"] for item in candidates)
+
+
+def test_structured_subcomponent_wins_over_metric_text_direction():
+    context = RecommendationContext(
+        intention="查指标",
+        question="查询单板CPU利用率",
+        devices=[DeviceCondition(device_type="网络设备")],
+        subcomponent_types=["光模块"],
+        kpis=["接收功率"],
+    )
+    candidates = [item.candidate for item in recommend_capabilities(context)]
+
+    assert candidates
+    assert all(item.subcomponent_types != ["单板"] for item in candidates)
+    assert any(item.subcomponent_types == ["光模块"] for item in candidates)
 
 
 def test_empty_intention_basic_subcomponent_filter_uses_card_metrics():

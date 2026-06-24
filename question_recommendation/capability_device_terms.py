@@ -11,7 +11,8 @@ class SubcomponentTextMatches:
     """原问题文本中的子部件基础命中和子部件指标命中。"""
 
     basic: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]
-    metric: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]
+    explicit_metric: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]
+    generic_metric: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]
 
 
 @dataclass(frozen=True)
@@ -51,12 +52,19 @@ def match_subcomponents_by_text(
     normalized_text = _device_match_key(text)
     subcomponent_matches = _subcomponent_term_matches(normalized_text, domain_cards)
     field_matches = _field_term_matches(normalized_text, domain_cards)
+    metric_field_matches = _metric_field_matches(normalized_text, domain_cards)
     metric_matches = _subcomponent_metric_matches(normalized_text, domain_cards)
+    explicit_metric_matches = _explicit_subcomponent_metric_matches(
+        subcomponent_matches, metric_field_matches, metric_matches
+    )
     return SubcomponentTextMatches(
         basic=_dedupe_match_pairs(
             _uncovered_subcomponent_matches(subcomponent_matches, field_matches)
         ),
-        metric=_dedupe_match_pairs(metric_matches),
+        explicit_metric=_dedupe_match_pairs(explicit_metric_matches),
+        generic_metric=_dedupe_match_pairs(
+            _generic_metric_matches(metric_matches, explicit_metric_matches)
+        ),
     )
 
 
@@ -100,6 +108,25 @@ def _field_term_matches(
     return _longest_scoped_matches(matches)
 
 
+def _metric_field_matches(
+    normalized_text: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[_ScopedTermMatch]:
+    """返回全部设备和子部件指标命中。"""
+    matches: List[_ScopedTermMatch] = []
+    for domain_card in domain_cards:
+        matches.extend(
+            _scoped_term_occurrences(normalized_text, domain_card.metrics, domain_card)
+        )
+        for spec in domain_card.subcomponents:
+            matches.extend(
+                _scoped_term_occurrences(
+                    normalized_text, spec.metrics, domain_card, spec
+                )
+            )
+    return _longest_scoped_matches(matches)
+
+
 def _subcomponent_metric_matches(
     normalized_text: str,
     domain_cards: Sequence[DeviceCapabilityProfile],
@@ -114,6 +141,96 @@ def _subcomponent_metric_matches(
                 )
             )
     return _longest_scoped_matches(matches)
+
+
+def _explicit_subcomponent_metric_matches(
+    subcomponent_matches: Sequence[_ScopedTermMatch],
+    metric_field_matches: Sequence[_ScopedTermMatch],
+    metric_matches: Sequence[_ScopedTermMatch],
+) -> List[_ScopedTermMatch]:
+    """返回明确以子部件为对象的指标命中。"""
+    result = _metric_matches_containing_subcomponent(metric_matches)
+    for match in subcomponent_matches:
+        if not _subcomponent_has_metric_in_text(match, metric_field_matches):
+            continue
+        result.append(match)
+    return _longest_scoped_matches(result)
+
+
+def _metric_matches_containing_subcomponent(
+    metric_matches: Sequence[_ScopedTermMatch],
+) -> List[_ScopedTermMatch]:
+    """返回指标词自身包含子部件名称的命中。"""
+    result = []
+    for match in metric_matches:
+        if _term_contains_any(match.term, match.subcomponent.types + match.subcomponent.aliases):
+            result.append(match)
+    return result
+
+
+def _subcomponent_has_metric_in_text(
+    match: _ScopedTermMatch,
+    metric_field_matches: Sequence[_ScopedTermMatch],
+) -> bool:
+    """判断显式子部件后是否伴随该子部件支持的指标。"""
+    for metric_match in metric_field_matches:
+        if _metric_belongs_to_subcomponent(metric_match.term, match.subcomponent):
+            return True
+    return False
+
+
+def _metric_belongs_to_subcomponent(
+    metric_term: str,
+    spec: SubcomponentCapabilitySpec,
+) -> bool:
+    """通过能力卡指标名判断文本指标是否属于指定子部件。"""
+    normalized_metric = _device_match_key(metric_term)
+    for spec_metric in spec.metrics:
+        normalized_spec_metric = _device_match_key(spec_metric)
+        if not normalized_metric or not normalized_spec_metric:
+            continue
+        if normalized_metric in normalized_spec_metric:
+            return True
+        if normalized_spec_metric in normalized_metric:
+            return True
+    return False
+
+
+def _generic_metric_matches(
+    metric_matches: Sequence[_ScopedTermMatch],
+    explicit_matches: Sequence[_ScopedTermMatch],
+) -> List[_ScopedTermMatch]:
+    """返回未被明确子部件对象接管的子部件指标命中。"""
+    result = []
+    explicit_keys = _match_keys(explicit_matches)
+    for match in metric_matches:
+        key = _match_key(match)
+        if key not in explicit_keys:
+            result.append(match)
+    return result
+
+
+def _match_keys(matches: Sequence[_ScopedTermMatch]) -> set:
+    """返回一组命中的稳定去重 key。"""
+    result = set()
+    for match in matches:
+        result.add(_match_key(match))
+    return result
+
+
+def _match_key(match: _ScopedTermMatch) -> Tuple[str, Tuple[str, ...]]:
+    """返回一个命中的领域卡和子部件 key。"""
+    return (match.domain_card.profile_id, tuple(match.subcomponent.types))
+
+
+def _term_contains_any(term: str, values: Sequence[str]) -> bool:
+    """判断词项是否包含任一非空能力词。"""
+    normalized_term = _device_match_key(term)
+    for value in values:
+        normalized_value = _device_match_key(value)
+        if normalized_value and normalized_value in normalized_term:
+            return True
+    return False
 
 
 def _scoped_term_occurrences(

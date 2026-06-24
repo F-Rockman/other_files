@@ -45,6 +45,11 @@ from .models import (
 )
 from .special_device_terms import special_device_term_supported
 from .refusal_rules import SIMPLIFY
+from .text_metric_recall import (
+    explicit_subcomponent_metric_matches,
+    generic_metric_candidates,
+    subcomponent_metric_candidates,
+)
 
 
 def recall_candidates(
@@ -124,11 +129,16 @@ def _empty_intention_basic_candidates(
     )
     if special_result:
         return special_result
-    metric_subcomponents = _empty_intention_metric_subcomponent_matches(
+    explicit_metric_subcomponents = explicit_subcomponent_metric_matches(
         context, domain_cards, matched_domain_cards
     )
-    if metric_subcomponents:
-        return _basic_subcomponent_metric_candidates(context, metric_subcomponents)
+    if explicit_metric_subcomponents:
+        return subcomponent_metric_candidates(context, explicit_metric_subcomponents)
+    generic_metric_result = generic_metric_candidates(
+        context, domain_cards, matched_domain_cards
+    )
+    if generic_metric_result:
+        return generic_metric_result
     matched_subcomponents = _constrain_subcomponent_matches(
         matched_domain_cards, matched_subcomponents
     )
@@ -160,18 +170,6 @@ def _empty_intention_object_matches(
     )
     matched_subcomponents = subcomponents_matching_text(context.question, domain_cards)
     return matched_cards, matched_subcomponents
-
-
-def _empty_intention_metric_subcomponent_matches(
-    context: RecommendationContext,
-    domain_cards: Sequence[DeviceCapabilityProfile],
-    matched_domain_cards: Sequence[DeviceCapabilityProfile],
-) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
-    """空意图文本命中子部件指标时，返回其所属子部件规格。"""
-    if context_device_types(context) or context.subcomponent_types:
-        return []
-    matches = subcomponent_metrics_matching_text(context.question, domain_cards)
-    return _constrain_subcomponent_matches(matched_domain_cards, matches)
 
 
 def _structured_subcomponent_matches(
@@ -327,28 +325,6 @@ def _basic_subcomponent_candidates(
             )
             if candidate:
                 candidates.append(candidate)
-    return candidates
-
-
-def _basic_subcomponent_metric_candidates(
-    context: RecommendationContext,
-    matched_subcomponents: Sequence[
-        Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]
-    ],
-) -> List[CapabilityCandidate]:
-    """生成空意图 Basic 的子部件指标候选。"""
-    candidates = []
-    metric_context = replace(context, kpis=[])
-    for domain_card, subcomponent_card in matched_subcomponents:
-        candidate = subcomponent_candidate(
-            metric_context,
-            domain_card,
-            subcomponent_card,
-            SUBCOMPONENT_METRIC,
-            relax=True,
-        )
-        if candidate:
-            candidates.append(candidate)
     return candidates
 
 

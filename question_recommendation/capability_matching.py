@@ -286,8 +286,16 @@ def subcomponent_metrics_matching_text(
     text: str,
     domain_cards: Sequence[DeviceCapabilityProfile],
 ) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
-    """按原问题中的子部件指标匹配父设备与子部件规格。"""
-    return match_subcomponents_by_text(text, domain_cards).metric
+    """按原问题中明确锚定子部件的指标匹配父设备与子部件规格。"""
+    return match_subcomponents_by_text(text, domain_cards).explicit_metric
+
+
+def generic_subcomponent_metrics_matching_text(
+    text: str,
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]:
+    """按原问题中未明确锚定子部件的指标匹配父设备与子部件规格。"""
+    return match_subcomponents_by_text(text, domain_cards).generic_metric
 
 
 def specific_terms_in_text(text: str, terms: Sequence[str]) -> List[str]:
