@@ -1778,6 +1778,8 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "candidate_capabilities 决定允许的业务域",
         "candidate_capabilities.device_types 只是能力边界证明",
         "不等于用户已识别设备类型",
+        "candidate_field_analysis > field_inheritance_policy",
+        "属性和指标继承必须先满足 field_inheritance_policy",
         "每条推荐必须绑定一个具体 candidate_capability",
         "禁止把多张候选卡的字段并集当作通用白名单",
         "invalid_values",
@@ -2139,8 +2141,10 @@ def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
     assert "禁止跨设备、子部件或候选借用字段" in prompt
     assert "field_inheritance_policy.allow_question_property_inheritance=false" in prompt
     assert "allow_question_kpi_inheritance=false" in prompt
-    assert "原始 question 中的属性表达不能直接进入推荐问题" in prompt
-    assert "原始 question 中的指标表达不能直接进入推荐问题" in prompt
+    assert "原始 question 中的属性表达不是可继承的原属性" in prompt
+    assert "不能触发“原属性精确命中绑定候选白名单”的继承规则" in prompt
+    assert "原始 question 中的指标表达不是可继承的原指标" in prompt
+    assert "只有 field_inheritance_policy 中对应继承开关为 true" in prompt
     assert "例如不能把\"属性1取值A\"改成\"属性2取值A\"" in prompt
     assert "疑似属性或指标" not in prompt
 
@@ -2153,7 +2157,8 @@ def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
     assert "可以从当前绑定候选选择一个语义相近字段" in prompt
     assert "相近字段不得继承原字段绑定的过滤值" in prompt
     assert "禁止生成“属性1取值A的设备类型B”或“属性2取值A的设备类型B”" in prompt
-    assert "原属性或指标精确命中绑定候选白名单时" in prompt
+    assert "原属性或原指标精确命中绑定候选白名单时" in prompt
+    assert "对应继承开关为 true" in prompt
     assert "属性1取值A的设备类型A" in prompt
 
 
@@ -2394,7 +2399,8 @@ def test_chat_prompt_blocks_question_field_when_context_has_no_structured_proper
     assert '"allow_question_property_inheritance": false' in user_prompt
     assert '"allow_question_kpi_inheritance": false' in user_prompt
     assert "allow_question_property_inheritance=false" in system_prompt
-    assert "原始 question 中的属性表达不能直接进入推荐问题" in system_prompt
+    assert "原始 question 中的属性表达不是可继承的原属性" in system_prompt
+    assert "不能触发“原属性精确命中绑定候选白名单”的继承规则" in system_prompt
     assert "疑似属性或指标" not in system_prompt
 
 
