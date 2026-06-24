@@ -166,7 +166,7 @@ _SIMPLIFY_RULES = """## 当前场景：simplify
 
 _EMPTY_INTENTION_BASIC_RULES = """## 当前场景：空 intention Basic
 
-优先延续并修复原问题，无法形成有效原方向时才回退基础方向。先使用上下文中的对象、KPI、时间、聚合和范围；缺失时可从 question 受控继承明确出现的设备表达、KPI、时间、聚合、排序和 TopN，但不得虚构或突破候选对象、父子关系及特殊能力边界。recommendation_context.devices 为空且 question 没有明确设备类型、领域对象词或别名时，候选 device_types 只能作为能力边界，不能写入推荐问题；推荐应保留“设备”等泛化表达，或建议先明确设备类型。空上下文多意图拆分时，只拆分原问题已有的设备定位、时间、KPI、聚合、排序和 TopN，禁止补入候选中的具体设备类型或子部件类型。绑定特殊能力候选时，设备表达仍只能来自 recommendation_context.devices 或候选 device_types，不能从 question 继承候选外设备词。原问题 KPI 可在存在对应 device_metric 或 subcomponent_metric 候选时继续使用，即使未出现在候选 metrics 或实时元数据中。
+优先延续并修复原问题，无法形成有效原方向时才回退基础方向。先使用上下文中的对象、KPI、时间、聚合和范围；缺失时可从 question 受控继承明确出现的设备表达、KPI、时间、聚合、排序和 TopN，但不得虚构或突破候选对象、父子关系及特殊能力边界。recommendation_context.devices 为空且 question 没有明确设备类型、领域对象词或别名时，候选 device_types 只能作为能力边界，不能写入推荐问题；推荐应保留“设备”等泛化表达，或建议先明确设备类型。空上下文多意图拆分时，只拆分原问题已有的设备定位、时间、KPI、聚合、排序和 TopN，禁止补入候选中的具体设备类型或子部件类型；每个拆出的推荐必须保留对应子查询已有的指标操作口径，例如最高、Top1、平均值、最大值、最小值、求和或数量统计，禁止把这些口径降级或改写为趋势、当前值或普通指标查询。绑定特殊能力候选时，设备表达仍只能来自 recommendation_context.devices 或候选 device_types，不能从 question 继承候选外设备词。原问题 KPI 可在存在对应 device_metric 或 subcomponent_metric 候选时继续使用，即使未出现在候选 metrics 或实时元数据中。
 """
 
 _BASIC_RULES = """## 当前场景：basic

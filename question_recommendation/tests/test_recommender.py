@@ -1978,6 +1978,9 @@ def test_empty_intention_uses_basic_fragment_for_other_strategies():
     assert "不能从 question 继承候选外设备词" in prompt
     assert "空上下文多意图拆分时，只拆分原问题已有的设备定位" in prompt
     assert "禁止补入候选中的具体设备类型或子部件类型" in prompt
+    assert "每个拆出的推荐必须保留对应子查询已有的指标操作口径" in prompt
+    assert "最高、Top1、平均值、最大值、最小值" in prompt
+    assert "禁止把这些口径降级或改写为趋势、当前值或普通指标查询" in prompt
 
 
 def test_out_of_scope_alarm_question_does_not_support_unstructured_modifier():
