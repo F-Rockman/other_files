@@ -143,6 +143,101 @@ def test_build_context_ignores_subcomponent_name():
     assert "光模块-01" not in context.to_json()
 
 
+def test_build_context_minimally_adapts_new_intent_structure():
+    context = build_recommendation_context(
+        {
+            "intention": "查指标",
+            "question": "查询防火墙接口下光模块温度最大值",
+            "devices": [
+                {
+                    "id": "10.0.0.1",
+                    "id_type": "IP",
+                    "match_mode": "EXACT",
+                    "device_type": "防火墙",
+                    "properties": ["设备状态"],
+                    "kpis": ["CPU利用率"],
+                }
+            ],
+            "subcomponents": [
+                {
+                    "id": "XGigabitEthernet0/0/1",
+                    "id_type": "NAME",
+                    "match_mode": "EXACT",
+                    "subcomponent_type": "接口",
+                    "properties": ["接口状态"],
+                    "subcomponents": [
+                        {
+                            "subcomponent_type": "光模块",
+                            "properties": ["光模块型号"],
+                            "kpis": ["温度"],
+                        }
+                    ],
+                }
+            ],
+            "agg": ["max", "topN"],
+        }
+    )
+
+    assert context.devices[0].to_dict() == {
+        "device_id": "10.0.0.1",
+        "id_type": "IP",
+        "match_mode": "EXACT",
+        "device_type": "防火墙",
+    }
+    assert context.subcomponent_types == ["接口", "光模块"]
+    assert context.properties == ["设备状态", "接口状态", "光模块型号"]
+    assert context.kpis == ["CPU利用率", "温度"]
+    assert context.aggregations == ["max", "top_n"]
+
+
+def test_build_context_merges_legacy_and_new_scoped_fields():
+    context = build_recommendation_context(
+        {
+            "properties": ["状态"],
+            "kpis": ["CPU利用率"],
+            "devices": [{"properties": ["状态", "厂商"], "kpis": ["内存利用率"]}],
+            "subcomponents": [{"properties": ["接口状态"], "kpis": ["入流量"]}],
+        }
+    )
+
+    assert context.properties == ["状态", "厂商", "接口状态"]
+    assert context.kpis == ["CPU利用率", "内存利用率", "入流量"]
+
+
+def test_invalid_device_identifier_supports_new_id_field():
+    context = build_recommendation_context(
+        {
+            "devices": [
+                {
+                    "id": "1.1.1.1",
+                    "id_type": "IP",
+                    "match_mode": "EXACT",
+                    "device_type": "网络设备",
+                }
+            ]
+        },
+        refuse_info=ErrorCode.INTENT_GUIDE_DEVICE_NOT_FOUND.to_info(),
+        llm_refuse_message="未找到设备 IP 为 1.1.1.1",
+    )
+
+    assert context.invalid_values == ["1.1.1.1"]
+    assert context.devices == [DeviceCondition(device_type="网络设备")]
+
+
+def test_invalid_kpi_supports_new_scoped_kpis():
+    context = build_recommendation_context(
+        {
+            "devices": [{"kpis": ["CPU利用率"]}],
+            "subcomponents": [{"subcomponent_type": "光模块", "kpis": ["温度"]}],
+        },
+        refuse_info=ErrorCode.INTENT_GUIDE_METRIC_NOT_FOUND.to_info(),
+        llm_refuse_message="缺失指标字段",
+    )
+
+    assert context.kpis == []
+    assert context.invalid_values == ["CPU利用率", "温度"]
+
+
 def test_context_json_round_trip():
     original = _network_interface_context(
         devices=[

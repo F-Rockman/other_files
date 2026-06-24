@@ -42,18 +42,20 @@ def build_recommendation_context(
 
     data = upstream_result if isinstance(upstream_result, Mapping) else {}
     devices = _mapping_list(data.get("devices"))
-    subcomponents = _mapping_list(data.get("subcomponents"))
+    subcomponents = _flatten_subcomponents(data.get("subcomponents"))
     rule = get_refusal_recovery_rule(refuse_info.key) if refuse_info else None
     recovery_strategy = rule.strategy if rule else (BASIC if llm_refuse_message else "")
+    all_kpis = _merged_fields(data, devices, subcomponents, "kpis")
+    all_properties = _merged_fields(data, devices, subcomponents, "properties")
     invalid_values, invalid_kpis = _resolve_invalid_values(
         rule.invalidation if rule else "",
         devices,
-        _string_list(data.get("kpis")),
+        all_kpis,
     )
 
     device_conditions = []
     for item in devices:
-        condition = DeviceCondition.from_dict(item)
+        condition = _device_condition_from_upstream(item)
         if condition.device_id in invalid_values:
             condition = DeviceCondition(device_type=condition.device_type)
         if condition.device_id or condition.device_type:
@@ -65,7 +67,7 @@ def build_recommendation_context(
         if isinstance(time_value, (Mapping, list))
         else str(time_value or "").strip()
     )
-    kpis = [item for item in _string_list(data.get("kpis")) if item not in invalid_kpis]
+    kpis = [item for item in all_kpis if item not in invalid_kpis]
 
     return RecommendationContext(
         intention=str(data.get("intention", "") or "").strip(),
@@ -73,7 +75,7 @@ def build_recommendation_context(
         devices=device_conditions,
         subcomponent_types=_dedupe(item.get("subcomponent_type") for item in subcomponents),
         subnet=SubnetScope.from_dict(data.get("subnet")),
-        properties=_string_list(data.get("properties")),
+        properties=all_properties,
         kpis=kpis,
         time=time_text,
         alarm=AlarmCondition.from_dict(data.get("alarm")),
@@ -95,11 +97,11 @@ def _resolve_invalid_values(
     invalid_identifiers: List[str] = []
     invalid_kpis: List[str] = []
     if invalidation == ALL_DEVICE_IDENTIFIERS:
-        invalid_identifiers = _dedupe(item.get("device_id") for item in devices)
+        invalid_identifiers = _dedupe(_device_identifier(item) for item in devices)
     elif invalidation in {IP_IDENTIFIERS, NAME_IDENTIFIERS}:
         expected_type = "IP" if invalidation == IP_IDENTIFIERS else "NAME"
         invalid_identifiers = _dedupe(
-            item.get("device_id")
+            _device_identifier(item)
             for item in devices
             if str(item.get("id_type", "") or "").upper() == expected_type
         )
@@ -125,6 +127,44 @@ def _mapping_list(value: Any) -> List[Mapping[str, Any]]:
     if isinstance(value, list):
         return [item for item in value if isinstance(item, Mapping)]
     return []
+
+
+def _flatten_subcomponents(value: Any) -> List[Mapping[str, Any]]:
+    """递归展开上游子部件结构，保留父子部件在原文中的先后顺序。"""
+    result: List[Mapping[str, Any]] = []
+    for item in _mapping_list(value):
+        result.append(item)
+        result.extend(_flatten_subcomponents(item.get("subcomponents")))
+    return result
+
+
+def _device_condition_from_upstream(item: Mapping[str, Any]) -> DeviceCondition:
+    """把上游新字段 ``id`` 映射到当前内部 ``device_id``。"""
+    normalized = dict(item)
+    if "device_id" not in normalized and "id" in normalized:
+        normalized["device_id"] = normalized.get("id")
+    return DeviceCondition.from_dict(normalized)
+
+
+def _device_identifier(item: Mapping[str, Any]) -> Any:
+    """读取设备定位值，优先兼容旧字段，其次读取新结构 ``id``。"""
+    return item.get("device_id") if "device_id" in item else item.get("id")
+
+
+def _merged_fields(
+    data: Mapping[str, Any],
+    devices: List[Mapping[str, Any]],
+    subcomponents: List[Mapping[str, Any]],
+    field_name: str,
+) -> List[str]:
+    """合并顶层、设备级和子部件级字段，保持当前扁平筛选逻辑。"""
+    values: List[str] = []
+    values.extend(_string_list(data.get(field_name)))
+    for item in devices:
+        values.extend(_string_list(item.get(field_name)))
+    for item in subcomponents:
+        values.extend(_string_list(item.get(field_name)))
+    return _dedupe(values)
 
 
 def _string_list(value: Any) -> List[str]:
