@@ -2241,6 +2241,106 @@ def test_candidate_field_analysis_is_disabled_by_usable_metadata():
     }
 
 
+def test_candidate_field_analysis_infers_unsupported_question_property():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询运行状态正常的设备有哪些",
+    )
+    candidates = [
+        {"device_types": ["网络设备"], "properties": ["连接状态"]},
+        {"device_types": ["服务器"], "properties": ["健康状态"]},
+        {"device_types": ["部件设备"], "subcomponent_types": ["部件X"], "properties": ["运行状态"]},
+    ]
+
+    assert analyze_candidate_fields(context, candidates) == {
+        "unsupported_properties": ["运行状态"],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_keeps_question_property_supported_by_device():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询运行状态正常的设备有哪些",
+    )
+    candidates = [
+        {"device_types": ["服务器"], "properties": ["运行状态"]},
+        {"device_types": ["网络设备"], "properties": ["连接状态"]},
+    ]
+
+    assert analyze_candidate_fields(context, candidates) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_allows_subcomponent_question_property():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询光模块运行状态",
+    )
+    candidates = [
+        {"device_types": ["网络设备"], "subcomponent_types": ["光模块"], "properties": ["运行状态"]},
+        {"device_types": ["服务器"], "properties": ["健康状态"]},
+    ]
+
+    assert analyze_candidate_fields(context, candidates) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_infers_unsupported_question_metric():
+    context = RecommendationContext(intention="查指标", question="查询设备功率")
+    candidates = [
+        {"device_types": ["网络设备"], "subcomponent_types": ["机框"], "metrics": ["功率"]},
+        {"device_types": ["服务器"], "metrics": ["CPU利用率"]},
+    ]
+
+    assert analyze_candidate_fields(context, candidates) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": ["功率"],
+    }
+
+
+def test_candidate_field_analysis_keeps_device_and_subcomponent_question_metrics():
+    device_context = RecommendationContext(intention="查指标", question="查询设备CPU利用率")
+    subcomponent_context = RecommendationContext(intention="查指标", question="查询单板功率")
+    device_candidates = [
+        {"device_types": ["服务器"], "metrics": ["CPU利用率"]},
+        {"device_types": ["网络设备"], "subcomponent_types": ["单板"], "metrics": ["CPU利用率"]},
+    ]
+    subcomponent_candidates = [
+        {"device_types": ["网络设备"], "subcomponent_types": ["单板"], "metrics": ["功率"]},
+        {"device_types": ["服务器"], "metrics": ["CPU利用率"]},
+    ]
+
+    assert analyze_candidate_fields(device_context, device_candidates) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+    assert analyze_candidate_fields(subcomponent_context, subcomponent_candidates) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_does_not_infer_question_fields_with_metadata():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询运行状态正常的设备有哪些",
+    )
+    candidates = [{"device_types": ["网络设备"], "properties": ["运行状态"]}]
+    metadata = [
+        MetadataTable(columns=[MetadataColumn(column_description="设备名称")])
+    ]
+
+    assert analyze_candidate_fields(context, candidates, metadata) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
 def test_simplify_analysis_collects_only_removable_constraints():
     context = RecommendationContext(
         recovery_strategy="simplify",
@@ -2364,6 +2464,7 @@ def test_chat_prompt_blocks_question_field_when_context_has_no_structured_proper
     candidates = [
         {"device_types": ["网络设备"], "properties": ["连接状态"]},
         {"device_types": ["服务器"], "properties": ["健康状态"]},
+        {"device_types": ["测试设备"], "subcomponent_types": ["部件X"], "properties": ["运行状态"]},
         {"device_types": ["闪存存储"], "properties": ["型号"]},
     ]
 
@@ -2371,7 +2472,7 @@ def test_chat_prompt_blocks_question_field_when_context_has_no_structured_proper
     system_prompt = messages[0]["content"]
     user_prompt = messages[1]["content"]
 
-    assert '"unsupported_properties": []' in user_prompt
+    assert '"unsupported_properties": [\n    "运行状态"\n  ]' in user_prompt
     assert "字段继承策略" not in user_prompt
     assert "只有原属性或原指标精确命中绑定候选白名单时" in system_prompt
     assert "没有精确命中时，原字段和值都不得从 question 重新继承" in system_prompt
