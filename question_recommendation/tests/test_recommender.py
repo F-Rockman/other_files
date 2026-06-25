@@ -2341,6 +2341,127 @@ def test_candidate_field_analysis_does_not_infer_question_fields_with_metadata()
     }
 
 
+def test_candidate_field_analysis_uses_domain_card_field_ownership():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询运行状态为正常的设备",
+    )
+    domain_cards = [
+        DeviceCapabilityProfile(
+            device_types=["设备A"],
+            properties=["连接状态"],
+            subcomponents=[
+                SubcomponentCapabilitySpec(types=["部件A"], properties=["运行状态"])
+            ],
+        ),
+        DeviceCapabilityProfile(
+            device_types=["设备B"],
+            properties=["健康状态"],
+        ),
+    ]
+
+    assert analyze_candidate_fields(context, [], domain_cards=domain_cards) == {
+        "unsupported_properties": ["运行状态"],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_keeps_field_with_any_device_source():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询运行状态为正常的设备",
+    )
+    domain_cards = [
+        DeviceCapabilityProfile(
+            device_types=["设备A"],
+            properties=["运行状态"],
+        ),
+        DeviceCapabilityProfile(
+            device_types=["设备B"],
+            subcomponents=[
+                SubcomponentCapabilitySpec(types=["部件A"], properties=["运行状态"])
+            ],
+        ),
+    ]
+
+    assert analyze_candidate_fields(context, [], domain_cards=domain_cards) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_allows_domain_card_subcomponent_anchor():
+    context = RecommendationContext(
+        intention="查信息",
+        question="查询光口模块运行状态",
+    )
+    domain_cards = [
+        DeviceCapabilityProfile(
+            device_types=["网络设备"],
+            subcomponents=[
+                SubcomponentCapabilitySpec(
+                    types=["光模块"],
+                    aliases=["光口模块"],
+                    properties=["运行状态"],
+                )
+            ],
+        )
+    ]
+
+    assert analyze_candidate_fields(context, [], domain_cards=domain_cards) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_uses_field_name_subcomponent_anchor():
+    context = RecommendationContext(
+        intention="查指标",
+        question="查询光模块温度",
+    )
+    domain_cards = [
+        DeviceCapabilityProfile(
+            device_types=["网络设备"],
+            subcomponents=[
+                SubcomponentCapabilitySpec(
+                    types=["光模块"],
+                    metrics=["光模块温度"],
+                )
+            ],
+        )
+    ]
+
+    assert analyze_candidate_fields(context, [], domain_cards=domain_cards) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
+def test_candidate_field_analysis_marks_subcomponent_only_metric_for_device_query():
+    device_context = RecommendationContext(intention="查指标", question="查询设备功率")
+    subcomponent_context = RecommendationContext(intention="查指标", question="查询单板功率")
+    domain_cards = [
+        DeviceCapabilityProfile(
+            device_types=["网络设备"],
+            metrics=["CPU利用率"],
+            subcomponents=[
+                SubcomponentCapabilitySpec(types=["单板"], metrics=["功率"])
+            ],
+        )
+    ]
+
+    assert analyze_candidate_fields(device_context, [], domain_cards=domain_cards) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": ["功率"],
+    }
+    assert analyze_candidate_fields(
+        subcomponent_context, [], domain_cards=domain_cards
+    ) == {
+        "unsupported_properties": [],
+        "unsupported_kpis": [],
+    }
+
+
 def test_simplify_analysis_collects_only_removable_constraints():
     context = RecommendationContext(
         recovery_strategy="simplify",

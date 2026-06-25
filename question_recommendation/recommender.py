@@ -5,10 +5,11 @@ import re
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
 from .capabilities import recommend_capabilities
+from .capability_loader import load_capability_cards
 from .config import EXPLAIN_FIELD, LLM_CHAT_CALL_ERROR_REASON, RECOMMENDS_FIELD
 from .field_analysis import analyze_candidate_fields
 from .logical_model_reader import load_metadata_tables
-from .models import MetadataTable, RecommendationContext
+from .models import DeviceCapabilityProfile, MetadataTable, RecommendationContext
 from .prompt import QUESTION_RECOMMENDATION_USER_TEMPLATE, _build_system_prompt
 from .simplify_analysis import analyze_simplify_constraints
 
@@ -34,16 +35,19 @@ def recommend_questions_chat(
         if normalized_context.tables and logical_model_dir
         else []
     )
+    domain_cards, special_cards = load_capability_cards(logical_model_dir)
     candidate_capabilities = recommend_capabilities(
         normalized_context,
         metadata_tables=metadata_tables,
-        logical_model_dir=logical_model_dir,
+        domain_cards=domain_cards,
+        special_cards=special_cards,
         limit=12,
     )
     messages = _build_chat_messages(
         normalized_context,
         metadata_tables,
         [item.to_dict() for item in candidate_capabilities],
+        domain_cards,
     )
 
     try:
@@ -59,10 +63,11 @@ def _build_chat_messages(
     context: RecommendationContext,
     metadata_tables: Sequence[MetadataTable],
     candidate_capabilities: Sequence[Mapping[str, Any]],
+    domain_cards: Sequence[DeviceCapabilityProfile] = (),
 ) -> List[Dict[str, str]]:
     """将标准上下文、按表元数据和候选能力组装为 Chat API messages。"""
     field_analysis = analyze_candidate_fields(
-        context, candidate_capabilities, metadata_tables
+        context, candidate_capabilities, metadata_tables, domain_cards
     )
     simplify_analysis = analyze_simplify_constraints(context)
     user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(

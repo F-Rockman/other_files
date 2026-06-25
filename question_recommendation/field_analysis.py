@@ -4,13 +4,14 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Sequence, Tuple
 
 from .capability_matching import normalized_set
-from .models import MetadataTable, RecommendationContext
+from .models import DeviceCapabilityProfile, MetadataTable, RecommendationContext
 
 
 def analyze_candidate_fields(
     context: RecommendationContext,
     candidate_capabilities: Sequence[Mapping[str, Any]],
     metadata_tables: Sequence[MetadataTable] = (),
+    domain_cards: Sequence[DeviceCapabilityProfile] = (),
 ) -> Dict[str, List[str]]:
     """返回无实时元数据时被全部最终候选精确拒绝的属性和 KPI。"""
     if _has_usable_metadata(metadata_tables):
@@ -19,12 +20,14 @@ def analyze_candidate_fields(
         "unsupported_properties": _unsupported_candidate_fields(
             context,
             candidate_capabilities,
+            domain_cards,
             requested_fields=context.properties,
             field_name="properties",
         ),
         "unsupported_kpis": _unsupported_candidate_fields(
             context,
             candidate_capabilities,
+            domain_cards,
             requested_fields=context.kpis,
             field_name="metrics",
         ),
@@ -39,11 +42,13 @@ class _FieldMatch:
     start: int
     end: int
     has_subcomponent_scope: bool
+    has_subcomponent_anchor: bool = False
 
 
 def _unsupported_candidate_fields(
     context: RecommendationContext,
     candidate_capabilities: Sequence[Mapping[str, Any]],
+    domain_cards: Sequence[DeviceCapabilityProfile],
     requested_fields: Sequence[str],
     field_name: str,
 ) -> List[str]:
@@ -51,7 +56,7 @@ def _unsupported_candidate_fields(
     if requested_fields:
         return _unsupported_fields(requested_fields, candidate_capabilities, field_name)
     inferred_fields = _infer_unsupported_question_fields(
-        context, candidate_capabilities, field_name
+        context, candidate_capabilities, domain_cards, field_name
     )
     return inferred_fields
 
@@ -73,15 +78,20 @@ def _unsupported_fields(
 def _infer_unsupported_question_fields(
     context: RecommendationContext,
     candidate_capabilities: Sequence[Mapping[str, Any]],
+    domain_cards: Sequence[DeviceCapabilityProfile],
     field_name: str,
 ) -> List[str]:
     """从原问题保守抽取字段，并判断其候选归属是否兼容。"""
     if not context.question:
         return []
-    matches = _question_field_matches(context.question, candidate_capabilities, field_name)
+    matches = _question_field_matches(
+        context.question, candidate_capabilities, domain_cards, field_name
+    )
     if not matches:
         return []
-    requested_subcomponent = _question_requests_subcomponent(context, candidate_capabilities)
+    requested_subcomponent = _question_requests_subcomponent(
+        context, candidate_capabilities, domain_cards, matches
+    )
     supported_fields = _compatible_field_set(matches, requested_subcomponent)
     result: List[str] = []
     for field in _matched_fields_in_order(matches):
@@ -93,11 +103,16 @@ def _infer_unsupported_question_fields(
 def _question_field_matches(
     question: str,
     candidate_capabilities: Sequence[Mapping[str, Any]],
+    domain_cards: Sequence[DeviceCapabilityProfile],
     field_name: str,
 ) -> List[_FieldMatch]:
     """返回问题中命中的最长候选字段。"""
     normalized_question = _match_key(question)
     matches: List[_FieldMatch] = []
+    for domain_card in domain_cards:
+        matches.extend(_domain_card_field_matches(normalized_question, domain_card, field_name))
+    if matches:
+        return _longest_field_matches(matches)
     for candidate in candidate_capabilities:
         scoped = _has_subcomponent_scope(candidate)
         for field in _candidate_values(candidate, field_name):
@@ -105,10 +120,49 @@ def _question_field_matches(
     return _longest_field_matches(matches)
 
 
+def _domain_card_field_matches(
+    normalized_question: str,
+    domain_card: DeviceCapabilityProfile,
+    field_name: str,
+) -> List[_FieldMatch]:
+    """返回领域卡中的设备级和子部件级字段命中。"""
+    matches: List[_FieldMatch] = []
+    for field in _domain_card_values(domain_card, field_name):
+        matches.extend(_field_occurrences(normalized_question, field, False))
+    for spec in domain_card.subcomponents:
+        subcomponent_terms = spec.types + spec.aliases
+        for field in _subcomponent_values(spec, field_name):
+            matches.extend(
+                _field_occurrences(
+                    normalized_question, field, True, subcomponent_terms
+                )
+            )
+    return matches
+
+
+def _domain_card_values(domain_card: DeviceCapabilityProfile, field_name: str) -> List[str]:
+    """返回领域卡中的指定字段列表。"""
+    if field_name == "properties":
+        return list(domain_card.properties)
+    if field_name == "metrics":
+        return list(domain_card.metrics)
+    return []
+
+
+def _subcomponent_values(spec: Any, field_name: str) -> List[str]:
+    """返回子部件中的指定字段列表。"""
+    if field_name == "properties":
+        return list(spec.properties)
+    if field_name == "metrics":
+        return list(spec.metrics)
+    return []
+
+
 def _field_occurrences(
     normalized_question: str,
     field: Any,
     has_subcomponent_scope: bool,
+    subcomponent_terms: Sequence[str] = (),
 ) -> List[_FieldMatch]:
     """返回单个字段在问题中的所有命中。"""
     normalized_field = _match_key(field)
@@ -124,6 +178,9 @@ def _field_occurrences(
                 start=start,
                 end=end,
                 has_subcomponent_scope=has_subcomponent_scope,
+                has_subcomponent_anchor=_field_contains_subcomponent_term(
+                    field, subcomponent_terms
+                ),
             )
         )
         start = normalized_question.find(normalized_field, start + 1)
@@ -156,15 +213,50 @@ def _field_match_is_covered(
 def _question_requests_subcomponent(
     context: RecommendationContext,
     candidate_capabilities: Sequence[Mapping[str, Any]],
+    domain_cards: Sequence[DeviceCapabilityProfile],
+    matches: Sequence[_FieldMatch],
 ) -> bool:
     """判断用户问题是否明确以子部件为查询对象。"""
     if context.subcomponent_types:
         return True
+    for match in matches:
+        if match.has_subcomponent_anchor:
+            return True
     normalized_question = _match_key(context.question)
+    for term in _domain_card_subcomponent_terms(domain_cards):
+        if _match_key(term) and _match_key(term) in normalized_question:
+            return True
     for candidate in candidate_capabilities:
         for subcomponent in _candidate_values(candidate, "subcomponent_types"):
             if _match_key(subcomponent) and _match_key(subcomponent) in normalized_question:
                 return True
+    return False
+
+
+def _domain_card_subcomponent_terms(
+    domain_cards: Sequence[DeviceCapabilityProfile],
+) -> List[str]:
+    """返回领域卡中全部子部件类型和别名。"""
+    terms: List[str] = []
+    for domain_card in domain_cards:
+        for spec in domain_card.subcomponents:
+            terms.extend(spec.types)
+            terms.extend(spec.aliases)
+    return terms
+
+
+def _field_contains_subcomponent_term(
+    field: Any,
+    subcomponent_terms: Sequence[str],
+) -> bool:
+    """判断字段名自身是否带有子部件锚点。"""
+    normalized_field = _match_key(field)
+    if not normalized_field:
+        return False
+    for term in subcomponent_terms:
+        normalized_term = _match_key(term)
+        if normalized_term and normalized_term in normalized_field:
+            return True
     return False
 
 
