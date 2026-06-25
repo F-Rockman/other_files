@@ -65,7 +65,6 @@ def _build_chat_messages(
         context, candidate_capabilities, metadata_tables
     )
     simplify_analysis = analyze_simplify_constraints(context)
-    field_inheritance_policy = _build_field_inheritance_policy(context)
     user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
         recommendation_context_json=_json_dumps(context.to_dict()),
         candidate_capabilities_json=_json_dumps(candidate_capabilities),
@@ -79,23 +78,11 @@ def _build_chat_messages(
         "\n\n确定性简化分析 simplify_analysis：\n"
         + _json_dumps(simplify_analysis)
     )
-    user_prompt += (
-        "\n\n字段继承策略 field_inheritance_policy：\n"
-        + _json_dumps(field_inheritance_policy)
-    )
     system_prompt = _build_system_prompt(context, metadata_tables)
     return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
-
-
-def _build_field_inheritance_policy(context: RecommendationContext) -> Dict[str, bool]:
-    """声明原问题中的属性和 KPI 表达是否可作为结构化字段继承。"""
-    return {
-        "allow_question_property_inheritance": bool(context.properties),
-        "allow_question_kpi_inheritance": bool(context.kpis),
-    }
 
 
 def _parse_llm_response(llm_response: str) -> Optional[Dict[str, Any]]:

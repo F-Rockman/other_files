@@ -12,7 +12,6 @@ class SubcomponentTextMatches:
 
     basic: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]
     explicit_metric: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]
-    generic_metric: List[Tuple[DeviceCapabilityProfile, SubcomponentCapabilitySpec]]
 
 
 @dataclass(frozen=True)
@@ -62,9 +61,6 @@ def match_subcomponents_by_text(
             _uncovered_subcomponent_matches(subcomponent_matches, field_matches)
         ),
         explicit_metric=_dedupe_match_pairs(explicit_metric_matches),
-        generic_metric=_dedupe_match_pairs(
-            _generic_metric_matches(metric_matches, explicit_metric_matches)
-        ),
     )
 
 
@@ -194,33 +190,6 @@ def _metric_belongs_to_subcomponent(
         if normalized_spec_metric in normalized_metric:
             return True
     return False
-
-
-def _generic_metric_matches(
-    metric_matches: Sequence[_ScopedTermMatch],
-    explicit_matches: Sequence[_ScopedTermMatch],
-) -> List[_ScopedTermMatch]:
-    """返回未被明确子部件对象接管的子部件指标命中。"""
-    result = []
-    explicit_keys = _match_keys(explicit_matches)
-    for match in metric_matches:
-        key = _match_key(match)
-        if key not in explicit_keys:
-            result.append(match)
-    return result
-
-
-def _match_keys(matches: Sequence[_ScopedTermMatch]) -> set:
-    """返回一组命中的稳定去重 key。"""
-    result = set()
-    for match in matches:
-        result.add(_match_key(match))
-    return result
-
-
-def _match_key(match: _ScopedTermMatch) -> Tuple[str, Tuple[str, ...]]:
-    """返回一个命中的领域卡和子部件 key。"""
-    return (match.domain_card.profile_id, tuple(match.subcomponent.types))
 
 
 def _term_contains_any(term: str, values: Sequence[str]) -> bool:
