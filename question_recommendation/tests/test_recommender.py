@@ -1798,16 +1798,19 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
         "objects 表示告警、链路、子网等特殊能力对象，不是设备子部件",
         "原始 question 不是特殊能力设备词来源",
         "不得继承未出现在候选 device_types 中的设备词",
+        "改用通用或候选支持设备方向",
         "未结构化且未被候选支持的模糊修饰词不得继承",
         "禁止“候选外设备 + objects”",
         "不得输出候选里的具体设备类型",
         "应沿用“设备”",
         "只有绑定候选 locators 支持的定位类型才可继承",
+        "保留有效 device_type 作对象方向",
         "结果形态与语义去重",
         "列表 > 数量 > 其他基础方向",
         "该偏好不得覆盖原始意图、恢复策略或候选能力边界",
         "不能只靠列表↔数量",
         "具体缺失属性",
+        "没有安全替代项时回退到候选内不依赖该属性的方向",
         "多意图",
         "完整设备条件",
         "不得生成同比、环比、较上期、较同期",
@@ -1841,19 +1844,28 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "explain 是展示给用户的自然说明" in prompt
     assert "不写成错误分析报告或推荐系统处理日志" in prompt
     assert "当前查询内容 → 为什么不适合继续 → 下一步方向" in prompt
+    assert "业务对象、查询方向和有效条件" in prompt
+    assert "不机械复述 refusal_message/refusal_detail" in prompt
+    assert "不暴露恢复策略、规则或内部判断" in prompt
     assert "普通场景只说明当前查询方向和后续分析方向" in prompt
     assert "推荐方向必须与 recommends 实际内容一致" in prompt
     assert "不责备用户" in prompt
     assert "\u201c错误原因是\u201d" in prompt
     assert "通常不复述 invalid_values" in prompt
     assert "设备定位未查询到除外" in prompt
+    assert "必须沿用 recommends 与 recommendation_context 中的真实有效表达" in prompt
+    assert "禁止替换成父类或泛化名称" in prompt
+    assert "有子部件时保留父子关系" in prompt
     assert "去重后恰好一个非空值" in prompt
+    assert "不能只用“该设备”替代设备类型" in prompt
     assert "设备类型A不支持属性1属性查询" in prompt
     assert "设备类型A不支持指标1指标查询" in prompt
     assert "设备类型A的子部件A不支持属性1属性查询" in prompt
     assert "对象A不支持能力A查询" in prompt
     assert "对象A不支持查询方向A查询" in prompt
     assert "设备类型A的子部件A不支持查询方向A" in prompt
+    assert "无法安全确定对象时，不虚构对象" in prompt
+    assert "不为查询后无数据维护单独原因模板" in prompt
     assert "当前未查询到IP地址为A的设备" in prompt
     assert "当前未查询到MAC地址为A的设备" in prompt
     assert "当前未查询到名称为A的设备" in prompt
@@ -1870,6 +1882,9 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "设备类型A、设备A、属性1、指标1、取值A、IP地址A、MAC地址A、名称A" in prompt
     assert "\u201c设备不存在\u201d" in prompt
     assert "explain 是否与 recommends 一致" in prompt
+    assert "是否保留真实对象和有效条件" in prompt
+    assert "恢复场景是否包含当前提问、当前原因和下一步方向" in prompt
+    assert "普通场景是否包含当前提问和下一步方向" in prompt
     assert "暂未匹配到对应对象" not in prompt
     assert "暂未识别到可用关联" not in prompt
     assert "当前未查询到过滤条件" not in prompt
@@ -2143,6 +2158,8 @@ def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
     assert "禁止原字段和直接绑定的过滤值" in prompt
     assert "优先从绑定候选自身字段中选择语义明确的相近字段" in prompt
     assert "只推荐查看该字段本身" in prompt
+    assert "不同绑定候选或同候选不同相近字段方向" in prompt
+    assert "禁止跨候选拼接" in prompt
     assert "未命中时，禁止从 question、recommendation_context 或 examples 重新继承" in prompt
     assert "相近字段不得继承原字段绑定的过滤值" in prompt
     assert "禁止生成“属性1取值A的设备类型B”或“属性2取值A的设备类型B”" in prompt
