@@ -1770,6 +1770,42 @@ def test_top_twelve_selection_is_stable():
     assert len(first) == 12
 
 
+def test_prompt_blocks_are_loaded_from_yaml():
+    prompt_path = Path(prompt_module.__file__).with_name("prompt.yaml")
+    source = Path(prompt_module.__file__).read_text(encoding="utf-8")
+    document = prompt_module._PROMPT_DOCUMENT
+    block_names = (
+        "core_rules",
+        "output_rules",
+        "normal_rules",
+        "simplify_rules",
+        "empty_intention_basic_rules",
+        "basic_rules",
+        "recovery_direction_rules",
+        "subnet_rules",
+        "metadata_rules",
+        "no_metadata_rules",
+        "user_template",
+    )
+
+    assert prompt_path.exists()
+    assert "你是运维对话式问数系统的推荐助手" not in source
+    for name in block_names:
+        assert set(document[name]) == {"description", "prompt"}
+    for name, block in document["recovery_rules"].items():
+        assert name in prompt_module._RECOVERY_RULES
+        assert set(block) == {"description", "prompt"}
+        assert prompt_module._RECOVERY_RULES[name] == prompt_module._block_prompt(
+            block, f"recovery_rules.{name}"
+        )
+    assert prompt_module._CORE_RULES == prompt_module._block_prompt(
+        document["core_rules"], "core_rules"
+    )
+    assert QUESTION_RECOMMENDATION_USER_TEMPLATE == prompt_module._block_prompt(
+        document["user_template"], "user_template"
+    )
+
+
 def test_core_prompt_keeps_global_and_text_interpretation_rules():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "trigger_terms" not in prompt
