@@ -1887,38 +1887,34 @@ def test_core_prompt_keeps_global_and_text_interpretation_rules():
 def test_core_prompt_requires_actionable_natural_explain():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert prompt.count("## explain") == 1
-    assert "explain 是展示给用户的自然说明" in prompt
+    assert "explain 是直接展示给用户" in prompt
     assert "不写成错误分析报告或推荐系统处理日志" in prompt
-    assert "当前查询内容 → 为什么不适合继续 → 下一步方向" in prompt
-    assert "2 到 3 句说明" in prompt
-    assert "不得压缩成一句泛泛说明" in prompt
-    assert "业务对象、查询方向和有效条件" in prompt
+    assert "先概括用户当前想查询的业务对象" in prompt
+    assert "再自然说明当前查询为什么不适合直接继续" in prompt
+    assert "最后结合 recommends 中实际问题" in prompt
+    assert "没有恢复要求时，说明当前查询方向" in prompt
     assert "不机械复述 refusal_message/refusal_detail" in prompt
     assert "不暴露恢复策略、规则或内部判断" in prompt
-    assert "普通场景写成至少 2 句" in prompt
-    assert "先概括当前查询方向，再说明推荐问题可以继续查看的方向" in prompt
     assert "推荐方向必须与 recommends 实际内容一致" in prompt
-    assert "不责备用户" in prompt
+    assert "不责备用户，不使用带有指责" in prompt
     assert "\u201c错误原因是\u201d" in prompt
+    assert "优先用自然连接表达" in prompt
     assert "通常不复述 invalid_values" in prompt
-    assert "设备定位未查询到除外" in prompt
-    assert "必须沿用 recommends 与 recommendation_context 中的真实有效表达" in prompt
-    assert "禁止替换成父类或泛化名称" in prompt
-    assert "有子部件时保留父子关系" in prompt
-    assert "去重后恰好一个非空值" in prompt
-    assert "不能只用“该设备”替代设备类型" in prompt
+    assert "设备定位未查询到场景" in prompt
+    assert "恰好包含一个非空值" in prompt
     assert "设备类型A不支持属性1属性查询" in prompt
     assert "设备类型A不支持指标1指标查询" in prompt
     assert "设备类型A的子部件A不支持属性1属性查询" in prompt
     assert "对象A不支持能力A查询" in prompt
     assert "对象A不支持查询方向A查询" in prompt
     assert "设备类型A的子部件A不支持查询方向A" in prompt
-    assert "无法安全确定对象时，不虚构对象" in prompt
-    assert "不为查询后无数据维护单独原因模板" in prompt
+    assert "允许并优先使用“对象 + 不支持 + 属性/指标/能力”" in prompt
     assert "当前未查询到IP地址为A的设备" in prompt
     assert "当前未查询到MAC地址为A的设备" in prompt
     assert "当前未查询到名称为A的设备" in prompt
-    assert "PREFIX/SUFFIX/FUZZY 分别表达“以A开头/以A结尾/包含A”" in prompt
+    assert "PREFIX 表达为“以A开头”" in prompt
+    assert "SUFFIX 表达为“以A结尾”" in prompt
+    assert "FUZZY 表达为“包含A”" in prompt
     assert "序列号为A" in prompt
     assert "设备编码为A" in prompt
     assert "资产编号为A" in prompt
@@ -1928,12 +1924,10 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "设备类型A“属性1”不存在“取值A”这一取值" in prompt
     assert "“属性1”不存在“取值A”这一取值" in prompt
     assert "当前过滤条件不存在该取值" in prompt
-    assert "设备类型A、设备A、属性1、指标1、取值A、IP地址A、MAC地址A、名称A" in prompt
+    assert "设备类型A、设备类型B、设备A、设备B、属性1、指标1、取值A、IP地址A、MAC地址A、名称A" in prompt
+    assert "无对象归属的委婉兜底表达" in prompt
     assert "\u201c设备不存在\u201d" in prompt
-    assert "explain 是否与 recommends 一致" in prompt
-    assert "是否保留真实对象和有效条件" in prompt
-    assert "恢复场景是否为 2 到 3 句且包含当前提问、当前原因和下一步方向" in prompt
-    assert "普通场景是否至少 2 句且包含当前提问和下一步方向" in prompt
+    assert "explain 是否包含当前提问、当前原因和下一步方向" in prompt
     assert "暂未匹配到对应对象" not in prompt
     assert "暂未识别到可用关联" not in prompt
     assert "当前未查询到过滤条件" not in prompt
