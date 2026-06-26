@@ -48,6 +48,7 @@ from question_recommendation.logical_model_reader import (
 )
 from question_recommendation.recommender import (
     _build_chat_messages,
+    _filter_unsupported_field_recommends,
     _parse_llm_response,
 )
 from question_recommendation.refusal_rules import get_refusal_recovery_rule
@@ -3715,6 +3716,51 @@ def test_structurally_valid_llm_result_is_returned_without_content_filtering():
     )
     result = recommend_questions_chat(_network_interface_context(), llm_chat_client)
     assert result == {"recommends": ["重复问题", "重复问题"], "explain": "原样返回"}
+
+
+def test_unsupported_field_filter_removes_recommendations_with_original_field():
+    result = _filter_unsupported_field_recommends(
+        {
+            "recommends": [
+                "查询运行状态正常的服务器有哪些",
+                "查询服务器健康状态信息",
+            ],
+            "explain": "可以先查看服务器健康状态信息。",
+        },
+        {"unsupported_properties": ["运行状态"], "unsupported_kpis": []},
+    )
+
+    assert result == {
+        "recommends": ["查询服务器健康状态信息"],
+        "explain": "可以先查看服务器健康状态信息。",
+    }
+
+
+def test_unsupported_field_filter_does_not_infer_bound_values():
+    result = _filter_unsupported_field_recommends(
+        {
+            "recommends": ["查询通信状态正常的网络设备有哪些"],
+            "explain": "原样返回",
+        },
+        {"unsupported_properties": ["运行状态"], "unsupported_kpis": []},
+    )
+
+    assert result == {
+        "recommends": ["查询通信状态正常的网络设备有哪些"],
+        "explain": "原样返回",
+    }
+
+
+def test_unsupported_field_filter_clears_explain_when_all_recommendations_removed():
+    result = _filter_unsupported_field_recommends(
+        {
+            "recommends": ["查询运行状态正常的服务器有哪些"],
+            "explain": "可以查询运行状态正常的服务器。",
+        },
+        {"unsupported_properties": ["运行状态"], "unsupported_kpis": []},
+    )
+
+    assert result == {"recommends": [], "explain": ""}
 
 
 def test_invalid_json_returns_empty_structure():
