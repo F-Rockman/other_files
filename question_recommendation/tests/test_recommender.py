@@ -1788,8 +1788,6 @@ def test_prompt_blocks_are_loaded_from_yaml():
         "metadata_rules",
         "no_metadata_rules",
         "user_template",
-        "candidate_field_analysis_template",
-        "simplify_analysis_template",
     )
 
     assert prompt_path.exists()
@@ -1814,14 +1812,8 @@ def test_prompt_blocks_are_loaded_from_yaml():
     assert QUESTION_RECOMMENDATION_USER_TEMPLATE == prompt_module._block_prompt(
         document["user_template"], "user_template"
     )
-    assert prompt_module._CANDIDATE_FIELD_ANALYSIS_TEMPLATE == prompt_module._block_prompt(
-        document["candidate_field_analysis_template"],
-        "candidate_field_analysis_template",
-    )
-    assert prompt_module._SIMPLIFY_ANALYSIS_TEMPLATE == prompt_module._block_prompt(
-        document["simplify_analysis_template"],
-        "simplify_analysis_template",
-    )
+    assert "{candidate_field_analysis_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
+    assert "{simplify_analysis_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
 
 
 def test_core_prompt_keeps_global_and_text_interpretation_rules():

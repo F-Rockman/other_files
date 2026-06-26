@@ -70,22 +70,12 @@ def _build_chat_messages(
         context, candidate_capabilities, metadata_tables, domain_cards
     )
     simplify_analysis = analyze_simplify_constraints(context)
-    user_prompt = _join_prompt_fragments(
-        [
-            QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
-                recommendation_context_json=_json_dumps(context.to_dict()),
-                candidate_capabilities_json=_json_dumps(candidate_capabilities),
-                metadata_tables_json=_json_dumps(
-                    [table.to_dict() for table in metadata_tables]
-                ),
-            ),
-            _CANDIDATE_FIELD_ANALYSIS_TEMPLATE.format(
-                candidate_field_analysis_json=_json_dumps(field_analysis)
-            ),
-            _SIMPLIFY_ANALYSIS_TEMPLATE.format(
-                simplify_analysis_json=_json_dumps(simplify_analysis)
-            ),
-        ]
+    user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
+        recommendation_context_json=_json_dumps(context.to_dict()),
+        candidate_capabilities_json=_json_dumps(candidate_capabilities),
+        metadata_tables_json=_json_dumps([table.to_dict() for table in metadata_tables]),
+        candidate_field_analysis_json=_json_dumps(field_analysis),
+        simplify_analysis_json=_json_dumps(simplify_analysis),
     )
     system_prompt = _build_system_prompt(context, metadata_tables)
     return [
@@ -303,8 +293,6 @@ _RECOVERY_DIRECTION_RULES = _prompt_text("recovery_direction_rules")
 _SUBNET_RULES = _prompt_text("subnet_rules")
 _METADATA_RULES = _prompt_text("metadata_rules")
 _NO_METADATA_RULES = _prompt_text("no_metadata_rules")
-_CANDIDATE_FIELD_ANALYSIS_TEMPLATE = _prompt_text("candidate_field_analysis_template")
-_SIMPLIFY_ANALYSIS_TEMPLATE = _prompt_text("simplify_analysis_template")
 
 QUESTION_RECOMMENDATION_SYSTEM_PROMPT = _join_prompt_fragments([_CORE_RULES, _OUTPUT_RULES])
 QUESTION_RECOMMENDATION_USER_TEMPLATE = _prompt_text("user_template")
