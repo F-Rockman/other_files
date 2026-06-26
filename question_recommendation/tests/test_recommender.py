@@ -1788,6 +1788,8 @@ def test_prompt_blocks_are_loaded_from_yaml():
         "metadata_rules",
         "no_metadata_rules",
         "user_template",
+        "candidate_field_analysis_template",
+        "simplify_analysis_template",
     )
 
     assert prompt_path.exists()
@@ -1796,6 +1798,8 @@ def test_prompt_blocks_are_loaded_from_yaml():
     assert '+ "\\n\\n" +' not in source
     assert "QUESTION_RECOMMENDATION_SYSTEM_PROMPT +" not in source
     assert "user_prompt +=" not in recommender_source
+    assert "确定性候选字段分析 candidate_field_analysis：" not in recommender_source
+    assert "确定性简化分析 simplify_analysis：" not in recommender_source
     for name in block_names:
         assert set(document[name]) == {"description", "prompt"}
     for name, block in document["recovery_rules"].items():
@@ -1809,6 +1813,14 @@ def test_prompt_blocks_are_loaded_from_yaml():
     )
     assert QUESTION_RECOMMENDATION_USER_TEMPLATE == prompt_module._block_prompt(
         document["user_template"], "user_template"
+    )
+    assert prompt_module._CANDIDATE_FIELD_ANALYSIS_TEMPLATE == prompt_module._block_prompt(
+        document["candidate_field_analysis_template"],
+        "candidate_field_analysis_template",
+    )
+    assert prompt_module._SIMPLIFY_ANALYSIS_TEMPLATE == prompt_module._block_prompt(
+        document["simplify_analysis_template"],
+        "simplify_analysis_template",
     )
 
 

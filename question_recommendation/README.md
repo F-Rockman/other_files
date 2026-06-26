@@ -743,11 +743,12 @@ core_rules:
     Prompt 内容
 ```
 
-`prompt.py` 只负责读取 YAML、校验每个片段包含 `description` 和 `prompt`，并按结构化
-上下文选择片段；修改 Prompt 时应优先检查 YAML 中已有规则是否能覆盖，无法覆盖时再新增
-或调整片段。
+`recommender.py` 负责读取 YAML、校验每个片段包含 `description` 和 `prompt`，并按结构化
+上下文选择片段；`prompt.py` 仅保留既有常量导入的兼容导出。修改 Prompt 时应优先检查
+YAML 中已有规则是否能覆盖，无法覆盖时再新增或调整片段。
 
-Chat user prompt 会追加确定性辅助分析：
+Chat user prompt 会追加确定性辅助分析；这些分析片段的标题和模板同样维护在
+`prompt.yaml` 中：
 
 | 名称 | 来源 | 作用 |
 |---|---|---|

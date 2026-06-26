@@ -25,12 +25,13 @@ from .models import (
     SubnetScope,
     SubcomponentCapabilitySpec,
 )
-from .prompt import (
+from .recommender import (
     QUESTION_RECOMMENDATION_PROMPT,
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
+    QuestionRecommendationError,
+    recommend_questions_chat,
 )
-from .recommender import QuestionRecommendationError, recommend_questions_chat
 from .refusal_rules import RefusalRecoveryRule, get_refusal_recovery_rule
 
 __all__ = [

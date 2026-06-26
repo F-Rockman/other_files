@@ -159,7 +159,7 @@ no_metadata_rules:
     - 唯一例外：intention 为空时，原始 question 中明确出现的 KPI 可在存在对应对象层级 device_metric 或 subcomponent_metric 候选时受控继承。
 
 user_template:
-  description: Chat user message 模板，包含上下文、候选能力、实时元数据和确定性分析结果。
+  description: Chat user message 基础模板，包含上下文、候选能力和实时元数据。
   prompt: |
     标准化推荐上下文 recommendation_context：
     {recommendation_context_json}
@@ -171,3 +171,15 @@ user_template:
     {metadata_tables_json}
 
     请严格按 system 规则输出 JSON。
+
+candidate_field_analysis_template:
+  description: Chat user message 中的确定性候选字段分析片段。
+  prompt: |
+    确定性候选字段分析 candidate_field_analysis：
+    {candidate_field_analysis_json}
+
+simplify_analysis_template:
+  description: Chat user message 中的确定性简化分析片段。
+  prompt: |
+    确定性简化分析 simplify_analysis：
+    {simplify_analysis_json}
