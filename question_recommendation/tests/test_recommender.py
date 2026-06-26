@@ -15,6 +15,7 @@ import question_recommendation.capability_loader as capability_loader_module
 import question_recommendation.capability_candidates as capability_candidates_module
 import question_recommendation.capability_matching as capability_matching_module
 import question_recommendation.prompt as prompt_module
+import question_recommendation.recommender as recommender_module
 import question_recommendation.refusal_rules as refusal_rules_module
 from question_recommendation import (
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
@@ -1773,6 +1774,7 @@ def test_top_twelve_selection_is_stable():
 def test_prompt_blocks_are_loaded_from_yaml():
     prompt_path = Path(prompt_module.__file__).with_name("prompt.yaml")
     source = Path(prompt_module.__file__).read_text(encoding="utf-8")
+    recommender_source = Path(recommender_module.__file__).read_text(encoding="utf-8")
     document = prompt_module._PROMPT_DOCUMENT
     block_names = (
         "core_rules",
@@ -1790,6 +1792,10 @@ def test_prompt_blocks_are_loaded_from_yaml():
 
     assert prompt_path.exists()
     assert "你是运维对话式问数系统的推荐助手" not in source
+    assert "+=" not in source
+    assert '+ "\\n\\n" +' not in source
+    assert "QUESTION_RECOMMENDATION_SYSTEM_PROMPT +" not in source
+    assert "user_prompt +=" not in recommender_source
     for name in block_names:
         assert set(document[name]) == {"description", "prompt"}
     for name, block in document["recovery_rules"].items():

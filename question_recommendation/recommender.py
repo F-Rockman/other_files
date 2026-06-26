@@ -70,24 +70,34 @@ def _build_chat_messages(
         context, candidate_capabilities, metadata_tables, domain_cards
     )
     simplify_analysis = analyze_simplify_constraints(context)
-    user_prompt = QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
-        recommendation_context_json=_json_dumps(context.to_dict()),
-        candidate_capabilities_json=_json_dumps(candidate_capabilities),
-        metadata_tables_json=_json_dumps([table.to_dict() for table in metadata_tables]),
-    )
-    user_prompt += (
-        "\n\n确定性候选字段分析 candidate_field_analysis：\n"
-        + _json_dumps(field_analysis)
-    )
-    user_prompt += (
-        "\n\n确定性简化分析 simplify_analysis：\n"
-        + _json_dumps(simplify_analysis)
+    user_prompt = _join_prompt_sections(
+        [
+            QUESTION_RECOMMENDATION_USER_TEMPLATE.format(
+                recommendation_context_json=_json_dumps(context.to_dict()),
+                candidate_capabilities_json=_json_dumps(candidate_capabilities),
+                metadata_tables_json=_json_dumps(
+                    [table.to_dict() for table in metadata_tables]
+                ),
+            ),
+            _analysis_section("确定性候选字段分析 candidate_field_analysis：", field_analysis),
+            _analysis_section("确定性简化分析 simplify_analysis：", simplify_analysis),
+        ]
     )
     system_prompt = _build_system_prompt(context, metadata_tables)
     return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
+
+
+def _analysis_section(title: str, value: Mapping[str, Any]) -> str:
+    """组装 user prompt 中的确定性分析片段。"""
+    return "\n".join([title, _json_dumps(value)])
+
+
+def _join_prompt_sections(sections: Sequence[str]) -> str:
+    """按统一分隔符组装 user prompt 片段。"""
+    return "\n\n".join(sections)
 
 
 def _parse_llm_response(llm_response: str) -> Optional[Dict[str, Any]]:

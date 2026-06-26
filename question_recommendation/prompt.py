@@ -109,7 +109,7 @@ def _build_system_prompt(context: Any, metadata_tables: Sequence[Any] = ()) -> s
     else:
         fragments.append(_NO_METADATA_RULES)
     fragments.append(_OUTPUT_RULES)
-    return "\n\n".join(_dedupe_fragments(fragments))
+    return _join_prompt_fragments(fragments)
 
 
 def _append_recovery_fragment(fragments: list[str], context: Any) -> None:
@@ -182,10 +182,15 @@ def _dedupe_fragments(fragments: Sequence[str]) -> list[str]:
     return result
 
 
-QUESTION_RECOMMENDATION_SYSTEM_PROMPT = _CORE_RULES + "\n\n" + _OUTPUT_RULES
+def _join_prompt_fragments(fragments: Sequence[str]) -> str:
+    """按统一分隔符组装 Prompt 片段。"""
+    return "\n\n".join(_dedupe_fragments(fragments))
+
+
+QUESTION_RECOMMENDATION_SYSTEM_PROMPT = _join_prompt_fragments([_CORE_RULES, _OUTPUT_RULES])
 QUESTION_RECOMMENDATION_USER_TEMPLATE = _prompt_text("user_template")
 
 # 兼容既有常量导入；运行时 Chat 接口会在核心规则与输出规则之间插入场景片段。
-QUESTION_RECOMMENDATION_PROMPT = (
-    QUESTION_RECOMMENDATION_SYSTEM_PROMPT + "\n\n" + QUESTION_RECOMMENDATION_USER_TEMPLATE
+QUESTION_RECOMMENDATION_PROMPT = _join_prompt_fragments(
+    [QUESTION_RECOMMENDATION_SYSTEM_PROMPT, QUESTION_RECOMMENDATION_USER_TEMPLATE]
 )
