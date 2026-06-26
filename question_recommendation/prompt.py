@@ -41,109 +41,14 @@ def format_recommendation_prompt(
 
 def _load_prompt_document() -> Mapping[str, Any]:
     """读取同目录 YAML Prompt 配置。"""
+    import yaml
+
     config_path = Path(__file__).with_name("prompt.yaml")
-    text = config_path.read_text(encoding="utf-8")
-    try:
-        import yaml
-    except ModuleNotFoundError:
-        document = _load_simple_prompt_yaml(text)
-    else:
-        document = yaml.safe_load(text)
+    with config_path.open("r", encoding="utf-8") as file:
+        document = yaml.safe_load(file)
     if not isinstance(document, Mapping):
         raise ValueError("question_recommendation/prompt.yaml must contain a mapping")
     return document
-
-
-def _load_simple_prompt_yaml(text: str) -> Mapping[str, Any]:
-    """在 PyYAML 不可用时解析本模块受控的 Prompt YAML 子集。"""
-    lines = text.splitlines()
-    document: dict[str, Any] = {}
-    index = 0
-    while index < len(lines):
-        line = lines[index]
-        if not line.strip():
-            index += 1
-            continue
-        if not line.endswith(":") or _indent(line) != 0:
-            raise ValueError("Unsupported prompt.yaml structure")
-        key = line[:-1]
-        index += 1
-        if key == "recovery_rules":
-            section, index = _parse_nested_prompt_blocks(lines, index)
-            document[key] = section
-        else:
-            block, index = _parse_prompt_block(lines, index, 2)
-            document[key] = block
-    return document
-
-
-def _parse_nested_prompt_blocks(lines: Sequence[str], index: int) -> tuple[dict[str, Any], int]:
-    """解析 recovery_rules 这类二级 Prompt 映射。"""
-    result: dict[str, Any] = {}
-    while index < len(lines):
-        line = lines[index]
-        if not line.strip():
-            index += 1
-            continue
-        indent = _indent(line)
-        if indent == 0:
-            break
-        if indent != 2 or not line.strip().endswith(":"):
-            raise ValueError("Unsupported nested prompt.yaml structure")
-        key = line.strip()[:-1]
-        block, index = _parse_prompt_block(lines, index + 1, 4)
-        result[key] = block
-    return result, index
-
-
-def _parse_prompt_block(
-    lines: Sequence[str],
-    index: int,
-    indent: int,
-) -> tuple[dict[str, str], int]:
-    """解析包含 description 和 prompt 的标准 Prompt 块。"""
-    block: dict[str, str] = {}
-    while index < len(lines):
-        line = lines[index]
-        if not line.strip():
-            index += 1
-            continue
-        current_indent = _indent(line)
-        if current_indent < indent:
-            break
-        if current_indent != indent:
-            raise ValueError("Unsupported prompt block indentation")
-        content = line[indent:]
-        if content.startswith("description:"):
-            block["description"] = content.split(":", 1)[1].strip()
-            index += 1
-        elif content == "prompt: |":
-            prompt, index = _parse_prompt_scalar(lines, index + 1, indent + 2)
-            block["prompt"] = prompt
-        else:
-            raise ValueError("Unsupported prompt block field")
-    return block, index
-
-
-def _parse_prompt_scalar(
-    lines: Sequence[str],
-    index: int,
-    indent: int,
-) -> tuple[str, int]:
-    """解析 YAML block scalar 文本。"""
-    result: list[str] = []
-    while index < len(lines):
-        line = lines[index]
-        if line.strip() and _indent(line) < indent:
-            break
-        result.append(line[indent:] if len(line) >= indent else "")
-        index += 1
-    return "\n".join(result).rstrip("\n"), index
-
-
-def _indent(line: str) -> int:
-    """返回行首空格数。"""
-    return len(line) - len(line.lstrip(" "))
 
 
 def _prompt_text(name: str) -> str:
