@@ -1890,10 +1890,13 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "explain 是展示给用户的自然说明" in prompt
     assert "不写成错误分析报告或推荐系统处理日志" in prompt
     assert "当前查询内容 → 为什么不适合继续 → 下一步方向" in prompt
+    assert "2 到 3 句说明" in prompt
+    assert "不得压缩成一句泛泛说明" in prompt
     assert "业务对象、查询方向和有效条件" in prompt
     assert "不机械复述 refusal_message/refusal_detail" in prompt
     assert "不暴露恢复策略、规则或内部判断" in prompt
-    assert "普通场景只说明当前查询方向和后续分析方向" in prompt
+    assert "普通场景写成至少 2 句" in prompt
+    assert "先概括当前查询方向，再说明推荐问题可以继续查看的方向" in prompt
     assert "推荐方向必须与 recommends 实际内容一致" in prompt
     assert "不责备用户" in prompt
     assert "\u201c错误原因是\u201d" in prompt
@@ -1929,8 +1932,8 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "\u201c设备不存在\u201d" in prompt
     assert "explain 是否与 recommends 一致" in prompt
     assert "是否保留真实对象和有效条件" in prompt
-    assert "恢复场景是否包含当前提问、当前原因和下一步方向" in prompt
-    assert "普通场景是否包含当前提问和下一步方向" in prompt
+    assert "恢复场景是否为 2 到 3 句且包含当前提问、当前原因和下一步方向" in prompt
+    assert "普通场景是否至少 2 句且包含当前提问和下一步方向" in prompt
     assert "暂未匹配到对应对象" not in prompt
     assert "暂未识别到可用关联" not in prompt
     assert "当前未查询到过滤条件" not in prompt
