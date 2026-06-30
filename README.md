@@ -35,8 +35,7 @@ python_utils/
 ├── question_recommendation/ # 六类能力规格问数推荐
 │   ├── __init__.py
 │   ├── README.md          # 输入字段、必填性、缺失影响和示例
-│   ├── prompt.py          # 推荐 Prompt 兼容导出
-│   ├── prompt.yaml        # 推荐问题生成 Prompt 文本与 user 片段模板
+│   ├── prompt.py          # 推荐问题生成 Prompt 文本
 │   ├── models.py          # 推荐上下文、能力规格、元数据模型
 │   ├── capabilities.py    # 六类查询骨架的确定性召回与排序
 │   ├── data/              # 设备与特殊能力规格

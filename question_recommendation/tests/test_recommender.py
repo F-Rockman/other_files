@@ -1772,103 +1772,59 @@ def test_top_twelve_selection_is_stable():
     assert len(first) == 12
 
 
-def test_prompt_blocks_are_loaded_from_yaml():
-    prompt_path = Path(prompt_module.__file__).with_name("prompt.yaml")
+def test_prompt_is_defined_inline_and_analysis_is_appended_by_recommender():
     source = Path(prompt_module.__file__).read_text(encoding="utf-8")
     recommender_source = Path(recommender_module.__file__).read_text(encoding="utf-8")
-    document = prompt_module._PROMPT_DOCUMENT
-    block_names = (
-        "core_rules",
-        "output_rules",
-        "normal_rules",
-        "simplify_rules",
-        "empty_intention_basic_rules",
-        "basic_rules",
-        "recovery_direction_rules",
-        "subnet_rules",
-        "metadata_rules",
-        "no_metadata_rules",
-        "user_template",
-    )
 
-    assert prompt_path.exists()
-    assert "你是运维对话式问数系统的推荐助手" not in source
-    assert "+=" not in source
-    assert '+ "\\n\\n" +' not in source
-    assert "QUESTION_RECOMMENDATION_SYSTEM_PROMPT +" not in source
-    assert "user_prompt +=" not in recommender_source
-    assert "确定性候选字段分析 candidate_field_analysis：" not in recommender_source
-    assert "确定性简化分析 simplify_analysis：" not in recommender_source
-    for name in block_names:
-        assert set(document[name]) == {"description", "prompt"}
-    for name, block in document["recovery_rules"].items():
-        assert name in prompt_module._RECOVERY_RULES
-        assert set(block) == {"description", "prompt"}
-        assert prompt_module._RECOVERY_RULES[name] == prompt_module._block_prompt(
-            block, f"recovery_rules.{name}"
-        )
-    assert prompt_module._CORE_RULES == prompt_module._block_prompt(
-        document["core_rules"], "core_rules"
-    )
-    assert QUESTION_RECOMMENDATION_USER_TEMPLATE == prompt_module._block_prompt(
-        document["user_template"], "user_template"
-    )
-    assert "{candidate_field_analysis_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
-    assert "{simplify_analysis_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
+    assert "你是运维对话式问数系统的推荐助手" in source
+    assert "_PROMPT_DOCUMENT" not in source
+    assert "_block_prompt" not in source
+    assert "prompt.yaml" not in source
+    assert "确定性候选字段分析 candidate_field_analysis：" in recommender_source
+    assert "确定性简化分析 simplify_analysis：" in recommender_source
+    assert "{recommendation_context_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
+    assert "{candidate_capabilities_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
+    assert "{metadata_tables_json}" in QUESTION_RECOMMENDATION_USER_TEMPLATE
+    assert "{candidate_field_analysis_json}" not in QUESTION_RECOMMENDATION_USER_TEMPLATE
+    assert "{simplify_analysis_json}" not in QUESTION_RECOMMENDATION_USER_TEMPLATE
 
 
 def test_core_prompt_keeps_global_and_text_interpretation_rules():
     prompt = QUESTION_RECOMMENDATION_SYSTEM_PROMPT
     assert "trigger_terms" not in prompt
     for expected in (
-        "CORE-CAPABILITY-BOUNDARY",
-        "CORE-DEVICE-BOUNDARY",
-        "CORE-SPECIAL-OBJECT",
-        "CORE-DEVICE-CONDITION",
-        "CORE-FIELD-SOURCE",
-        "CORE-VALIDITY",
-        "CORE-SAFETY",
-        "CORE-RESULT-FORM",
-        "CORE-DEDUP",
-        "CORE-ALLOWED-FORMS",
-        "CORE-FUTURE-TIME",
-        "CORE-MISSING-PROPERTY",
-        "CORE-MULTI-INTENT",
-        "CORE-ALTERNATIVE-DEVICE",
-        "candidate_capabilities 决定业务域",
+        "candidate_capabilities 决定允许的业务域",
         "candidate_capabilities.device_types 只是能力边界证明",
         "不等于用户已识别设备类型",
         "candidate_field_analysis > 当前场景片段",
+        "属性和指标必须由绑定候选或实时元数据明确支持",
         "每条推荐必须绑定一个具体 candidate_capability",
         "禁止把多张候选卡的字段并集当作通用白名单",
         "invalid_values",
         "objects 表示告警、链路、子网等特殊能力对象，不是设备子部件",
-        "原始 question 不是特殊能力设备词来源",
-        "不得继承未出现在候选 device_types 中的设备词",
-        "改用通用或候选支持设备方向",
+        "原始 question 不是特殊能力设备词的继承来源",
+        "不得从原始 question 继承未出现在候选 device_types 中的设备词",
         "未结构化且未被候选支持的模糊修饰词不得继承",
-        "禁止“候选外设备 + objects”",
-        "不得输出候选里的具体设备类型",
-        "应沿用“设备”",
-        "只有绑定候选 locators 支持的定位类型才可继承",
-        "保留有效 device_type 作对象方向",
+        "禁止生成“候选外设备 + objects”的组合",
+        "最终推荐不得输出候选 device_types 中的具体设备类型",
+        "应沿用“设备”等泛化表达",
+        "只有绑定候选 locators 支持的设备定位类型才可继承",
         "结果形态与语义去重",
-        "列表 > 数量 > 其他基础方向",
+        "推荐形态优先级为：列表 > 数量 > 其他基础信息方向",
         "该偏好不得覆盖原始意图、恢复策略或候选能力边界",
-        "不能只靠列表↔数量",
+        "原问题查数量时不得推荐查信息",
         "具体缺失属性",
-        "没有安全替代项时回退到候选内不依赖该属性的方向",
-        "多意图",
-        "完整设备条件",
+        "多意图拆分",
+        "多定位备选条件拆分",
         "不得生成同比、环比、较上期、较同期",
-        "即使原始 question 包含这些表达",
+        "即使原始 question 明确包含这类对比表达",
         "拒答恢复场景",
         "禁止继承或生成未来时间",
         "明天、后天、下周、下月、明年、未来某天",
         "明确晚于当前日期的绝对时间",
         "优先删除时间条件",
         "输出 1 到 3 条推荐即可",
-        "禁止硬凑",
+        "禁止为了凑满 3 条生成无关对象",
     ):
         assert expected in prompt
     for dynamic_heading in (
@@ -1894,8 +1850,6 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "再自然说明当前查询为什么不适合直接继续" in prompt
     assert "最后结合 recommends 中实际问题" in prompt
     assert "没有恢复要求时，说明当前查询方向" in prompt
-    assert "不机械复述 refusal_message/refusal_detail" in prompt
-    assert "不暴露恢复策略、规则或内部判断" in prompt
     assert "推荐方向必须与 recommends 实际内容一致" in prompt
     assert "不责备用户，不使用带有指责" in prompt
     assert "\u201c错误原因是\u201d" in prompt
@@ -1909,13 +1863,13 @@ def test_core_prompt_requires_actionable_natural_explain():
     assert "对象A不支持能力A查询" in prompt
     assert "对象A不支持查询方向A查询" in prompt
     assert "设备类型A的子部件A不支持查询方向A" in prompt
-    assert "允许并优先使用“对象 + 不支持 + 属性/指标/能力”" in prompt
+    assert "允许并优先使用\"对象 + 不支持 + 属性/指标/能力\"" in prompt
     assert "当前未查询到IP地址为A的设备" in prompt
     assert "当前未查询到MAC地址为A的设备" in prompt
     assert "当前未查询到名称为A的设备" in prompt
-    assert "PREFIX 表达为“以A开头”" in prompt
-    assert "SUFFIX 表达为“以A结尾”" in prompt
-    assert "FUZZY 表达为“包含A”" in prompt
+    assert "PREFIX 表达为\"以A开头\"" in prompt
+    assert "SUFFIX 表达为\"以A结尾\"" in prompt
+    assert "FUZZY 表达为\"包含A\"" in prompt
     assert "序列号为A" in prompt
     assert "设备编码为A" in prompt
     assert "资产编号为A" in prompt
@@ -1995,33 +1949,35 @@ def test_simplify_fragment_overrides_empty_intention_basic():
     prompt = _build_system_prompt(RecommendationContext(recovery_strategy="simplify"))
     assert "当前场景：simplify" in prompt
     assert "当前场景：空 intention Basic" not in prompt
-    assert "候选已按原任务族收敛" in prompt
-    assert "可含列表、数量、详情、属性或指标等相邻形态" in prompt
-    assert "不能只靠形态切换生成推荐" in prompt
-    assert "最终优先使用 recommendation_context.devices[].device_type 的原始对象表达" in prompt
+    assert "候选能力已按原任务族收敛" in prompt
+    assert "可能同时包含列表、数量、详情、属性或指标等相邻形态" in prompt
+    assert "不代表可以只靠形态切换生成推荐" in prompt
+    assert "最终问题应优先使用 recommendation_context.devices[].device_type 中的原始对象表达" in prompt
     assert "核心语义必须保留" in prompt
     assert "主查询对象和用户原始对象表达" in prompt
     assert "父类、子类、相近对象或其他候选对象" in prompt
     assert "同一任务族" in prompt
-    assert "父子或链路等对象关系" in prompt
-    assert "范围删除后可不出现，但不能变成查询目标" in prompt
+    assert "对象关系，例如父子对象、链路两端、告警所属对象" in prompt
+    assert "删除后可以不出现，但不能变成新的查询目标" in prompt
     assert "可删除附加约束只以 simplify_analysis.removable_constraints 为准" in prompt
     assert "时间、子网范围、定位条件、过滤条件、聚合、分组、排序" in prompt
     assert "多余对象、多余 KPI、多余属性、多余设备条件" in prompt
     assert "每条 simplify 推荐必须删除 removable_constraints 中至少一项" in prompt
-    assert "不在清单里的内容不得当成复杂条件、失败原因或可删除约束" in prompt
-    assert "无可删约束时允许少于 3 条" in prompt
-    assert "列表、数量、有哪些、以列表形式展示、趋势、展示趋势、趋势图、查看趋势、TopN" in prompt
-    assert "结果形态，不算有效简化" in prompt
+    assert "不在 removable_constraints 中的内容，不得被当成复杂条件、失败原因或可删除约束" in prompt
+    assert "无可删附加约束时允许少于 3 条" in prompt
+    assert "列表、数量、有哪些、以列表形式展示、趋势、展示趋势、TopN" in prompt
+    assert "展示趋势”“趋势”“趋势图”“查看趋势" in prompt
+    assert "结果形态表达不是复杂条件，本身不算有效简化" in prompt
     assert "查指标时无论是否有时间范围" in prompt
     assert "有无展示趋势视为同一指标查询" in prompt
-    assert "不得只靠趋势表达或 TopN 有无区分" in prompt
-    assert "总带宽”轻微泛化成“带宽" in prompt
+    assert "不能只靠省略、删除、补充或改写趋势表达生成推荐" in prompt
+    assert "不得只靠趋势表达差异区分" in prompt
+    assert "“总带宽”改成“带宽" in prompt
     assert "禁止指标替换" in prompt
-    assert "不得推荐指标B、相近指标、同类指标或其他性能指标" in prompt
-    assert "同类型简化最多 1 条" in prompt
-    assert "保留原指标继续删其他约束" in prompt
-    assert "删除指标并保留设备、子部件、子网、时间等非指标有效条件" in prompt
+    assert "不得推荐查询同对象的指标B，也不得用相近指标、同类指标或其他性能指标" in prompt
+    assert "同类型简化最多生成 1 条推荐" in prompt
+    assert "先保留原指标继续删除其他复杂条件" in prompt
+    assert "再删除指标条件并保留设备、子部件、子网、时间等非指标有效条件" in prompt
     assert "推荐详情或基础信息" in prompt
     assert "不得跳到无关对象" in prompt
 
@@ -2035,11 +1991,11 @@ def test_empty_intention_uses_basic_fragment_for_other_strategies():
     assert "当前场景：无恢复要求" not in prompt
     assert "绑定特殊能力候选时，设备表达仍只能来自" in prompt
     assert "不能从 question 继承候选外设备词" in prompt
-    assert "空上下文多意图拆分时，只拆原问题已有的设备定位" in prompt
+    assert "空上下文多意图拆分时，只拆分原问题已有的设备定位" in prompt
     assert "禁止补入候选中的具体设备类型或子部件类型" in prompt
-    assert "每个拆出问题必须保留原指标操作口径" in prompt
+    assert "每个拆出的推荐必须保留对应子查询已有的指标操作口径" in prompt
     assert "最高、Top1、平均值、最大值、最小值" in prompt
-    assert "禁止降级为趋势、当前值或普通指标查询" in prompt
+    assert "禁止把这些口径降级或改写为趋势、当前值或普通指标查询" in prompt
 
 
 def test_out_of_scope_alarm_question_does_not_support_unstructured_modifier():
@@ -2184,38 +2140,38 @@ def test_no_metadata_fragment_uses_candidate_fields_as_strict_whitelist():
     )
     assert "当前场景：无可用实时元数据" in prompt
     assert "字段白名单" in prompt
-    assert "每条推荐绑定一张候选卡" in prompt
-    assert "无结构化设备类型且 question 也无明确设备词" in prompt
-    assert "绑定候选具体 device_types 不得进入推荐正文" in prompt
-    assert "属性/指标名称匹配忽略英文字母大小写" in prompt
-    assert "具体属性只能来自绑定 info/special properties" in prompt
-    assert "具体指标只能来自绑定 metric 候选 metrics" in prompt
+    assert "绑定一张具体候选卡" in prompt
+    assert "无结构化设备类型且 question 也没有明确设备类型、领域对象词或别名" in prompt
+    assert "绑定候选的具体 device_types 不得进入推荐正文" in prompt
+    assert "属性和指标名称匹配忽略英文字母大小写" in prompt
+    assert "具体属性只能来自绑定的 info/special properties" in prompt
+    assert "具体指标只能来自绑定的 metric 候选 metrics" in prompt
     assert "禁止跨设备、子部件或候选借用字段" in prompt
-    assert "原属性或指标精确命中绑定候选白名单时" in prompt
-    assert "未命中时，禁止从 question" in prompt
+    assert "只有原属性或原指标精确命中绑定候选白名单时" in prompt
+    assert "没有精确命中时，原字段和值都不得从 question 重新继承" in prompt
     assert "疑似属性或指标" not in prompt
 
 
 def test_no_metadata_fragment_removes_unmatched_field_and_bound_value():
     prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
     assert "unsupported_properties/unsupported_kpis" in prompt
-    assert "禁止原字段和直接绑定的过滤值" in prompt
-    assert "优先从绑定候选自身字段中选择语义明确的相近字段" in prompt
-    assert "只推荐查看该字段本身" in prompt
+    assert "必须删除原字段及其直接绑定的过滤值" in prompt
+    assert "优先从该卡自身字段中选择一个语义明确的相近字段" in prompt
+    assert "相近字段不得继承原字段绑定的过滤值" in prompt
     assert "不同绑定候选或同候选不同相近字段方向" in prompt
     assert "禁止跨候选拼接" in prompt
-    assert "未命中时，禁止从 question、recommendation_context 或 examples 重新继承" in prompt
+    assert "也禁止从 question、recommendation_context 或 examples 重新继承" in prompt
     assert "相近字段不得继承原字段绑定的过滤值" in prompt
     assert "禁止生成“属性1取值A的设备类型B”或“属性2取值A的设备类型B”" in prompt
-    assert "原属性或指标精确命中绑定候选白名单时" in prompt
+    assert "只有原属性或原指标精确命中绑定候选白名单时" in prompt
 
 
 def test_no_metadata_fragment_falls_back_to_same_object_information():
     prompt = _build_system_prompt(RecommendationContext(intention="查信息"))
     assert "只有绑定候选没有清晰相近字段时" in prompt
     assert "继承设备定位、父子关系、子网、时间、其他未冲突条件" in prompt
-    assert "最后回退同对象基础信息" in prompt
-    assert "不得为补足三条切换数量" in prompt
+    assert "最后才回退同对象基础信息" in prompt
+    assert "禁止为了补足三条切换为数量查询" in prompt
 
 
 def test_no_metadata_fragment_keeps_empty_intention_kpi_exception():
@@ -2622,12 +2578,12 @@ def test_chat_prompt_prioritizes_similar_fields_for_globally_unsupported_item():
     user_prompt = messages[1]["content"]
 
     assert '"unsupported_properties": [\n    "运行状态"\n  ]' in user_prompt
-    assert "每条推荐绑定一张候选卡" in system_prompt
-    assert "优先从绑定候选自身字段中选择语义明确的相近字段" in system_prompt
-    assert "禁止原字段和直接绑定的过滤值" in system_prompt
+    assert "绑定一张具体候选卡" in system_prompt
+    assert "优先从该卡自身字段中选择一个语义明确的相近字段" in system_prompt
+    assert "必须删除原字段及其直接绑定的过滤值" in system_prompt
     assert "只有绑定候选没有清晰相近字段时" in system_prompt
     assert "继承设备定位、父子关系、子网、时间、其他未冲突条件" in system_prompt
-    assert "最后回退同对象基础信息" in system_prompt
+    assert "最后才回退同对象基础信息" in system_prompt
 
 
 def test_chat_prompt_blocks_question_field_when_context_has_no_structured_property():
@@ -2649,8 +2605,8 @@ def test_chat_prompt_blocks_question_field_when_context_has_no_structured_proper
 
     assert '"unsupported_properties": [\n    "运行状态"\n  ]' in user_prompt
     assert "字段继承策略" not in user_prompt
-    assert "原属性或指标精确命中绑定候选白名单时" in system_prompt
-    assert "未命中时，禁止从 question" in system_prompt
+    assert "只有原属性或原指标精确命中绑定候选白名单时" in system_prompt
+    assert "没有精确命中时，原字段和值都不得从 question 重新继承" in system_prompt
     assert "疑似属性或指标" not in system_prompt
 
 
