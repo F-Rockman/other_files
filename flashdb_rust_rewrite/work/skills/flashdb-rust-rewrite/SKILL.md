@@ -118,6 +118,10 @@ For the current task:
 5. Run `python3 work/scripts/flashdb_pipeline.py check-task TASK_ID`.
 6. Run `python3 work/scripts/flashdb_pipeline.py complete-task TASK_ID`.
 
+Treat exit code `75` from task lifecycle commands as `CONTINUE_REQUIRED`. Read
+`work/state/continue.json`, perform `next_action`, and do not return a final
+answer. Only strict verification exiting `0` is completion.
+
 When `start-task` or `check-task` prints `SELF-HEAL APPLIED`, open the rewritten
 `work/state/current_task.md` and execute `Next required action` immediately.
 
@@ -131,6 +135,8 @@ continue execution.
 - Never load all of `src/fdb_kvdb.c`, `src/fdb_tsdb.c`, or either C test file.
 - Keep every micro-task at or below 200 estimated source lines. Split the task
   before execution if it exceeds that limit.
+- Proactively focus tasks above 120 source lines when they contain multiple
+  completion symbols. Do not wait for the first context stall.
 - Never ask the model to "summarize the whole project" during execution.
 - Do not keep full C source snippets in the answer. Convert the current snippet
   into Rust, run the check, and discard it.
@@ -175,6 +181,11 @@ The healing layer may:
 - switch from source reading to the first compiler error block;
 - replace stale current-task instructions and active progress state;
 - remove obsolete transient healing notes.
+
+Healing writes `work/state/continue.json` and returns exit `75`. This is a
+successful handoff that requires immediate execution of the focused action, not
+a reason to stop. `task` and `status` also heal a started unchanged task after
+five minutes when they next run.
 
 It must preserve `flashDB_rust/`, completed tasks, and the parent task id. It
 must not start another attempt, return to T00, or save source-code understanding.
@@ -249,6 +260,8 @@ python3 work/scripts/flashdb_pipeline.py verify --strict
 ```
 
 Completion requires `verify --strict` to exit 0.
+The successful verifier also removes `work/state/continue.json`; otherwise the
+workflow is still active.
 
 ## Compatibility Rule
 

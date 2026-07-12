@@ -26,17 +26,24 @@ Do not inspect the whole repository, old logs, or completed source again.
    python3 work/scripts/flashdb_pipeline.py heal TASK_ID
    ```
 
-2. Confirm the output says `SELF-HEAL APPLIED` and names the same parent task.
-3. Open the rewritten `work/state/current_task.md`.
-4. Perform its `Next required action` immediately.
-5. Edit only the listed Rust target and run `check-task TASK_ID`.
-6. Return control to `rewrite-executor` without rerunning project discovery,
+2. Expect exit code `75`; this means the heal succeeded and continuation is
+   mandatory.
+3. Confirm the output says `SELF-HEAL APPLIED` and names the same parent task.
+4. Open `work/state/continue.json` and the rewritten
+   `work/state/current_task.md`.
+5. Perform `next_action` immediately. Do not end the run after healing.
+6. Edit only the listed Rust target and run `check-task TASK_ID`.
+7. Return control to `rewrite-executor` without rerunning project discovery,
    preflight, initialization, or the completed task queue.
 
 ## Diagnosis Policy
 
 - `no-target-change`: replace the broad task with one symbol-focused C function
   range, authorize that focused read once, and require an immediate edit.
+- `proactive-context-guard`: focus a large multi-symbol task before its first
+  source read.
+- `stale-no-progress`: focus a task when a later pipeline command observes at
+  least five minutes without a target-file change.
 - `repeated-check-failure`: stop reading C, expose only the first compiler error
   block, repair it, and resume the active symbol focus after Cargo succeeds.
 - `check-passed-objective-incomplete`: keep the parent task open and focus only
@@ -69,4 +76,5 @@ Healing succeeds when one of these occurs:
 - a focused unit completes and the pipeline advances to the next unit.
 
 Continue until the parent task can be passed to `complete-task`; never report
-healing itself as migration completion.
+healing itself as migration completion. Healing must leave
+`work/state/continue.json` present until strict verification succeeds.

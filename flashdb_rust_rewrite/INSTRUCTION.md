@@ -67,6 +67,20 @@ same current task immediately.
 This is a low-context micro-task workflow. It is designed for evaluator LLMs
 that cannot keep the full project in context.
 
+### Continuation Contract
+
+- `work/state/continue.json` is a machine-readable continuation marker.
+- Exit code `75` means the command succeeded in preparing the next action and
+  the evaluator LLM must continue immediately. It is not completion and is not
+  a fatal error.
+- After exit `75`, read only `work/state/continue.json` and
+  `work/state/current_task.md`, then perform `next_action`.
+- Do not end execution, summarize, or return a final answer while
+  `continue.json` has `required: true`.
+- Only `python3 work/scripts/flashdb_pipeline.py verify --strict` exiting `0`
+  proves that the work is complete. A `0` from setup or reporting commands does
+  not mean migration completion.
+
 Do not read entire C source files. Do not attempt to implement `kvdb.rs` or
 `tsdb.rs` in one pass. Always let the pipeline select the next small task.
 
@@ -99,7 +113,8 @@ Do not read entire C source files. Do not attempt to implement `kvdb.rs` or
 
    `start-task` records only execution state and target-file hashes. It must
    not store source-code understanding, algorithm summaries, or implementation
-   hints.
+   hints. Tasks above 120 source lines with multiple completion symbols are
+   proactively reduced to one function-level focus before source reading.
 
 3. Edit only the task's listed target file(s).
 
@@ -113,7 +128,8 @@ Do not read entire C source files. Do not attempt to implement `kvdb.rs` or
 
    `check-task` also checks whether the target changed. If no edit was made, it
    skips a redundant Cargo invocation, applies a smaller active focus, and
-   prints `SELF-HEAL APPLIED`.
+   prints `SELF-HEAL APPLIED`. Intermediate success returns exit `75`; continue
+   with the emitted action instead of stopping.
 
 5. Repeat the micro-task loop until `task` points at `T33-final-verify`.
 
@@ -132,6 +148,9 @@ Do not read entire C source files. Do not attempt to implement `kvdb.rs` or
    Repeating `start-task` before a target edit automatically invokes this same
    healing path. `refresh --reason "..."` remains only as a compatibility alias
    for `heal`; it does not start another attempt.
+
+   Every `task` or `status` call also checks for a started task with no target
+   change for at least five minutes and applies healing before returning.
 
 7. Run the final verifier:
 
@@ -168,6 +187,9 @@ The work is complete only when this command exits with status 0:
 ```bash
 python3 work/scripts/flashdb_pipeline.py verify --strict
 ```
+
+On success, the verifier removes `work/state/continue.json`. If the marker
+still exists, execution is not complete.
 
 Strict verification checks all of the following:
 

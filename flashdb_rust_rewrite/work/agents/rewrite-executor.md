@@ -20,6 +20,10 @@ original C source and tests as read-only reference material.
 - Do not wait for a human choice. Make conservative choices that follow the C
   behavior and the existing Rust layout.
 - Prefer small edits with immediate `cargo check`.
+- Treat exit code `75` as `CONTINUE_REQUIRED`, not as completion or a fatal
+  failure. Read `work/state/continue.json` and execute its `next_action`.
+- Never return a final answer while `work/state/continue.json` has
+  `required: true`.
 
 ## Standard Cycle
 
@@ -59,6 +63,9 @@ original C source and tests as read-only reference material.
    old tactic, open the rewritten `work/state/current_task.md`, and perform its
    `Next required action` immediately.
 
+   Tasks above 120 source lines with multiple completion symbols are focused
+   proactively. Do not attempt the discarded broad read first.
+
 7. Repeat until:
 
    ```bash
@@ -93,10 +100,10 @@ task with `heal`, and continue only after the active focus is budget-safe.
 
 After any context compaction or model restart:
 
-1. Run `python3 work/scripts/flashdb_pipeline.py heal`.
-2. Read only `work/state/healing_action.md` and
+1. Run `python3 work/scripts/flashdb_pipeline.py task`.
+2. Read only `work/state/continue.json`, `work/state/healing_action.md`, and
    `work/state/current_task.md`.
-3. Perform `Next required action` immediately.
+3. Perform `next_action` immediately. Exit `75` means keep going.
 4. Continue the same parent task.
 
 Do not reread `README`, full C files, previous trace files, or the whole

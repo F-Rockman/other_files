@@ -26,6 +26,7 @@ RUST = REPO / "flashDB_rust"
 WORK = REPO / "work"
 STATE = WORK / "state"
 PROGRESS = STATE / "task_progress"
+CONTINUE = STATE / "continue.json"
 RESULT = REPO / "result"
 ISSUES = RESULT / "issues"
 LOGS = REPO / "logs"
@@ -33,6 +34,8 @@ INTERACTION = LOGS / "interaction"
 TRACE = REPO / "log" / "trace"
 
 HEAL_FOCUS_MAX_LINES = 90
+PROACTIVE_FOCUS_LINES = 120
+CONTINUE_EXIT = 75
 
 EXPECTED_MODULES = [
     "lib.rs",
@@ -894,6 +897,113 @@ def effective_task(task: dict[str, Any]) -> dict[str, Any]:
     return focused
 
 
+def task_verified(task: dict[str, Any]) -> bool:
+    progress = load_progress(task["id"])
+    return bool(
+        progress
+        and progress.get("last_check_code") == 0
+        and progress.get("target_hashes_after_last_check") == target_hashes(task)
+    )
+
+
+def next_required_action(task: dict[str, Any]) -> str:
+    active = effective_task(task)
+    status = progress_status(task)
+    progress = load_progress(task["id"]) or {}
+    if task_done(task) and task_verified(task):
+        return "COMPLETE_TASK"
+    if active.get("healing_strategy") == "repair-first-error":
+        return "REPAIR_FIRST_ERROR"
+    if (
+        progress.get("last_check_code") not in (None, 0)
+        and progress.get("target_hashes_after_last_check") == target_hashes(task)
+    ):
+        return "FIX_FIRST_ERROR"
+    if status["started"] and status["target_changed"]:
+        return "RUN_CHECK_TASK"
+    if status["started"] and not status["source_reread_blocked"]:
+        return "READ_FOCUS_THEN_EDIT"
+    if status["started"]:
+        return "RUN_HEAL"
+    return "START_TASK"
+
+
+def load_continuation() -> dict[str, Any] | None:
+    if not CONTINUE.exists():
+        return None
+    try:
+        return json.loads(read_text(CONTINUE))
+    except json.JSONDecodeError:
+        return None
+
+
+def write_continuation(task: dict[str, Any], reason: str) -> None:
+    active = effective_task(task)
+    data = {
+        "required": True,
+        "updated_at": now(),
+        "task_id": task["id"],
+        "focus_id": active.get("focus_id"),
+        "next_action": next_required_action(task),
+        "reason": " ".join(reason.split())[:240],
+        "exit_code": CONTINUE_EXIT,
+        "completion_command": "python3 work/scripts/flashdb_pipeline.py verify --strict",
+        "contains_source_understanding": False,
+    }
+    write_json(CONTINUE, data)
+    write_process_record(
+        "continuation-required",
+        task_id=task["id"],
+        focus_id=active.get("focus_id"),
+        next_action=data["next_action"],
+    )
+
+
+def clear_continuation(reason: str) -> None:
+    if CONTINUE.exists():
+        CONTINUE.unlink()
+    write_process_record("continuation-cleared", reason=" ".join(reason.split())[:240])
+
+
+def requires_proactive_focus(task: dict[str, Any]) -> bool:
+    return (
+        task["id"] != "T33-final-verify"
+        and task_read_line_count(task) > PROACTIVE_FOCUS_LINES
+        and len(task.get("symbols", [])) > 1
+    )
+
+
+def parse_timestamp(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def maybe_auto_heal_stale(task: dict[str, Any], stale_seconds: int = 300) -> bool:
+    progress = load_progress(task["id"])
+    if progress is None:
+        return False
+    status = progress_status(task)
+    if status["healing_active"]:
+        write_continuation(task, "active self-heal focus is waiting for execution")
+        return False
+    started = parse_timestamp(progress.get("active_started_at") or progress.get("started_at"))
+    if started is None or status["target_changed"]:
+        return False
+    age = (dt.datetime.now(dt.timezone.utc) - started).total_seconds()
+    if age < stale_seconds:
+        return False
+    apply_healing(
+        task,
+        "stale-no-progress",
+        f"no target-file change for {int(age)} seconds",
+    )
+    return True
+
+
 def diagnose_task(task: dict[str, Any]) -> str:
     progress = load_progress(task["id"])
     if not task_budget_ok(task):
@@ -1010,6 +1120,7 @@ def apply_healing(
     if stale_refresh.exists():
         stale_refresh.unlink()
     write_healing_action(task, progress)
+    write_continuation(task, f"self-heal applied: {diagnosis}")
     write_current_task(task)
     write_process_record(
         "self-heal",
@@ -1128,6 +1239,8 @@ def status_data() -> dict[str, Any]:
 
 def cmd_status(_args: argparse.Namespace) -> int:
     ensure_dirs()
+    current = first_open_task()
+    auto_healed = maybe_auto_heal_stale(current)
     data = status_data()
     write_json(RESULT / "status.json", data)
     checks = [{"name": "Cargo.toml", "ok": data["cargo_toml"], "detail": "flashDB_rust/Cargo.toml"}]
@@ -1157,9 +1270,17 @@ def cmd_status(_args: argparse.Namespace) -> int:
     })
     print_report_table("Status", checks)
     write_next_actions(status_to_actions(data))
-    write_current_task(first_open_task())
+    current = first_open_task()
+    if not task_done(current):
+        write_continuation(
+            current,
+            "status observed unfinished migration after automatic healing"
+            if auto_healed
+            else "status observed unfinished migration",
+        )
+    write_current_task(current)
     write_process_record("status", cargo_toml=data["cargo_toml"], mapped_cases=data["coverage"]["found"])
-    return 0
+    return CONTINUE_EXIT if not task_done(current) else 0
 
 
 def task_done(task: dict[str, Any]) -> bool:
@@ -1195,6 +1316,8 @@ def cmd_plan(_args: argparse.Namespace) -> int:
     data = plan_data()
     write_json(STATE / "plan.json", data)
     write_todo(data)
+    if not task_done(data["current"]):
+        write_continuation(data["current"], "plan generated an unfinished current task")
     write_current_task(data["current"])
     print(f"Plan written to {STATE.relative_to(REPO)}/todo.md")
     print(f"Current task: {data['current']['id']} - {data['current']['title']}")
@@ -1220,9 +1343,19 @@ def cmd_task(args: argparse.Namespace) -> int:
             print(f"Unknown task id: {args.id}", file=sys.stderr)
             return 2
         task = matches[0]
+    auto_healed = maybe_auto_heal_stale(task)
+    if not task_done(task):
+        write_continuation(
+            task,
+            "task display resumed a stale task with automatic healing"
+            if auto_healed
+            else "task is unfinished",
+        )
     write_current_task(task)
     print(render_task(task))
-    return 0 if task_budget_ok(task) else 1
+    if not task_budget_ok(effective_task(task)):
+        return 1
+    return CONTINUE_EXIT if not task_done(task) else 0
 
 
 def cmd_start_task(args: argparse.Namespace) -> int:
@@ -1243,11 +1376,24 @@ def cmd_start_task(args: argparse.Namespace) -> int:
         print(f"SELF-HEAL APPLIED: {result['diagnosis']} -> {result['strategy']}")
         print("The migration was not restarted. Continue the current task below.\n")
         print(render_task(task))
-        return 0
+        return CONTINUE_EXIT
     if status["started"] and status["target_changed"]:
+        write_continuation(task, "target changed and must be checked")
+        write_current_task(task)
         print(f"Task {task_id} target files changed after start.")
         print(f"Run `python3 work/scripts/flashdb_pipeline.py check-task {task_id}` now.")
-        return 0
+        return CONTINUE_EXIT
+    if requires_proactive_focus(task):
+        result = apply_healing(
+            task,
+            "proactive-context-guard",
+            f"task has {task_read_line_count(task)} source lines and multiple completion symbols",
+        )
+        write_process_record("task-start", task_id=task_id, focus_id=effective_task(task).get("focus_id"))
+        print(f"PROACTIVE SELF-HEAL APPLIED: {result['diagnosis']} -> {result['strategy']}")
+        print("The broad task was replaced before source reading. Continue the focused task below.\n")
+        print(render_task(task))
+        return CONTINUE_EXIT
     active = effective_task(task)
     progress = load_progress(task_id) or {}
     progress.update({
@@ -1265,11 +1411,13 @@ def cmd_start_task(args: argparse.Namespace) -> int:
     })
     save_progress(task_id, progress)
     write_process_record("task-start", task_id=task_id, focus_id=active.get("focus_id"))
+    write_continuation(task, "task started and requires source-to-target execution")
+    write_current_task(task)
     print(f"Started task: {task_id}")
     if active.get("focus_id"):
         print(f"Active self-heal focus: {active['focus_id']}")
     print("Recorded only execution state and target file hashes; no source understanding was stored.")
-    return 0
+    return CONTINUE_EXIT
 
 
 def cmd_check_task(args: argparse.Namespace) -> int:
@@ -1303,7 +1451,7 @@ def cmd_check_task(args: argparse.Namespace) -> int:
         print(f"SELF-HEAL APPLIED: {result['diagnosis']} -> {result['strategy']}")
         print("Skipped the redundant cargo check. Continue the current task below.\n")
         print(render_task(task))
-        return 0
+        return CONTINUE_EXIT
     result = run(shlex.split(command), timeout=600)
     safe_id = re.sub(r"[^A-Za-z0-9_.-]", "_", args.id)
     write_log(f"task_{safe_id}_check.log", result["output"])
@@ -1340,9 +1488,11 @@ def cmd_check_task(args: argparse.Namespace) -> int:
             )
             print(f"SELF-HEAL APPLIED: {healed['diagnosis']} -> {healed['strategy']}")
             print("Use only the first error block, repair the current target, and continue.")
-            return 0
+            return CONTINUE_EXIT
+        write_continuation(task, "task check failed; fix the first error")
+        write_current_task(task)
         print("Fix only the first error block, then run check-task again.")
-        return int(result["code"])
+        return CONTINUE_EXIT
 
     progress = load_progress(args.id) or progress
     healing = progress.get("healing", {})
@@ -1397,7 +1547,9 @@ def cmd_check_task(args: argparse.Namespace) -> int:
 
     if task_done(task):
         print(f"Task objective is present. Run `python3 work/scripts/flashdb_pipeline.py complete-task {args.id}`.")
-    return 0
+    write_continuation(task, "task check finished but migration is not complete")
+    write_current_task(task)
+    return CONTINUE_EXIT
 
 
 def cmd_complete_task(args: argparse.Namespace) -> int:
@@ -1414,13 +1566,17 @@ def cmd_complete_task(args: argparse.Namespace) -> int:
         or progress.get("last_check_code") != 0
         or progress.get("target_hashes_after_last_check") != current_hashes
     ):
+        write_continuation(task, "task must pass check-task before completion")
+        write_current_task(task)
         print(f"Task {args.id} has not passed check-task for the current target content.", file=sys.stderr)
         print(f"Run `python3 work/scripts/flashdb_pipeline.py check-task {args.id}` first.", file=sys.stderr)
-        return 1
+        return CONTINUE_EXIT
     if not task_done(task):
+        write_continuation(task, "task completion symbols are still missing")
+        write_current_task(task)
         print(f"Task {args.id} is not complete according to file/symbol checks.", file=sys.stderr)
         print(render_task(task))
-        return 1
+        return CONTINUE_EXIT
     completed_path = STATE / "completed_tasks.txt"
     existing = read_text(completed_path).splitlines()
     if args.id not in existing:
@@ -1431,11 +1587,16 @@ def cmd_complete_task(args: argparse.Namespace) -> int:
     save_progress(args.id, progress)
     data = plan_data()
     write_todo(data)
-    write_current_task(data["current"])
     write_process_record("task-complete", task_id=args.id, next_task=data["current"]["id"])
     print(f"Marked complete: {args.id}")
     print(f"Next task: {data['current']['id']} - {data['current']['title']}")
-    return 0
+    if args.id == "T33-final-verify":
+        clear_continuation("final verification task completed")
+        write_current_task(data["current"])
+        return 0
+    write_continuation(data["current"], "previous task completed; start the next task")
+    write_current_task(data["current"])
+    return CONTINUE_EXIT
 
 
 def render_task(task: dict[str, Any]) -> str:
@@ -1445,16 +1606,13 @@ def render_task(task: dict[str, Any]) -> str:
     max_lines = task_read_budget(active)
     budget_status = "OK" if estimated_lines <= max_lines else "VIOLATION"
     status = progress_status(parent)
-    if active.get("healing_strategy") == "repair-first-error":
-        next_action = "REPAIR_FIRST_ERROR"
-    elif status["started"] and status["target_changed"]:
-        next_action = "RUN_CHECK_TASK"
-    elif status["started"] and not status["source_reread_blocked"]:
-        next_action = "READ_FOCUS_THEN_EDIT"
-    elif status["started"]:
-        next_action = "RUN_HEAL"
-    else:
-        next_action = "START_TASK"
+    next_action = next_required_action(parent)
+    continuation = load_continuation()
+    continuation_required = bool(
+        continuation
+        and continuation.get("required")
+        and continuation.get("task_id") == parent["id"]
+    )
     lines = [
         f"# Current Micro Task: {parent['id']}",
         "",
@@ -1469,6 +1627,8 @@ def render_task(task: dict[str, Any]) -> str:
         f"Source reread blocked: {'YES' if status['source_reread_blocked'] else 'NO'}",
         f"Self-heal active: {'YES' if status['healing_active'] else 'NO'}",
         f"Self-heal generation: {status['healing_generation']}",
+        f"Continuation required: {'YES' if continuation_required else 'NO'}",
+        f"Continuation exit code: {CONTINUE_EXIT}",
         f"Next required action: {next_action}",
         "",
     ]
@@ -1507,7 +1667,8 @@ def render_task(task: dict[str, Any]) -> str:
         "3. Do not write source-understanding notes; only execution state may persist.",
         "4. Run the preferred check wrapper immediately after the edit.",
         f"5. If progress is impossible or context was compacted before an edit, run `python3 work/scripts/flashdb_pipeline.py heal {parent['id']}`.",
-        "6. Self-heal changes the active focus and continues this parent task; it never restarts migration.",
+        f"6. Exit code {CONTINUE_EXIT} means continue immediately; it is neither completion nor a fatal error.",
+        "7. Self-heal changes the active focus and continues this parent task; it never restarts migration.",
     ])
     return "\n".join(lines) + "\n"
 
@@ -1719,6 +1880,12 @@ def cmd_verify(args: argparse.Namespace) -> int:
     write_json(RESULT / "verify.json", simplify_for_json(data))
     write_next_actions(verify_to_actions(data))
     generate_reports(data)
+    if args.strict and data["ok"]:
+        clear_continuation("strict verification passed")
+    else:
+        current = first_open_task()
+        write_continuation(current, "verification has not completed the migration")
+        write_current_task(current)
     write_process_record("verify", strict=args.strict, ok=data["ok"])
     print_report_table("Verification", data["checks"])
     print(f"Self-validation: {RESULT.relative_to(REPO)}/verify.json")
@@ -1966,7 +2133,7 @@ def cmd_heal(args: argparse.Namespace) -> int:
         print("Migration state and Rust sources were preserved.")
         print("Continue immediately with work/state/current_task.md; do not restart the queue.\n")
         print(render_task(task))
-    return 0
+    return 0 if args.dry_run else CONTINUE_EXIT
 
 
 def cmd_refresh(args: argparse.Namespace) -> int:
