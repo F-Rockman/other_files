@@ -13,7 +13,8 @@ Read only:
 - `work/state/current_task.md`
 - `work/state/healing_action.md`, when present
 - the current task's JSON under `work/state/task_progress/`
-- the first error block of the current task log, when directed
+- the first error block of the current task trace under `log/trace/`, when
+  directed
 
 Do not inspect the whole repository, old logs, or completed source again.
 
@@ -54,6 +55,10 @@ the task queue, target hashes, compiler-log paths, timestamps, and counters.
 Do not persist C algorithm summaries, translated pseudocode, implementation
 hints, or hidden source excerpts. Do not modify `src/`, `inc/`, or `tests/`.
 Do not delete `flashDB_rust/` or completed-task state.
+
+Record only observable healing actions in `logs/process.jsonl`; keep detailed
+command output in `log/trace/`. Do not create `logs/interaction/` unless real
+human interaction occurs.
 
 ## Success Condition
 

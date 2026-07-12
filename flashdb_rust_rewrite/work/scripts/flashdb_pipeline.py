@@ -26,9 +26,11 @@ RUST = REPO / "flashDB_rust"
 WORK = REPO / "work"
 STATE = WORK / "state"
 PROGRESS = STATE / "task_progress"
-LOGS = WORK / "logs"
 RESULT = REPO / "result"
 ISSUES = RESULT / "issues"
+LOGS = REPO / "logs"
+INTERACTION = LOGS / "interaction"
+TRACE = REPO / "log" / "trace"
 
 HEAL_FOCUS_MAX_LINES = 90
 
@@ -534,7 +536,7 @@ MICRO_TASKS = [
 
 
 def ensure_dirs() -> None:
-    for path in (WORK, STATE, PROGRESS, LOGS, RESULT, ISSUES):
+    for path in (WORK, STATE, PROGRESS, RESULT, ISSUES, LOGS, TRACE):
         path.mkdir(parents=True, exist_ok=True)
 
 
@@ -571,7 +573,14 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = 300) -> dict[str
 
 def write_log(name: str, text: str) -> None:
     ensure_dirs()
-    (LOGS / name).write_text(text, encoding="utf-8")
+    (TRACE / name).write_text(text, encoding="utf-8")
+
+
+def write_process_record(event: str, **fields: Any) -> None:
+    ensure_dirs()
+    record = {"at": now(), "event": event, **fields}
+    with (LOGS / "process.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def error_fingerprint(output: str) -> str:
@@ -1002,6 +1011,13 @@ def apply_healing(
         stale_refresh.unlink()
     write_healing_action(task, progress)
     write_current_task(task)
+    write_process_record(
+        "self-heal",
+        task_id=task["id"],
+        diagnosis=diagnosis,
+        strategy=strategy,
+        generation=generation,
+    )
     return result
 
 
@@ -1038,7 +1054,8 @@ def preflight_data() -> dict[str, Any]:
 def cmd_preflight(_args: argparse.Namespace) -> int:
     ensure_dirs()
     data = preflight_data()
-    write_json(STATE / "preflight.json", data)
+    write_json(RESULT / "preflight.json", data)
+    write_process_record("preflight", ok=data["ok"])
     print_report_table("Preflight", data["checks"])
     return 0 if data["ok"] else 1
 
@@ -1112,7 +1129,7 @@ def status_data() -> dict[str, Any]:
 def cmd_status(_args: argparse.Namespace) -> int:
     ensure_dirs()
     data = status_data()
-    write_json(STATE / "status.json", data)
+    write_json(RESULT / "status.json", data)
     checks = [{"name": "Cargo.toml", "ok": data["cargo_toml"], "detail": "flashDB_rust/Cargo.toml"}]
     checks.extend(
         {
@@ -1141,6 +1158,7 @@ def cmd_status(_args: argparse.Namespace) -> int:
     print_report_table("Status", checks)
     write_next_actions(status_to_actions(data))
     write_current_task(first_open_task())
+    write_process_record("status", cargo_toml=data["cargo_toml"], mapped_cases=data["coverage"]["found"])
     return 0
 
 
@@ -1246,6 +1264,7 @@ def cmd_start_task(args: argparse.Namespace) -> int:
         "contains_source_understanding": False,
     })
     save_progress(task_id, progress)
+    write_process_record("task-start", task_id=task_id, focus_id=active.get("focus_id"))
     print(f"Started task: {task_id}")
     if active.get("focus_id"):
         print(f"Active self-heal focus: {active['focus_id']}")
@@ -1290,7 +1309,7 @@ def cmd_check_task(args: argparse.Namespace) -> int:
     write_log(f"task_{safe_id}_check.log", result["output"])
     progress["last_check_code"] = result["code"]
     progress["last_check_at"] = now()
-    progress["last_check_log"] = f"work/logs/task_{safe_id}_check.log"
+    progress["last_check_log"] = f"log/trace/task_{safe_id}_check.log"
     current_hashes = target_hashes(task)
     progress["target_hashes_after_last_check"] = current_hashes
     progress["read_authorized"] = False
@@ -1303,6 +1322,12 @@ def cmd_check_task(args: argparse.Namespace) -> int:
         progress["failures"] = int(progress.get("failures", 0)) + 1 if previous == fingerprint else 1
         progress["last_error_fingerprint"] = fingerprint
     save_progress(args.id, progress)
+    write_process_record(
+        "task-check",
+        task_id=args.id,
+        exit_code=result["code"],
+        failure_count=progress["failures"],
+    )
     print(result["output"], end="")
     print(f"\nTask check exit code: {result['code']}")
     print(f"Recorded failure count: {progress['failures']}")
@@ -1407,6 +1432,7 @@ def cmd_complete_task(args: argparse.Namespace) -> int:
     data = plan_data()
     write_todo(data)
     write_current_task(data["current"])
+    write_process_record("task-complete", task_id=args.id, next_task=data["current"]["id"])
     print(f"Marked complete: {args.id}")
     print(f"Next task: {data['current']['id']} - {data['current']['title']}")
     return 0
@@ -1454,7 +1480,7 @@ def render_task(task: dict[str, Any]) -> str:
         ])
     if active.get("healing_strategy") == "repair-first-error":
         lines.append("Read only the first compiler error block from:")
-        lines.append(f"- {active.get('repair_log') or 'work/logs/task check log'}")
+        lines.append(f"- {active.get('repair_log') or 'log/trace/task check log'}")
         lines.append("- Do not reread C source while repairing a compiler error.")
     else:
         lines.append("Read only these focused ranges:")
@@ -1629,6 +1655,9 @@ def verify_data(strict: bool) -> dict[str, Any]:
 
     checks = [
         {"name": "root INSTRUCTION.md exists", "ok": (REPO / "INSTRUCTION.md").exists()},
+        {"name": "result self-validation directory", "ok": RESULT.is_dir(), "detail": "result/"},
+        {"name": "process record directory", "ok": LOGS.is_dir(), "detail": "logs/"},
+        {"name": "trace directory", "ok": TRACE.is_dir(), "detail": "log/trace/"},
         {"name": "Cargo.toml exists", "ok": (RUST / "Cargo.toml").exists()},
         {
             "name": "src modules complete",
@@ -1670,6 +1699,13 @@ def verify_data(strict: bool) -> dict[str, Any]:
         "coverage": coverage,
         "unsafe": unsafe,
         "integrity": integrity,
+        "artifacts": {
+            "self_validation": "result/verify.json",
+            "successful_output": "result/output.md" if all(item["ok"] for item in checks) else None,
+            "process_records": "logs/process.jsonl",
+            "interaction_records": "logs/interaction/" if INTERACTION.exists() else None,
+            "trace_records": "log/trace/",
+        },
         "checks": checks,
         "ok": all(item["ok"] for item in checks),
     }
@@ -1678,11 +1714,17 @@ def verify_data(strict: bool) -> dict[str, Any]:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     data = verify_data(strict=args.strict)
-    write_json(STATE / "verify.json", simplify_for_json(data))
+    write_json(RESULT / "preflight.json", data["preflight"])
+    write_json(RESULT / "status.json", data["status"])
+    write_json(RESULT / "verify.json", simplify_for_json(data))
     write_next_actions(verify_to_actions(data))
     generate_reports(data)
+    write_process_record("verify", strict=args.strict, ok=data["ok"])
     print_report_table("Verification", data["checks"])
-    print(f"Reports: {RESULT.relative_to(REPO)}/output.md, {ISSUES.relative_to(REPO)}/00-summary.md")
+    print(f"Self-validation: {RESULT.relative_to(REPO)}/verify.json")
+    if data["ok"]:
+        print(f"Successful output: {RESULT.relative_to(REPO)}/output.md")
+    print(f"Issues: {ISSUES.relative_to(REPO)}/00-summary.md")
     return 0 if data["ok"] else 1
 
 
@@ -1739,9 +1781,9 @@ def verify_to_actions(data: dict[str, Any]) -> list[str]:
             continue
         name = check["name"]
         if name == "cargo build":
-            actions.append("Fix the first cargo build error in work/logs/cargo_build.log, then rerun verify.")
+            actions.append("Fix the first cargo build error in log/trace/cargo_build.log, then rerun verify.")
         elif name == "cargo test":
-            actions.append("Fix failing or missing Rust tests from work/logs/cargo_test.log.")
+            actions.append("Fix failing or missing Rust tests from log/trace/cargo_test.log.")
         elif name == "mapped C test coverage":
             missing = [case["id"] for case in data["coverage"]["cases"] if not case["ok"]]
             actions.append("Add missing test mappings: " + ", ".join(missing) + ".")
@@ -1793,7 +1835,7 @@ def generate_reports(data: dict[str, Any]) -> None:
     if not missing_cases_md:
         missing_cases_md = "- none"
 
-    output_md = f"""# FlashDB C-to-Rust Rewrite Report
+    output_md = f"""# FlashDB C-to-Rust Successful Run
 
 Generated: {data['generated_at']}
 
@@ -1811,14 +1853,14 @@ Generated: {data['generated_at']}
 
 - Command: `cargo build`
 - Exit code: {data['build']['code']}
-- Log: `work/logs/cargo_build.log`
+- Trace: `log/trace/cargo_build.log`
 
 ## Test
 
 - Command: `cargo test --no-fail-fast`
 - Exit code: {data['test']['code']}
 - Tests observed: {data['test'].get('tests_run', 0)}
-- Log: `work/logs/cargo_test.log`
+- Trace: `log/trace/cargo_test.log`
 
 ## Test Migration
 
@@ -1845,7 +1887,7 @@ Missing cases:
 
 ## Completion
 
-Strict completion status: {'PASS' if data['ok'] else 'FAIL'}
+Strict completion status: PASS
 """
 
     issue_actions = verify_to_actions(data)
@@ -1867,25 +1909,32 @@ Generated: {data['generated_at']}
 
 ## Cargo Build Log
 
-See `work/logs/cargo_build.log`.
+See `log/trace/cargo_build.log`.
 
 ## Cargo Test Log
 
-See `work/logs/cargo_test.log`.
+See `log/trace/cargo_test.log`.
 """
 
-    (RESULT / "output.md").write_text(output_md, encoding="utf-8")
+    output_path = RESULT / "output.md"
+    if data["ok"]:
+        output_path.write_text(output_md, encoding="utf-8")
+    elif output_path.exists():
+        output_path.unlink()
     (ISSUES / "00-summary.md").write_text(issues_md, encoding="utf-8")
 
 
 def cmd_report(_args: argparse.Namespace) -> int:
-    verify_path = STATE / "verify.json"
+    verify_path = RESULT / "verify.json"
     if verify_path.exists():
         data = json.loads(read_text(verify_path))
     else:
         data = verify_data(strict=False)
     generate_reports(data)
-    print(f"Wrote {RESULT / 'output.md'}")
+    if data["ok"]:
+        print(f"Wrote {RESULT / 'output.md'}")
+    else:
+        print("Successful output was not written because verification has not passed.")
     print(f"Wrote {ISSUES / '00-summary.md'}")
     return 0
 

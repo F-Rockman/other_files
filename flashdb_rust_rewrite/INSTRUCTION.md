@@ -19,6 +19,9 @@ The final deliverable must contain:
 - `flashDB_rust/tests/`
 - `result/output.md`
 - `result/issues/00-summary.md`
+- `result/verify.json`
+- `logs/process.jsonl`
+- `log/trace/`
 
 The Rust project must pass `cargo build` and `cargo test`, and the ratio of
 `unsafe` source lines must be below 10%.
@@ -144,7 +147,7 @@ Do not read entire C source files. Do not attempt to implement `kvdb.rs` or
   does, split it before executing.
 - Never read `src/fdb_kvdb.c` or `src/fdb_tsdb.c` from top to bottom.
 - Never read generated logs larger than the first error block; inspect only the
-  first failing error.
+  first failing error under `log/trace/`.
 - After two read operations, the next action must be an edit or a check command.
 - If context is compacted before an edit, run
   `python3 work/scripts/flashdb_pipeline.py heal TASK_ID`. Then read only the
@@ -178,6 +181,9 @@ Strict verification checks all of the following:
 - `unsafe` ratio is below 10%
 - `result/output.md` is generated and non-empty
 - `result/issues/00-summary.md` is generated
+- `result/verify.json` contains the final self-validation record
+- `logs/process.jsonl` contains concise execution records
+- `log/trace/` contains command and verification traces
 - original material under `src/`, `inc/`, and `tests/` has not been modified
 
 Any failure means the rewrite is not complete. Use `work/state/next_actions.md`
@@ -195,8 +201,26 @@ flashDB_rust/src/
 flashDB_rust/tests/
 result/output.md
 result/issues/00-summary.md
-work/state/verify.json
+result/preflight.json
+result/status.json
+result/verify.json
+logs/process.jsonl
+log/trace/
 ```
+
+### Record Directory Semantics
+
+- `result/` stores self-validation records. `preflight.json`, `status.json`,
+  `verify.json`, and `issues/00-summary.md` may exist before completion.
+- `result/output.md` stores successful-run output only. Do not create it, and
+  remove any stale copy, while strict verification is failing.
+- `logs/` stores concise process and decision records. Record observable
+  actions and outcomes, not hidden chain-of-thought or source-understanding
+  notes.
+- `logs/interaction/` stores contestant/work human-interaction records. This
+  workflow requires no human interaction, so the directory must remain absent
+  unless an interaction actually occurs.
+- `log/trace/` stores detailed command, compiler, test, and verification traces.
 
 `result/output.md` must summarize:
 

@@ -12,6 +12,10 @@ original C source and tests as read-only reference material.
 - `work/scripts/flashdb_pipeline.py` is the verification and reporting CLI.
 - `work/agents/self-healer.md` repairs a stalled current task without restarting
   migration.
+- `result/` stores self-validation records; `result/output.md` is success-only.
+- `logs/process.jsonl` stores concise process events and `log/trace/` stores
+  command output. Do not create `logs/interaction/` without real human
+  interaction.
 - Do not edit `src/`, `inc/`, or `tests/`.
 - Do not wait for a human choice. Make conservative choices that follow the C
   behavior and the existing Rust layout.
@@ -95,8 +99,8 @@ After any context compaction or model restart:
 3. Perform `Next required action` immediately.
 4. Continue the same parent task.
 
-Do not reread `README`, full C files, previous logs, or the whole `work/`
-directory. The task file is the recovery point.
+Do not reread `README`, full C files, previous trace files, or the whole
+`work/` directory. The task file is the recovery point.
 Do not create task notes containing source understanding or implementation
 hints; only non-semantic execution state is allowed.
 
@@ -115,6 +119,6 @@ Stop the current tactic and invoke `heal` if any of these occur:
 ## Cleanup Policy
 
 Self-heal may replace `current_task.md`, `healing_action.md`, the active task's
-progress record, and redundant task-check logs. It must not delete original C
-material, completed-task records, or valid Rust source. Replace a blocking stub
-with implementation rather than deleting the project.
+progress record, and redundant task-check traces under `log/trace/`. It must not
+delete original C material, completed-task records, or valid Rust source.
+Replace a blocking stub with implementation rather than deleting the project.

@@ -41,8 +41,14 @@ Original C source:     src/
 Original C headers:    inc/
 Original C tests:      tests/
 Rust output:           flashDB_rust/
-Result reports:        result/output.md
+Self-validation:       result/preflight.json
+                       result/status.json
+                       result/verify.json
+Successful output:     result/output.md
                        result/issues/00-summary.md
+Process records:       logs/process.jsonl
+Human interaction:     logs/interaction/ (only when interaction occurs)
+Execution traces:      log/trace/
 Pipeline CLI:          work/scripts/flashdb_pipeline.py
 Executor runbook:      work/agents/rewrite-executor.md
 Self-healer runbook:   work/agents/self-healer.md
@@ -142,6 +148,17 @@ continue execution.
   immediately, and continue the same parent task.
 - If the same check error occurs twice, `check-task` invokes first-error repair.
   Follow it instead of entering another compression cycle.
+
+## Record Policy
+
+- Store self-validation records under `result/`.
+- Write `result/output.md` only after successful strict verification; remove a
+  stale copy after any failed verification.
+- Store concise observable process records under `logs/`. Do not write hidden
+  chain-of-thought, source summaries, or implementation hints.
+- Create `logs/interaction/` only when contestant/work human interaction
+  actually occurs. Leave it absent for this autonomous workflow.
+- Store command, compiler, test, and verification traces under `log/trace/`.
 
 ## In-Place Self-Healing
 
