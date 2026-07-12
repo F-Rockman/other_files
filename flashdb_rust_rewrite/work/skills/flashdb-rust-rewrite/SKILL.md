@@ -22,8 +22,8 @@ Use these principles throughout the rewrite:
 3. Keep unsafe code at the boundary. Prefer slices, `std::fs`, enums,
    `Result`, and typed structs over raw pointers and C inheritance casts.
 4. Use Cargo's standard package layout: `Cargo.toml`, `src/`, and `tests/`.
-5. Work in small, compiling increments. After each function or layer, run
-   `cargo check`; after each module, run the pipeline verifier.
+5. Work in small, compiling increments. Let `advance` select the narrow Cargo
+   check; run full tests at behavior boundaries and during final verification.
 6. Heal process artifacts in place when they cause stalls. Preserve completed
    tasks and valid Rust source, optimize the active task, and continue it.
 7. Prefer a simple, composable prompt-chaining workflow with programmatic gates
@@ -105,24 +105,26 @@ Use the pipeline micro-task queue. Do not invent a separate plan.
 
 ```bash
 python3 work/scripts/flashdb_pipeline.py plan
-python3 work/scripts/flashdb_pipeline.py task
+python3 work/scripts/flashdb_pipeline.py advance
 ```
 
 For the current task:
 
-1. Run `python3 work/scripts/flashdb_pipeline.py start-task TASK_ID`.
-2. Read only the ranges listed by `task`.
+1. Run `python3 work/scripts/flashdb_pipeline.py advance TASK_ID`; it starts an
+   unstarted task automatically.
+2. Read only the ranges listed in `work/state/current_task.md`.
 3. Stay under the task's `Max read lines before writing/checking` value.
    Continue only when the task prints `Read budget: OK`.
 4. Edit only the listed target files.
-5. Run `python3 work/scripts/flashdb_pipeline.py check-task TASK_ID`.
-6. Run `python3 work/scripts/flashdb_pipeline.py complete-task TASK_ID`.
+5. Run `python3 work/scripts/flashdb_pipeline.py advance TASK_ID`.
+6. Let that command check the edit, complete the task, and start the next task
+   whenever its gates pass.
 
 Treat exit code `75` from task lifecycle commands as `CONTINUE_REQUIRED`. Read
 `work/state/continue.json`, perform `next_action`, and do not return a final
 answer. Only strict verification exiting `0` is completion.
 
-When `start-task` or `check-task` prints `SELF-HEAL APPLIED`, open the rewritten
+When a lifecycle command prints `SELF-HEAL APPLIED`, open the rewritten
 `work/state/current_task.md` and execute `Next required action` immediately.
 
 The read/write rhythm matters. After at most two read operations, perform an
@@ -137,6 +139,14 @@ continue execution.
   before execution if it exceeds that limit.
 - Proactively focus tasks above 120 source lines when they contain multiple
   completion symbols. Do not wait for the first context stall.
+- Pack at most two adjacent functions into one focus only when their merged
+  source range is at most 80 lines.
+- Use compact lifecycle output by default. `task --full` is diagnostic only;
+  the full checkpoint remains in `work/state/current_task.md`.
+- Rely on the verified completion cache and frontier scan during execution;
+  do not regenerate or rescan the entire queue after each edit.
+- Repeating `advance` without a target edit invokes in-place self-healing and
+  never launches a redundant Cargo command.
 - Never ask the model to "summarize the whole project" during execution.
 - Do not keep full C source snippets in the answer. Convert the current snippet
   into Rust, run the check, and discard it.
@@ -152,7 +162,7 @@ continue execution.
 
   Do not rerun broad discovery. Read only the new focused range, edit its target
   immediately, and continue the same parent task.
-- If the same check error occurs twice, `check-task` invokes first-error repair.
+- If the same check error occurs twice, the check stage invokes first-error repair.
   Follow it instead of entering another compression cycle.
 
 ## Record Policy
@@ -253,7 +263,7 @@ Use the pipeline as the single source of truth:
 ```bash
 python3 work/scripts/flashdb_pipeline.py preflight
 python3 work/scripts/flashdb_pipeline.py plan
-python3 work/scripts/flashdb_pipeline.py task
+python3 work/scripts/flashdb_pipeline.py advance
 python3 work/scripts/flashdb_pipeline.py status
 python3 work/scripts/flashdb_pipeline.py verify
 python3 work/scripts/flashdb_pipeline.py verify --strict

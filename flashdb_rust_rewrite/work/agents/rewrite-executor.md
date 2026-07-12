@@ -32,15 +32,15 @@ original C source and tests as read-only reference material.
    ```bash
    python3 work/scripts/flashdb_pipeline.py preflight
    python3 work/scripts/flashdb_pipeline.py plan
-   python3 work/scripts/flashdb_pipeline.py task
+   python3 work/scripts/flashdb_pipeline.py advance
    ```
 
 2. Open only `work/state/current_task.md`.
 
-3. Run:
+3. If the compact packet says `START_TASK`, run:
 
    ```bash
-   python3 work/scripts/flashdb_pipeline.py start-task TASK_ID
+   python3 work/scripts/flashdb_pipeline.py advance TASK_ID
    ```
 
    This records only execution state and target-file hashes.
@@ -51,20 +51,23 @@ original C source and tests as read-only reference material.
 
 5. Edit only the target file(s) listed in the current task.
 
-6. Run the task's check wrapper, then:
+6. Run one lifecycle command immediately after the edit:
 
    ```bash
-   python3 work/scripts/flashdb_pipeline.py check-task TASK_ID
-   python3 work/scripts/flashdb_pipeline.py complete-task TASK_ID
-   python3 work/scripts/flashdb_pipeline.py task
+   python3 work/scripts/flashdb_pipeline.py advance TASK_ID
    ```
 
-   If either `start-task` or `check-task` prints `SELF-HEAL APPLIED`, stop the
+   It runs the check, records completion, and starts the next task when those
+   transitions are valid. If it prints `SELF-HEAL APPLIED`, stop the
    old tactic, open the rewritten `work/state/current_task.md`, and perform its
    `Next required action` immediately.
 
    Tasks above 120 source lines with multiple completion symbols are focused
-   proactively. Do not attempt the discarded broad read first.
+   proactively. A focus may contain two adjacent functions only when the
+   merged source range is at most 80 lines.
+
+   Calling `advance` again without editing invokes in-place self-healing and
+   skips Cargo. Follow the resulting focus instead of repeating the command.
 
 7. Repeat until:
 
@@ -80,7 +83,7 @@ Run the self-healer as soon as any of these is true:
 
 - context was compacted after reading source but before editing;
 - the same source range is about to be read again without a target change;
-- `check-task` reports the same compiler error twice;
+- the check stage reports the same compiler error twice;
 - Cargo succeeds but the focused completion symbol remains missing;
 - the current task exceeds its read budget.
 
@@ -100,7 +103,7 @@ task with `heal`, and continue only after the active focus is budget-safe.
 
 After any context compaction or model restart:
 
-1. Run `python3 work/scripts/flashdb_pipeline.py task`.
+1. Run `python3 work/scripts/flashdb_pipeline.py advance`.
 2. Read only `work/state/continue.json`, `work/state/healing_action.md`, and
    `work/state/current_task.md`.
 3. Perform `next_action` immediately. Exit `75` means keep going.

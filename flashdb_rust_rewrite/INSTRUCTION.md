@@ -75,6 +75,9 @@ that cannot keep the full project in context.
   a fatal error.
 - After exit `75`, read only `work/state/continue.json` and
   `work/state/current_task.md`, then perform `next_action`.
+- Lifecycle commands print a compact continuation packet by default. Use
+  `task --full` only for diagnosis; the authoritative full task is always
+  written to `work/state/current_task.md`.
 - Do not end execution, summarize, or return a final answer while
   `continue.json` has `required: true`.
 - Only `python3 work/scripts/flashdb_pipeline.py verify --strict` exiting `0`
@@ -88,7 +91,7 @@ Do not read entire C source files. Do not attempt to implement `kvdb.rs` or
 
    ```bash
    python3 work/scripts/flashdb_pipeline.py plan
-   python3 work/scripts/flashdb_pipeline.py task
+   python3 work/scripts/flashdb_pipeline.py advance
    ```
 
    The current task is also written to:
@@ -105,33 +108,38 @@ Do not read entire C source files. Do not attempt to implement `kvdb.rs` or
 2. For the current task, read only the listed source ranges. Each task states a
    maximum read-line budget and an estimated read-line count. Proceed only when
    `Read budget: OK` is shown. If you reach the budget, stop reading and write.
-   Before reading source, mark the task as started:
+   `advance` starts the current task automatically. The compatibility command
+   below may be used when diagnosing lifecycle state:
 
    ```bash
    python3 work/scripts/flashdb_pipeline.py start-task TASK_ID
    ```
 
-   `start-task` records only execution state and target-file hashes. It must
+   Task start records only execution state and target-file hashes. It must
    not store source-code understanding, algorithm summaries, or implementation
    hints. Tasks above 120 source lines with multiple completion symbols are
-   proactively reduced to one function-level focus before source reading.
+   proactively reduced before source reading. Adjacent functions may be packed
+   together only when there are at most two symbols and the merged range is no
+   more than 80 lines.
 
 3. Edit only the task's listed target file(s).
 
-4. Run the task's check wrapper, then:
+4. Immediately after editing, run one lifecycle command:
 
    ```bash
-   python3 work/scripts/flashdb_pipeline.py check-task TASK_ID
-   python3 work/scripts/flashdb_pipeline.py complete-task TASK_ID
-   python3 work/scripts/flashdb_pipeline.py task
+   python3 work/scripts/flashdb_pipeline.py advance TASK_ID
    ```
 
-   `check-task` also checks whether the target changed. If no edit was made, it
-   skips a redundant Cargo invocation, applies a smaller active focus, and
-   prints `SELF-HEAL APPLIED`. Intermediate success returns exit `75`; continue
-   with the emitted action instead of stopping.
+   `advance` inspects the continuation state, runs the task check when the
+   target changed, marks a verified task complete, and starts the next task in
+   the same invocation. If no edit was made, it skips Cargo, applies or narrows
+   the structural focus, and emits the required read/edit action. Full command
+   output is retained under `log/trace/`; stdout contains only the first useful
+   error block and a compact continuation packet. Intermediate success returns
+   exit `75`; continue with the emitted action instead of stopping.
 
-5. Repeat the micro-task loop until `task` points at `T33-final-verify`.
+5. Repeat the edit/`advance` loop. `advance` runs strict verification itself
+   when the current task is `T33-final-verify`.
 
 6. If execution stalls, context is compacted before an edit, or the same check
    error repeats, heal the current task in place:
@@ -167,6 +175,9 @@ Do not read entire C source files. Do not attempt to implement `kvdb.rs` or
 - Never read `src/fdb_kvdb.c` or `src/fdb_tsdb.c` from top to bottom.
 - Never read generated logs larger than the first error block; inspect only the
   first failing error under `log/trace/`.
+- Do not repeatedly call `plan`: verified task ids are cached in
+  `work/state/completed_tasks.txt`, and normal lifecycle commands scan only the
+  first uncompleted frontier task.
 - After two read operations, the next action must be an edit or a check command.
 - If context is compacted before an edit, run
   `python3 work/scripts/flashdb_pipeline.py heal TASK_ID`. Then read only the
