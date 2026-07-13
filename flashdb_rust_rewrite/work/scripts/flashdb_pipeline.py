@@ -9,8 +9,10 @@ verification, report generation, and in-place execution healing.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import hashlib
+import io
 import json
 import os
 import re
@@ -26,11 +28,19 @@ RUST = REPO / "flashDB_rust"
 WORK = REPO / "work"
 STATE = WORK / "state"
 PROGRESS = STATE / "task_progress"
-LOGS = WORK / "logs"
+CONTINUE = STATE / "continue.json"
 RESULT = REPO / "result"
 ISSUES = RESULT / "issues"
+LOGS = REPO / "logs"
+INTERACTION = LOGS / "interaction"
+TRACE = REPO / "log" / "trace"
 
 HEAL_FOCUS_MAX_LINES = 90
+PROACTIVE_FOCUS_LINES = 120
+FOCUS_PACK_MAX_LINES = 80
+FOCUS_PACK_MAX_SYMBOLS = 2
+FOCUS_PACK_VERSION = 1
+CONTINUE_EXIT = 75
 
 EXPECTED_MODULES = [
     "lib.rs",
@@ -428,7 +438,7 @@ MICRO_TASKS = [
         "read": ["tests/fdb_kvdb_tc.c:1-178"],
         "write": ["flashDB_rust/tests/kvdb_test.rs"],
         "symbols": ["dir_delete", "kvdb_test_value_len", "init_kvdb_with_sectors"],
-        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test",
+        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test --no-run",
         "max_read_lines": 190,
     },
     {
@@ -446,7 +456,7 @@ MICRO_TASKS = [
         "read": ["tests/fdb_kvdb_tc.c:359-435"],
         "write": ["flashDB_rust/tests/kvdb_test.rs"],
         "symbols": ["iter_all_kv", "test_save_fdb_by_kvs", "test_check_fdb_by_kvs", "test_fdb_by_kvs"],
-        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test",
+        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test --no-run",
         "max_read_lines": 90,
     },
     {
@@ -455,7 +465,7 @@ MICRO_TASKS = [
         "read": ["tests/fdb_kvdb_tc.c:437-512"],
         "write": ["flashDB_rust/tests/kvdb_test.rs"],
         "symbols": ["test_fdb_gc_prepare_phases"],
-        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test",
+        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test --no-run",
         "max_read_lines": 90,
     },
     {
@@ -464,7 +474,7 @@ MICRO_TASKS = [
         "read": ["tests/fdb_kvdb_tc.c:513-694"],
         "write": ["flashDB_rust/tests/kvdb_test.rs"],
         "symbols": ["test_fdb_gc"],
-        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test",
+        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test test_fdb_gc -- --exact",
         "max_read_lines": 200,
     },
     {
@@ -473,7 +483,7 @@ MICRO_TASKS = [
         "read": ["tests/fdb_kvdb_tc.c:695-887"],
         "write": ["flashDB_rust/tests/kvdb_test.rs"],
         "symbols": ["test_fdb_gc2"],
-        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test",
+        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test test_fdb_gc2 -- --exact",
         "max_read_lines": 200,
     },
     {
@@ -491,7 +501,7 @@ MICRO_TASKS = [
         "read": ["tests/fdb_tsdb_tc.c:1-82"],
         "write": ["flashDB_rust/tests/tsdb_test.rs"],
         "symbols": ["get_time", "tsdb_test_count"],
-        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test tsdb_test",
+        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test tsdb_test --no-run",
         "max_read_lines": 100,
     },
     {
@@ -509,7 +519,7 @@ MICRO_TASKS = [
         "read": ["tests/fdb_tsdb_tc.c:238-344"],
         "write": ["flashDB_rust/tests/tsdb_test.rs"],
         "symbols": ["query_cb", "get_sector_info_cb", "test_tsdb_data_by_time"],
-        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test tsdb_test",
+        "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test tsdb_test --no-run",
         "max_read_lines": 120,
     },
     {
@@ -534,7 +544,7 @@ MICRO_TASKS = [
 
 
 def ensure_dirs() -> None:
-    for path in (WORK, STATE, PROGRESS, LOGS, RESULT, ISSUES):
+    for path in (WORK, STATE, PROGRESS, RESULT, ISSUES, LOGS, TRACE):
         path.mkdir(parents=True, exist_ok=True)
 
 
@@ -571,7 +581,14 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = 300) -> dict[str
 
 def write_log(name: str, text: str) -> None:
     ensure_dirs()
-    (LOGS / name).write_text(text, encoding="utf-8")
+    (TRACE / name).write_text(text, encoding="utf-8")
+
+
+def write_process_record(event: str, **fields: Any) -> None:
+    ensure_dirs()
+    record = {"at": now(), "event": event, **fields}
+    with (LOGS / "process.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def error_fingerprint(output: str) -> str:
@@ -579,6 +596,21 @@ def error_fingerprint(output: str) -> str:
     first_error = next((line for line in lines if line.startswith("error")), "")
     material = first_error or "\n".join(lines[:4]) or "unknown failure"
     return hashlib.sha256(material.encode("utf-8", errors="replace")).hexdigest()
+
+
+def command_excerpt(output: str, *, success: bool, max_lines: int = 12) -> str:
+    lines = output.splitlines()
+    if not lines:
+        return ""
+    if success:
+        selected = lines[-max_lines:]
+    else:
+        start = next(
+            (index for index, line in enumerate(lines) if line.lstrip().startswith("error")),
+            0,
+        )
+        selected = lines[start : start + max_lines]
+    return "\n".join(selected).strip()
 
 
 def read_text(path: Path) -> str:
@@ -721,7 +753,11 @@ def chunk_source_ranges(items: list[str], max_lines: int = HEAL_FOCUS_MAX_LINES)
     return chunks
 
 
-def build_healing_units(task: dict[str, Any]) -> list[dict[str, Any]]:
+def build_healing_units(
+    task: dict[str, Any],
+    *,
+    pack_adjacent: bool = True,
+) -> list[dict[str, Any]]:
     missing = task_missing_symbols(task)
     requested = missing or list(task.get("symbols", []))
     units: list[dict[str, Any]] = []
@@ -763,6 +799,41 @@ def build_healing_units(task: dict[str, Any]) -> list[dict[str, Any]]:
         return (parsed[0], parsed[1]) if parsed else ("", 0)
 
     units.sort(key=source_order)
+    packed: list[dict[str, Any]] = []
+    for unit in units:
+        parsed = parse_source_range(unit.get("read", [""])[0]) if unit.get("read") else None
+        previous = packed[-1] if packed else None
+        previous_range = (
+            parse_source_range(previous.get("read", [""])[0])
+            if previous and previous.get("read")
+            else None
+        )
+        combined_symbols = (
+            list(previous.get("symbols", [])) + list(unit.get("symbols", []))
+            if previous
+            else []
+        )
+        can_pack = bool(
+            pack_adjacent
+            and previous
+            and parsed
+            and previous_range
+            and parsed[0] == previous_range[0]
+            and previous.get("symbols")
+            and unit.get("symbols")
+            and len(combined_symbols) <= FOCUS_PACK_MAX_SYMBOLS
+            and parsed[2] - previous_range[1] + 1 <= FOCUS_PACK_MAX_LINES
+        )
+        if can_pack:
+            merged_range = f"{parsed[0]}:{previous_range[1]}-{parsed[2]}"
+            previous["title"] = "Implement only " + " and ".join(combined_symbols)
+            previous["read"] = [merged_range]
+            previous["symbols"] = combined_symbols
+            previous["max_read_lines"] = read_range_line_count(merged_range)
+        else:
+            packed.append(unit)
+
+    units = packed
     for index, unit in enumerate(units, 1):
         symbol_key = "-".join(unit.get("symbols", [])) or f"slice-{index}"
         safe_key = re.sub(r"[^A-Za-z0-9_.-]", "-", symbol_key).strip("-")
@@ -885,6 +956,115 @@ def effective_task(task: dict[str, Any]) -> dict[str, Any]:
     return focused
 
 
+def task_verified(task: dict[str, Any]) -> bool:
+    progress = load_progress(task["id"])
+    return bool(
+        progress
+        and progress.get("last_check_code") == 0
+        and progress.get("target_hashes_after_last_check") == target_hashes(task)
+    )
+
+
+def next_required_action(task: dict[str, Any]) -> str:
+    if task["id"] == "T33-final-verify":
+        return "RUN_FINAL_VERIFY"
+    active = effective_task(task)
+    status = progress_status(task)
+    progress = load_progress(task["id"]) or {}
+    if task_done(task) and task_verified(task):
+        return "COMPLETE_TASK"
+    if active.get("healing_strategy") == "repair-first-error":
+        return "REPAIR_FIRST_ERROR"
+    if (
+        progress.get("last_check_code") not in (None, 0)
+        and progress.get("target_hashes_after_last_check") == target_hashes(task)
+    ):
+        return "FIX_FIRST_ERROR"
+    if status["started"] and status["target_changed"]:
+        return "RUN_CHECK_TASK"
+    if status["started"] and not status["source_reread_blocked"]:
+        return "READ_FOCUS_THEN_EDIT"
+    if status["started"]:
+        return "RUN_HEAL"
+    return "START_TASK"
+
+
+def load_continuation() -> dict[str, Any] | None:
+    if not CONTINUE.exists():
+        return None
+    try:
+        return json.loads(read_text(CONTINUE))
+    except json.JSONDecodeError:
+        return None
+
+
+def write_continuation(task: dict[str, Any], reason: str) -> None:
+    active = effective_task(task)
+    data = {
+        "required": True,
+        "updated_at": now(),
+        "task_id": task["id"],
+        "focus_id": active.get("focus_id"),
+        "next_action": next_required_action(task),
+        "reason": " ".join(reason.split())[:240],
+        "exit_code": CONTINUE_EXIT,
+        "completion_command": "python3 work/scripts/flashdb_pipeline.py verify --strict",
+        "contains_source_understanding": False,
+    }
+    write_json(CONTINUE, data)
+    write_process_record(
+        "continuation-required",
+        task_id=task["id"],
+        focus_id=active.get("focus_id"),
+        next_action=data["next_action"],
+    )
+
+
+def clear_continuation(reason: str) -> None:
+    if CONTINUE.exists():
+        CONTINUE.unlink()
+    write_process_record("continuation-cleared", reason=" ".join(reason.split())[:240])
+
+
+def requires_proactive_focus(task: dict[str, Any]) -> bool:
+    return (
+        task["id"] != "T33-final-verify"
+        and task_read_line_count(task) > PROACTIVE_FOCUS_LINES
+        and len(task.get("symbols", [])) > 1
+    )
+
+
+def parse_timestamp(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def maybe_auto_heal_stale(task: dict[str, Any], stale_seconds: int = 300) -> bool:
+    progress = load_progress(task["id"])
+    if progress is None:
+        return False
+    status = progress_status(task)
+    if status["healing_active"]:
+        write_continuation(task, "active self-heal focus is waiting for execution")
+        return False
+    started = parse_timestamp(progress.get("active_started_at") or progress.get("started_at"))
+    if started is None or status["target_changed"]:
+        return False
+    age = (dt.datetime.now(dt.timezone.utc) - started).total_seconds()
+    if age < stale_seconds:
+        return False
+    apply_healing(
+        task,
+        "stale-no-progress",
+        f"no target-file change for {int(age)} seconds",
+    )
+    return True
+
+
 def diagnose_task(task: dict[str, Any]) -> str:
     progress = load_progress(task["id"])
     if not task_budget_ok(task):
@@ -944,7 +1124,12 @@ def apply_healing(
     clean_reason = " ".join(reason.split())[:240]
     strategy = "repair-first-error" if diagnosis == "repeated-check-failure" else "symbol-focus"
     repair_log = progress.get("last_check_log") if strategy == "repair-first-error" else None
-    units = build_healing_units(task)
+    pack_adjacent = not (
+        diagnosis == "no-target-change"
+        and bool(previous.get("active"))
+        and int(previous.get("focus_pack_version", 0)) >= FOCUS_PACK_VERSION
+    )
+    units = build_healing_units(task, pack_adjacent=pack_adjacent)
     if strategy == "repair-first-error":
         units.insert(0, {
             "id": f"{task['id']}.R{generation}",
@@ -973,6 +1158,7 @@ def apply_healing(
         ],
         "repair_log": repair_log,
         "contains_source_understanding": False,
+        "focus_pack_version": FOCUS_PACK_VERSION,
     }
     result = {
         "task_id": task["id"],
@@ -1001,7 +1187,15 @@ def apply_healing(
     if stale_refresh.exists():
         stale_refresh.unlink()
     write_healing_action(task, progress)
+    write_continuation(task, f"self-heal applied: {diagnosis}")
     write_current_task(task)
+    write_process_record(
+        "self-heal",
+        task_id=task["id"],
+        diagnosis=diagnosis,
+        strategy=strategy,
+        generation=generation,
+    )
     return result
 
 
@@ -1038,7 +1232,8 @@ def preflight_data() -> dict[str, Any]:
 def cmd_preflight(_args: argparse.Namespace) -> int:
     ensure_dirs()
     data = preflight_data()
-    write_json(STATE / "preflight.json", data)
+    write_json(RESULT / "preflight.json", data)
+    write_process_record("preflight", ok=data["ok"])
     print_report_table("Preflight", data["checks"])
     return 0 if data["ok"] else 1
 
@@ -1111,8 +1306,10 @@ def status_data() -> dict[str, Any]:
 
 def cmd_status(_args: argparse.Namespace) -> int:
     ensure_dirs()
+    current = first_open_task()
+    auto_healed = maybe_auto_heal_stale(current)
     data = status_data()
-    write_json(STATE / "status.json", data)
+    write_json(RESULT / "status.json", data)
     checks = [{"name": "Cargo.toml", "ok": data["cargo_toml"], "detail": "flashDB_rust/Cargo.toml"}]
     checks.extend(
         {
@@ -1140,8 +1337,17 @@ def cmd_status(_args: argparse.Namespace) -> int:
     })
     print_report_table("Status", checks)
     write_next_actions(status_to_actions(data))
-    write_current_task(first_open_task())
-    return 0
+    current = first_open_task()
+    if not task_done(current):
+        write_continuation(
+            current,
+            "status observed unfinished migration after automatic healing"
+            if auto_healed
+            else "status observed unfinished migration",
+        )
+    write_current_task(current)
+    write_process_record("status", cargo_toml=data["cargo_toml"], mapped_cases=data["coverage"]["found"])
+    return CONTINUE_EXIT if not task_done(current) else 0
 
 
 def task_done(task: dict[str, Any]) -> bool:
@@ -1156,11 +1362,27 @@ def task_done(task: dict[str, Any]) -> bool:
     return not task_missing_symbols(task)
 
 
+def completed_task_ids() -> set[str]:
+    return {
+        line.strip()
+        for line in read_text(STATE / "completed_tasks.txt").splitlines()
+        if line.strip()
+    }
+
+
 def plan_data() -> dict[str, Any]:
+    completed = completed_task_ids()
+    open_task_found = False
     tasks = []
     for task in MICRO_TASKS:
         item = dict(task)
-        item["is_done"] = task_done(task)
+        if task["id"] in completed:
+            item["is_done"] = True
+        elif open_task_found:
+            item["is_done"] = False
+        else:
+            item["is_done"] = task_done(task)
+            open_task_found = not item["is_done"]
         item["read_line_count"] = task_read_line_count(task)
         item["budget_ok"] = task_budget_ok(task)
         tasks.append(item)
@@ -1177,6 +1399,8 @@ def cmd_plan(_args: argparse.Namespace) -> int:
     data = plan_data()
     write_json(STATE / "plan.json", data)
     write_todo(data)
+    if not task_done(data["current"]):
+        write_continuation(data["current"], "plan generated an unfinished current task")
     write_current_task(data["current"])
     print(f"Plan written to {STATE.relative_to(REPO)}/todo.md")
     print(f"Current task: {data['current']['id']} - {data['current']['title']}")
@@ -1202,9 +1426,19 @@ def cmd_task(args: argparse.Namespace) -> int:
             print(f"Unknown task id: {args.id}", file=sys.stderr)
             return 2
         task = matches[0]
+    auto_healed = maybe_auto_heal_stale(task)
+    if not task_done(task):
+        write_continuation(
+            task,
+            "task display resumed a stale task with automatic healing"
+            if auto_healed
+            else "task is unfinished",
+        )
     write_current_task(task)
-    print(render_task(task))
-    return 0 if task_budget_ok(task) else 1
+    print(render_task(task) if args.full else render_compact_task(task))
+    if not task_budget_ok(effective_task(task)):
+        return 1
+    return CONTINUE_EXIT if not task_done(task) else 0
 
 
 def cmd_start_task(args: argparse.Namespace) -> int:
@@ -1223,13 +1457,23 @@ def cmd_start_task(args: argparse.Namespace) -> int:
             "start-task was repeated before any target-file change",
         )
         print(f"SELF-HEAL APPLIED: {result['diagnosis']} -> {result['strategy']}")
-        print("The migration was not restarted. Continue the current task below.\n")
-        print(render_task(task))
-        return 0
+        print(render_compact_task(task))
+        return CONTINUE_EXIT
     if status["started"] and status["target_changed"]:
-        print(f"Task {task_id} target files changed after start.")
-        print(f"Run `python3 work/scripts/flashdb_pipeline.py check-task {task_id}` now.")
-        return 0
+        write_continuation(task, "target changed and must be checked")
+        write_current_task(task)
+        print(render_compact_task(task))
+        return CONTINUE_EXIT
+    if requires_proactive_focus(task):
+        result = apply_healing(
+            task,
+            "proactive-context-guard",
+            f"task has {task_read_line_count(task)} source lines and multiple completion symbols",
+        )
+        write_process_record("task-start", task_id=task_id, focus_id=effective_task(task).get("focus_id"))
+        print(f"PROACTIVE SELF-HEAL APPLIED: {result['diagnosis']} -> {result['strategy']}")
+        print(render_compact_task(task))
+        return CONTINUE_EXIT
     active = effective_task(task)
     progress = load_progress(task_id) or {}
     progress.update({
@@ -1246,11 +1490,11 @@ def cmd_start_task(args: argparse.Namespace) -> int:
         "contains_source_understanding": False,
     })
     save_progress(task_id, progress)
-    print(f"Started task: {task_id}")
-    if active.get("focus_id"):
-        print(f"Active self-heal focus: {active['focus_id']}")
-    print("Recorded only execution state and target file hashes; no source understanding was stored.")
-    return 0
+    write_process_record("task-start", task_id=task_id, focus_id=active.get("focus_id"))
+    write_continuation(task, "task started and requires source-to-target execution")
+    write_current_task(task)
+    print(render_compact_task(task))
+    return CONTINUE_EXIT
 
 
 def cmd_check_task(args: argparse.Namespace) -> int:
@@ -1282,15 +1526,14 @@ def cmd_check_task(args: argparse.Namespace) -> int:
             "check-task was requested before any target-file change",
         )
         print(f"SELF-HEAL APPLIED: {result['diagnosis']} -> {result['strategy']}")
-        print("Skipped the redundant cargo check. Continue the current task below.\n")
-        print(render_task(task))
-        return 0
+        print(render_compact_task(task))
+        return CONTINUE_EXIT
     result = run(shlex.split(command), timeout=600)
     safe_id = re.sub(r"[^A-Za-z0-9_.-]", "_", args.id)
     write_log(f"task_{safe_id}_check.log", result["output"])
     progress["last_check_code"] = result["code"]
     progress["last_check_at"] = now()
-    progress["last_check_log"] = f"work/logs/task_{safe_id}_check.log"
+    progress["last_check_log"] = f"log/trace/task_{safe_id}_check.log"
     current_hashes = target_hashes(task)
     progress["target_hashes_after_last_check"] = current_hashes
     progress["read_authorized"] = False
@@ -1303,9 +1546,16 @@ def cmd_check_task(args: argparse.Namespace) -> int:
         progress["failures"] = int(progress.get("failures", 0)) + 1 if previous == fingerprint else 1
         progress["last_error_fingerprint"] = fingerprint
     save_progress(args.id, progress)
-    print(result["output"], end="")
-    print(f"\nTask check exit code: {result['code']}")
-    print(f"Recorded failure count: {progress['failures']}")
+    write_process_record(
+        "task-check",
+        task_id=args.id,
+        exit_code=result["code"],
+        failure_count=progress["failures"],
+    )
+    excerpt = command_excerpt(result["output"], success=result["code"] == 0)
+    if excerpt:
+        print(excerpt)
+    print(f"Task check exit code: {result['code']}; failures: {progress['failures']}")
     if result["code"] != 0:
         if progress["failures"] >= 2:
             healed = apply_healing(
@@ -1315,9 +1565,11 @@ def cmd_check_task(args: argparse.Namespace) -> int:
             )
             print(f"SELF-HEAL APPLIED: {healed['diagnosis']} -> {healed['strategy']}")
             print("Use only the first error block, repair the current target, and continue.")
-            return 0
+            return CONTINUE_EXIT
+        write_continuation(task, "task check failed; fix the first error")
+        write_current_task(task)
         print("Fix only the first error block, then run check-task again.")
-        return int(result["code"])
+        return CONTINUE_EXIT
 
     progress = load_progress(args.id) or progress
     healing = progress.get("healing", {})
@@ -1372,7 +1624,9 @@ def cmd_check_task(args: argparse.Namespace) -> int:
 
     if task_done(task):
         print(f"Task objective is present. Run `python3 work/scripts/flashdb_pipeline.py complete-task {args.id}`.")
-    return 0
+    write_continuation(task, "task check finished but migration is not complete")
+    write_current_task(task)
+    return CONTINUE_EXIT
 
 
 def cmd_complete_task(args: argparse.Namespace) -> int:
@@ -1389,13 +1643,17 @@ def cmd_complete_task(args: argparse.Namespace) -> int:
         or progress.get("last_check_code") != 0
         or progress.get("target_hashes_after_last_check") != current_hashes
     ):
+        write_continuation(task, "task must pass check-task before completion")
+        write_current_task(task)
         print(f"Task {args.id} has not passed check-task for the current target content.", file=sys.stderr)
         print(f"Run `python3 work/scripts/flashdb_pipeline.py check-task {args.id}` first.", file=sys.stderr)
-        return 1
+        return CONTINUE_EXIT
     if not task_done(task):
+        write_continuation(task, "task completion symbols are still missing")
+        write_current_task(task)
         print(f"Task {args.id} is not complete according to file/symbol checks.", file=sys.stderr)
         print(render_task(task))
-        return 1
+        return CONTINUE_EXIT
     completed_path = STATE / "completed_tasks.txt"
     existing = read_text(completed_path).splitlines()
     if args.id not in existing:
@@ -1406,10 +1664,121 @@ def cmd_complete_task(args: argparse.Namespace) -> int:
     save_progress(args.id, progress)
     data = plan_data()
     write_todo(data)
-    write_current_task(data["current"])
+    write_process_record("task-complete", task_id=args.id, next_task=data["current"]["id"])
     print(f"Marked complete: {args.id}")
     print(f"Next task: {data['current']['id']} - {data['current']['title']}")
-    return 0
+    if args.id == "T33-final-verify":
+        clear_continuation("final verification task completed")
+        write_current_task(data["current"])
+        return 0
+    write_continuation(data["current"], "previous task completed; start the next task")
+    write_current_task(data["current"])
+    return CONTINUE_EXIT
+
+
+def run_quietly(command: Any, args: argparse.Namespace) -> tuple[int, str]:
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+        code = command(args)
+    return code, output.getvalue()
+
+
+def start_next_task(previous_id: str) -> tuple[int, dict[str, Any]]:
+    next_task = first_open_task()
+    if next_task["id"] == previous_id or next_task["id"] == "T33-final-verify":
+        return CONTINUE_EXIT, next_task
+    code, _ = run_quietly(cmd_start_task, argparse.Namespace(id=next_task["id"]))
+    return code, next_task
+
+
+def cmd_advance(args: argparse.Namespace) -> int:
+    """Perform the next mechanical lifecycle transition with compact output."""
+    ensure_dirs()
+    data = plan_data()
+    task_id = args.id or data["current"]["id"]
+    task = next((item for item in data["tasks"] if item["id"] == task_id), None)
+    if task is None:
+        print(f"Unknown task id: {task_id}", file=sys.stderr)
+        return 2
+
+    if task_id == "T33-final-verify":
+        code, output = run_quietly(cmd_verify, argparse.Namespace(strict=True))
+        excerpt = command_excerpt(output, success=code == 0, max_lines=20)
+        if excerpt:
+            print(excerpt)
+        if code == 0:
+            write_process_record("advance-complete", task_id=task_id)
+            return 0
+        write_process_record("advance-continue", task_id=task_id, action="FIX_FINAL_VERIFY")
+        print(render_compact_task(task))
+        return CONTINUE_EXIT
+
+    action = next_required_action(task)
+    if action == "START_TASK":
+        code, _ = run_quietly(cmd_start_task, argparse.Namespace(id=task_id))
+        write_process_record("advance-continue", task_id=task_id, action=next_required_action(task))
+        print(render_compact_task(task))
+        return code
+
+    if action == "RUN_HEAL":
+        code, _ = run_quietly(
+            cmd_heal,
+            argparse.Namespace(id=task_id, reason="advance observed blocked execution state", dry_run=False),
+        )
+        write_process_record("advance-continue", task_id=task_id, action=next_required_action(task))
+        print(render_compact_task(task))
+        return code
+
+    if action == "RUN_CHECK_TASK":
+        _, _ = run_quietly(cmd_check_task, argparse.Namespace(id=task_id))
+        progress = load_progress(task_id) or {}
+        if progress.get("last_check_code") not in (None, 0):
+            log_path = progress.get("last_check_log")
+            output = read_text(REPO / log_path) if log_path else ""
+            excerpt = command_excerpt(output, success=False)
+            if excerpt:
+                print(excerpt)
+        if task_done(task) and task_verified(task):
+            run_quietly(cmd_complete_task, argparse.Namespace(id=task_id))
+            _, next_task = start_next_task(task_id)
+            write_process_record("advance-task", task_id=task_id, next_task=next_task["id"])
+            print(f"ADVANCED {task_id} -> {next_task['id']}")
+            print(render_compact_task(next_task))
+            return CONTINUE_EXIT
+        write_process_record("advance-continue", task_id=task_id, action=next_required_action(task))
+        print(render_compact_task(task))
+        return CONTINUE_EXIT
+
+    if action == "COMPLETE_TASK":
+        run_quietly(cmd_complete_task, argparse.Namespace(id=task_id))
+        _, next_task = start_next_task(task_id)
+        write_process_record("advance-task", task_id=task_id, next_task=next_task["id"])
+        print(f"ADVANCED {task_id} -> {next_task['id']}")
+        print(render_compact_task(next_task))
+        return CONTINUE_EXIT
+
+    if action == "READ_FOCUS_THEN_EDIT":
+        progress = load_progress(task_id) or {}
+        healing = progress.get("healing", {})
+        diagnosis = "no-target-change"
+        reason = "advance repeated before the required target edit"
+        apply_healing(task, diagnosis, reason)
+        narrowed = effective_task(task)
+        write_process_record(
+            "advance-auto-heal",
+            task_id=task_id,
+            focus_id=narrowed.get("focus_id"),
+            previous_healing_active=bool(healing.get("active")),
+        )
+        print("SELF-HEAL APPLIED: no-target-change -> symbol-focus")
+        print(render_compact_task(task))
+        return CONTINUE_EXIT
+
+    write_continuation(task, f"advance requires model action {action}")
+    write_current_task(task)
+    write_process_record("advance-continue", task_id=task_id, action=action)
+    print(render_compact_task(task))
+    return CONTINUE_EXIT
 
 
 def render_task(task: dict[str, Any]) -> str:
@@ -1419,16 +1788,13 @@ def render_task(task: dict[str, Any]) -> str:
     max_lines = task_read_budget(active)
     budget_status = "OK" if estimated_lines <= max_lines else "VIOLATION"
     status = progress_status(parent)
-    if active.get("healing_strategy") == "repair-first-error":
-        next_action = "REPAIR_FIRST_ERROR"
-    elif status["started"] and status["target_changed"]:
-        next_action = "RUN_CHECK_TASK"
-    elif status["started"] and not status["source_reread_blocked"]:
-        next_action = "READ_FOCUS_THEN_EDIT"
-    elif status["started"]:
-        next_action = "RUN_HEAL"
-    else:
-        next_action = "START_TASK"
+    next_action = next_required_action(parent)
+    continuation = load_continuation()
+    continuation_required = bool(
+        continuation
+        and continuation.get("required")
+        and continuation.get("task_id") == parent["id"]
+    )
     lines = [
         f"# Current Micro Task: {parent['id']}",
         "",
@@ -1443,6 +1809,8 @@ def render_task(task: dict[str, Any]) -> str:
         f"Source reread blocked: {'YES' if status['source_reread_blocked'] else 'NO'}",
         f"Self-heal active: {'YES' if status['healing_active'] else 'NO'}",
         f"Self-heal generation: {status['healing_generation']}",
+        f"Continuation required: {'YES' if continuation_required else 'NO'}",
+        f"Continuation exit code: {CONTINUE_EXIT}",
         f"Next required action: {next_action}",
         "",
     ]
@@ -1454,7 +1822,7 @@ def render_task(task: dict[str, Any]) -> str:
         ])
     if active.get("healing_strategy") == "repair-first-error":
         lines.append("Read only the first compiler error block from:")
-        lines.append(f"- {active.get('repair_log') or 'work/logs/task check log'}")
+        lines.append(f"- {active.get('repair_log') or 'log/trace/task check log'}")
         lines.append("- Do not reread C source while repairing a compiler error.")
     else:
         lines.append("Read only these focused ranges:")
@@ -1473,17 +1841,40 @@ def render_task(task: dict[str, Any]) -> str:
         f"`{parent.get('check', 'python3 work/scripts/flashdb_pipeline.py status')}`",
         "",
         "Preferred check wrapper:",
-        f"`python3 work/scripts/flashdb_pipeline.py check-task {parent['id']}`",
+        f"`python3 work/scripts/flashdb_pipeline.py advance {parent['id']}`",
         "",
         "Protocol:",
         f"1. Obey `Next required action`; use `start-task {parent['id']}` only when it says START_TASK.",
         "2. When a focused read is authorized, read it once and edit before any other discovery.",
         "3. Do not write source-understanding notes; only execution state may persist.",
-        "4. Run the preferred check wrapper immediately after the edit.",
+        "4. Run `advance` immediately after the edit; it checks, completes, and starts the next task when possible.",
         f"5. If progress is impossible or context was compacted before an edit, run `python3 work/scripts/flashdb_pipeline.py heal {parent['id']}`.",
-        "6. Self-heal changes the active focus and continues this parent task; it never restarts migration.",
+        f"6. Exit code {CONTINUE_EXIT} means continue immediately; it is neither completion nor a fatal error.",
+        "7. Self-heal changes the active focus and continues this parent task; it never restarts migration.",
     ])
     return "\n".join(lines) + "\n"
+
+
+def render_compact_task(task: dict[str, Any]) -> str:
+    active = effective_task(task)
+    action = next_required_action(task)
+    reads = ",".join(active.get("read", [])) or "-"
+    writes = ",".join(task.get("write", [])) or "-"
+    symbols = ",".join(active.get("symbols", [])) or "-"
+    lines = [
+        f"CONTINUE {CONTINUE_EXIT}",
+        f"task={task['id']}",
+        f"focus={active.get('focus_id') or '-'}",
+        f"action={action}",
+        f"read={reads}",
+        f"write={writes}",
+        f"symbols={symbols}",
+        f"next=python3 work/scripts/flashdb_pipeline.py advance {task['id']}",
+        "details=work/state/current_task.md",
+    ]
+    if active.get("healing_strategy") == "repair-first-error":
+        lines.insert(4, f"error_log={active.get('repair_log') or '-'}")
+    return "\n".join(lines)
 
 
 def write_todo(data: dict[str, Any]) -> None:
@@ -1629,6 +2020,9 @@ def verify_data(strict: bool) -> dict[str, Any]:
 
     checks = [
         {"name": "root INSTRUCTION.md exists", "ok": (REPO / "INSTRUCTION.md").exists()},
+        {"name": "result self-validation directory", "ok": RESULT.is_dir(), "detail": "result/"},
+        {"name": "process record directory", "ok": LOGS.is_dir(), "detail": "logs/"},
+        {"name": "trace directory", "ok": TRACE.is_dir(), "detail": "log/trace/"},
         {"name": "Cargo.toml exists", "ok": (RUST / "Cargo.toml").exists()},
         {
             "name": "src modules complete",
@@ -1670,6 +2064,13 @@ def verify_data(strict: bool) -> dict[str, Any]:
         "coverage": coverage,
         "unsafe": unsafe,
         "integrity": integrity,
+        "artifacts": {
+            "self_validation": "result/verify.json",
+            "successful_output": "result/output.md" if all(item["ok"] for item in checks) else None,
+            "process_records": "logs/process.jsonl",
+            "interaction_records": "logs/interaction/" if INTERACTION.exists() else None,
+            "trace_records": "log/trace/",
+        },
         "checks": checks,
         "ok": all(item["ok"] for item in checks),
     }
@@ -1678,11 +2079,23 @@ def verify_data(strict: bool) -> dict[str, Any]:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     data = verify_data(strict=args.strict)
-    write_json(STATE / "verify.json", simplify_for_json(data))
+    write_json(RESULT / "preflight.json", data["preflight"])
+    write_json(RESULT / "status.json", data["status"])
+    write_json(RESULT / "verify.json", simplify_for_json(data))
     write_next_actions(verify_to_actions(data))
     generate_reports(data)
+    if args.strict and data["ok"]:
+        clear_continuation("strict verification passed")
+    else:
+        current = first_open_task()
+        write_continuation(current, "verification has not completed the migration")
+        write_current_task(current)
+    write_process_record("verify", strict=args.strict, ok=data["ok"])
     print_report_table("Verification", data["checks"])
-    print(f"Reports: {RESULT.relative_to(REPO)}/output.md, {ISSUES.relative_to(REPO)}/00-summary.md")
+    print(f"Self-validation: {RESULT.relative_to(REPO)}/verify.json")
+    if data["ok"]:
+        print(f"Successful output: {RESULT.relative_to(REPO)}/output.md")
+    print(f"Issues: {ISSUES.relative_to(REPO)}/00-summary.md")
     return 0 if data["ok"] else 1
 
 
@@ -1739,9 +2152,9 @@ def verify_to_actions(data: dict[str, Any]) -> list[str]:
             continue
         name = check["name"]
         if name == "cargo build":
-            actions.append("Fix the first cargo build error in work/logs/cargo_build.log, then rerun verify.")
+            actions.append("Fix the first cargo build error in log/trace/cargo_build.log, then rerun verify.")
         elif name == "cargo test":
-            actions.append("Fix failing or missing Rust tests from work/logs/cargo_test.log.")
+            actions.append("Fix failing or missing Rust tests from log/trace/cargo_test.log.")
         elif name == "mapped C test coverage":
             missing = [case["id"] for case in data["coverage"]["cases"] if not case["ok"]]
             actions.append("Add missing test mappings: " + ", ".join(missing) + ".")
@@ -1793,7 +2206,7 @@ def generate_reports(data: dict[str, Any]) -> None:
     if not missing_cases_md:
         missing_cases_md = "- none"
 
-    output_md = f"""# FlashDB C-to-Rust Rewrite Report
+    output_md = f"""# FlashDB C-to-Rust Successful Run
 
 Generated: {data['generated_at']}
 
@@ -1811,14 +2224,14 @@ Generated: {data['generated_at']}
 
 - Command: `cargo build`
 - Exit code: {data['build']['code']}
-- Log: `work/logs/cargo_build.log`
+- Trace: `log/trace/cargo_build.log`
 
 ## Test
 
 - Command: `cargo test --no-fail-fast`
 - Exit code: {data['test']['code']}
 - Tests observed: {data['test'].get('tests_run', 0)}
-- Log: `work/logs/cargo_test.log`
+- Trace: `log/trace/cargo_test.log`
 
 ## Test Migration
 
@@ -1845,7 +2258,7 @@ Missing cases:
 
 ## Completion
 
-Strict completion status: {'PASS' if data['ok'] else 'FAIL'}
+Strict completion status: PASS
 """
 
     issue_actions = verify_to_actions(data)
@@ -1867,25 +2280,32 @@ Generated: {data['generated_at']}
 
 ## Cargo Build Log
 
-See `work/logs/cargo_build.log`.
+See `log/trace/cargo_build.log`.
 
 ## Cargo Test Log
 
-See `work/logs/cargo_test.log`.
+See `log/trace/cargo_test.log`.
 """
 
-    (RESULT / "output.md").write_text(output_md, encoding="utf-8")
+    output_path = RESULT / "output.md"
+    if data["ok"]:
+        output_path.write_text(output_md, encoding="utf-8")
+    elif output_path.exists():
+        output_path.unlink()
     (ISSUES / "00-summary.md").write_text(issues_md, encoding="utf-8")
 
 
 def cmd_report(_args: argparse.Namespace) -> int:
-    verify_path = STATE / "verify.json"
+    verify_path = RESULT / "verify.json"
     if verify_path.exists():
         data = json.loads(read_text(verify_path))
     else:
         data = verify_data(strict=False)
     generate_reports(data)
-    print(f"Wrote {RESULT / 'output.md'}")
+    if data["ok"]:
+        print(f"Wrote {RESULT / 'output.md'}")
+    else:
+        print("Successful output was not written because verification has not passed.")
     print(f"Wrote {ISSUES / '00-summary.md'}")
     return 0
 
@@ -1914,10 +2334,8 @@ def cmd_heal(args: argparse.Namespace) -> int:
     if args.dry_run:
         print("No files were changed.")
     else:
-        print("Migration state and Rust sources were preserved.")
-        print("Continue immediately with work/state/current_task.md; do not restart the queue.\n")
-        print(render_task(task))
-    return 0
+        print(render_compact_task(task))
+    return 0 if args.dry_run else CONTINUE_EXIT
 
 
 def cmd_refresh(args: argparse.Namespace) -> int:
@@ -1946,12 +2364,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     task = sub.add_parser("task")
     task.add_argument("--id", help="show a specific task id instead of the current task")
+    task.add_argument("--full", action="store_true", help="print the full task instead of the compact continuation packet")
 
     start = sub.add_parser("start-task")
     start.add_argument("id", nargs="?", help="task id to start; defaults to current task")
 
     check = sub.add_parser("check-task")
     check.add_argument("id", help="task id whose check command should run")
+
+    advance = sub.add_parser("advance")
+    advance.add_argument("id", nargs="?", help="task id to advance; defaults to current task")
 
     heal = sub.add_parser("heal")
     heal.add_argument("id", nargs="?", help="task id to heal; defaults to current task")
@@ -1983,6 +2405,7 @@ def main(argv: list[str] | None = None) -> int:
         "task": cmd_task,
         "start-task": cmd_start_task,
         "check-task": cmd_check_task,
+        "advance": cmd_advance,
         "heal": cmd_heal,
         "complete-task": cmd_complete_task,
         "verify": cmd_verify,

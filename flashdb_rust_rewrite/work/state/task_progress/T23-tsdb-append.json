@@ -1,0 +1,85 @@
+{
+  "task_id": "T23-tsdb-append",
+  "started_at": "2026-07-13T01:39:55Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": true,
+    "generation": 1,
+    "created_at": "2026-07-13T01:39:55Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 140 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only write_tsl",
+        "read": [
+          "src/fdb_tsdb.c:350-377"
+        ],
+        "symbols": [
+          "write_tsl"
+        ],
+        "max_read_lines": 28,
+        "id": "T23-tsdb-append.F-write_tsl"
+      },
+      {
+        "title": "Implement only fdb_tsl_append",
+        "read": [
+          "src/fdb_tsdb.c:350-439"
+        ],
+        "symbols": [
+          "fdb_tsl_append"
+        ],
+        "max_read_lines": 90,
+        "id": "T23-tsdb-append.F-fdb_tsl_append"
+      },
+      {
+        "title": "Implement only update_sec_status",
+        "read": [
+          "src/fdb_tsdb.c:379-449"
+        ],
+        "symbols": [
+          "update_sec_status"
+        ],
+        "max_read_lines": 71,
+        "id": "T23-tsdb-append.F-update_sec_status"
+      },
+      {
+        "title": "Implement only fdb_tsl_append_with_ts",
+        "read": [
+          "src/fdb_tsdb.c:440-489"
+        ],
+        "symbols": [
+          "fdb_tsl_append_with_ts"
+        ],
+        "max_read_lines": 50,
+        "id": "T23-tsdb-append.F-fdb_tsl_append_with_ts"
+      }
+    ],
+    "active_index": 2,
+    "completed_unit_ids": [
+      "T23-tsdb-append.F-fdb_tsl_append",
+      "T23-tsdb-append.F-write_tsl"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/tsdb.rs": "362b477982826a23fc62f8227b6df27d0cc1887b86b302d6299c1fbf33b52cf7"
+  },
+  "active_started_at": "2026-07-13T01:39:55Z",
+  "read_authorized": true,
+  "read_ranges": [
+    "src/fdb_tsdb.c:379-449"
+  ],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T01:52:20Z",
+  "last_check_log": "log/trace/task_T23-tsdb-append_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/tsdb.rs": "362b477982826a23fc62f8227b6df27d0cc1887b86b302d6299c1fbf33b52cf7"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T01:52:20Z"
+}

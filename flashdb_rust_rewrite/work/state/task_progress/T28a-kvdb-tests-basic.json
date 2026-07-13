@@ -1,0 +1,89 @@
+{
+  "task_id": "T28a-kvdb-tests-basic",
+  "started_at": "2026-07-13T02:10:53Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 1,
+    "created_at": "2026-07-13T02:10:53Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 180 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only test_fdb_kvdb_init and test_fdb_kvdb_init_check",
+        "read": [
+          "tests/fdb_kvdb_tc.c:196-210"
+        ],
+        "symbols": [
+          "test_fdb_kvdb_init",
+          "test_fdb_kvdb_init_check"
+        ],
+        "max_read_lines": 15,
+        "id": "T28a-kvdb-tests-basic.F-test_fdb_kvdb_init-test_fdb_kvdb_init_check"
+      },
+      {
+        "title": "Implement only test_fdb_create_kv_blob and test_fdb_change_kv_blob",
+        "read": [
+          "tests/fdb_kvdb_tc.c:217-263"
+        ],
+        "symbols": [
+          "test_fdb_create_kv_blob",
+          "test_fdb_change_kv_blob"
+        ],
+        "max_read_lines": 47,
+        "id": "T28a-kvdb-tests-basic.F-test_fdb_create_kv_blob-test_fdb_change_kv_blob"
+      },
+      {
+        "title": "Implement only test_fdb_del_kv_blob and test_fdb_create_kv",
+        "read": [
+          "tests/fdb_kvdb_tc.c:265-301"
+        ],
+        "symbols": [
+          "test_fdb_del_kv_blob",
+          "test_fdb_create_kv"
+        ],
+        "max_read_lines": 37,
+        "id": "T28a-kvdb-tests-basic.F-test_fdb_del_kv_blob-test_fdb_create_kv"
+      },
+      {
+        "title": "Implement only test_fdb_change_kv and test_fdb_del_kv",
+        "read": [
+          "tests/fdb_kvdb_tc.c:303-357"
+        ],
+        "symbols": [
+          "test_fdb_change_kv",
+          "test_fdb_del_kv"
+        ],
+        "max_read_lines": 55,
+        "id": "T28a-kvdb-tests-basic.F-test_fdb_change_kv-test_fdb_del_kv"
+      }
+    ],
+    "active_index": 4,
+    "completed_unit_ids": [
+      "T28a-kvdb-tests-basic.F-test_fdb_change_kv-test_fdb_del_kv",
+      "T28a-kvdb-tests-basic.F-test_fdb_create_kv_blob-test_fdb_change_kv_blob",
+      "T28a-kvdb-tests-basic.F-test_fdb_del_kv_blob-test_fdb_create_kv",
+      "T28a-kvdb-tests-basic.F-test_fdb_kvdb_init-test_fdb_kvdb_init_check"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/tests/kvdb_test.rs": "8ff3d2ad4a9c4421bba1630b2ed7249a58022db36a07cd68ada440e38210fa41"
+  },
+  "active_started_at": "2026-07-13T02:10:53Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T02:29:55Z",
+  "last_check_log": "log/trace/task_T28a-kvdb-tests-basic_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/tests/kvdb_test.rs": "8ff3d2ad4a9c4421bba1630b2ed7249a58022db36a07cd68ada440e38210fa41"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T02:29:55Z"
+}

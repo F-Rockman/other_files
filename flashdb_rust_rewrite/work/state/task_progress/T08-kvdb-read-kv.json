@@ -1,0 +1,49 @@
+{
+  "task_id": "T08-kvdb-read-kv",
+  "started_at": "2026-07-12T08:53:24Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 3,
+    "created_at": "2026-07-12T08:57:58Z",
+    "diagnosis": "no-target-change",
+    "reason": "advance repeated before the required target edit",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only read_kv",
+        "read": [
+          "src/fdb_kvdb.c:348-414"
+        ],
+        "symbols": [
+          "read_kv"
+        ],
+        "max_read_lines": 67,
+        "id": "T08-kvdb-read-kv.F-read_kv"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T08-kvdb-read-kv.F-read_kv"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "5aec93fa288e581a01c9d2479360e971f30af4f769bfc9e92f850279c91efeb0"
+  },
+  "active_started_at": "2026-07-12T08:57:58Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 2,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T08:59:44Z",
+  "last_check_log": "log/trace/task_T08-kvdb-read-kv_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "5aec93fa288e581a01c9d2479360e971f30af4f769bfc9e92f850279c91efeb0"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T08:59:49Z"
+}

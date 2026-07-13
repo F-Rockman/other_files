@@ -1,0 +1,25 @@
+{
+  "task_id": "T16-kvdb-gc",
+  "started_at": "2026-07-12T10:17:56Z",
+  "active_started_at": "2026-07-12T10:17:56Z",
+  "read_ranges": [
+    "src/fdb_kvdb.c:1098-1183"
+  ],
+  "write_targets": [
+    "flashDB_rust/src/kvdb.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "676556e61ec57f88aae193a1d299dfbb746106cad2b7a4a0426b7fc75b3f1007"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T10:21:50Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T16-kvdb-gc_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "156c351822b1ab96c604ae8324dafd282fe6880828fe1a1b3186c7176a4e51cc"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T10:21:50Z"
+}

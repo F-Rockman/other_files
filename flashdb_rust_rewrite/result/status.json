@@ -1,0 +1,279 @@
+{
+  "generated_at": "2026-07-13T04:10:07Z",
+  "cargo_toml": true,
+  "modules": {
+    "lib.rs": true,
+    "error.rs": true,
+    "def.rs": true,
+    "blob.rs": true,
+    "low_lvl.rs": true,
+    "utils.rs": true,
+    "file_backend.rs": true,
+    "db.rs": true,
+    "kvdb.rs": true,
+    "tsdb.rs": true
+  },
+  "module_quality": {
+    "lib.rs": {
+      "ok": true,
+      "detail": "9 lines",
+      "missing_symbols": [],
+      "line_count": 9,
+      "markers": []
+    },
+    "error.rs": {
+      "ok": true,
+      "detail": "97 lines",
+      "missing_symbols": [],
+      "line_count": 97,
+      "markers": []
+    },
+    "def.rs": {
+      "ok": true,
+      "detail": "310 lines",
+      "missing_symbols": [],
+      "line_count": 310,
+      "markers": []
+    },
+    "blob.rs": {
+      "ok": true,
+      "detail": "156 lines",
+      "missing_symbols": [],
+      "line_count": 156,
+      "markers": []
+    },
+    "low_lvl.rs": {
+      "ok": true,
+      "detail": "332 lines",
+      "missing_symbols": [],
+      "line_count": 332,
+      "markers": []
+    },
+    "utils.rs": {
+      "ok": true,
+      "detail": "105 lines",
+      "missing_symbols": [],
+      "line_count": 105,
+      "markers": []
+    },
+    "file_backend.rs": {
+      "ok": true,
+      "detail": "260 lines",
+      "missing_symbols": [],
+      "line_count": 260,
+      "markers": []
+    },
+    "db.rs": {
+      "ok": true,
+      "detail": "227 lines",
+      "missing_symbols": [],
+      "line_count": 227,
+      "markers": []
+    },
+    "kvdb.rs": {
+      "ok": true,
+      "detail": "2053 lines",
+      "missing_symbols": [],
+      "line_count": 2053,
+      "markers": []
+    },
+    "tsdb.rs": {
+      "ok": true,
+      "detail": "1278 lines",
+      "missing_symbols": [],
+      "line_count": 1278,
+      "markers": []
+    }
+  },
+  "test_files": {
+    "kvdb_test.rs": true,
+    "tsdb_test.rs": true
+  },
+  "test_quality": {
+    "ok": true,
+    "detail": "27 #[test] functions",
+    "test_count": 27,
+    "weak_tests": []
+  },
+  "coverage": {
+    "found": 24,
+    "total": 24,
+    "cases": [
+      {
+        "id": "kvdb_init",
+        "symbols": [
+          "test_fdb_kvdb_init"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_init_check",
+        "symbols": [
+          "test_fdb_kvdb_init_check"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_create_blob",
+        "symbols": [
+          "test_fdb_create_kv_blob"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_change_blob",
+        "symbols": [
+          "test_fdb_change_kv_blob"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_del_blob",
+        "symbols": [
+          "test_fdb_del_kv_blob"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_create_string",
+        "symbols": [
+          "test_fdb_create_kv"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_change_string",
+        "symbols": [
+          "test_fdb_change_kv"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_del_string",
+        "symbols": [
+          "test_fdb_del_kv"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_gc",
+        "symbols": [
+          "test_fdb_gc"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_gc2",
+        "symbols": [
+          "test_fdb_gc2"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_scale_up",
+        "symbols": [
+          "test_fdb_scale_up"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_set_default",
+        "symbols": [
+          "test_fdb_kvdb_set_default"
+        ],
+        "ok": true
+      },
+      {
+        "id": "kvdb_deinit",
+        "symbols": [
+          "test_fdb_kvdb_deinit"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_init_ex",
+        "symbols": [
+          "test_fdb_tsdb_init_ex"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_clean_initial",
+        "symbols": [
+          "test_fdb_tsl_clean"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_append",
+        "symbols": [
+          "test_fdb_tsl_append"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_iter",
+        "symbols": [
+          "test_fdb_tsl_iter"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_iter_by_time",
+        "symbols": [
+          "test_fdb_tsl_iter_by_time"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_query_count",
+        "symbols": [
+          "test_fdb_tsl_query_count"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_set_status",
+        "symbols": [
+          "test_fdb_tsl_set_status"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_clean_after_status",
+        "symbols": [
+          "test_fdb_tsl_clean_again",
+          "test_fdb_tsl_clean_2",
+          "test_fdb_tsl_clean_restart"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_iter_by_time_1",
+        "symbols": [
+          "test_fdb_tsl_iter_by_time_1"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_deinit",
+        "symbols": [
+          "test_fdb_tsdb_deinit"
+        ],
+        "ok": true
+      },
+      {
+        "id": "tsdb_github_issue_249",
+        "symbols": [
+          "test_fdb_github_issue_249"
+        ],
+        "ok": true
+      }
+    ]
+  },
+  "unsafe": {
+    "unsafe_lines": 0,
+    "total_lines": 4140,
+    "ratio": 0.0
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "task_id": "T17-kvdb-public-create-delete",
+  "started_at": "2026-07-12T10:21:50Z",
+  "active_started_at": "2026-07-12T10:21:50Z",
+  "read_ranges": [
+    "src/fdb_kvdb.c:1184-1294"
+  ],
+  "write_targets": [
+    "flashDB_rust/src/kvdb.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "156c351822b1ab96c604ae8324dafd282fe6880828fe1a1b3186c7176a4e51cc"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T10:23:01Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T17-kvdb-public-create-delete_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "21dc203300af672d2510dfaa0f70e65655ad1acb93bf86cff5b28e218b11dfa9"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T10:23:01Z"
+}

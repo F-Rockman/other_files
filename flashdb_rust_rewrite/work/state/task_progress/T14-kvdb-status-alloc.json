@@ -1,0 +1,25 @@
+{
+  "task_id": "T14-kvdb-status-alloc",
+  "started_at": "2026-07-12T09:16:16Z",
+  "active_started_at": "2026-07-12T09:16:16Z",
+  "read_ranges": [
+    "src/fdb_kvdb.c:829-939"
+  ],
+  "write_targets": [
+    "flashDB_rust/src/kvdb.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "bf397440e2237741f8c36935c74ebcc8188be7737c4a92135d2fb8bebdaaeafc"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T09:17:04Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T14-kvdb-status-alloc_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "fb9d7697bbc4b4ab59c91f875aac710c65dea76d29561483386de43b327f9fc9"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T09:17:04Z"
+}

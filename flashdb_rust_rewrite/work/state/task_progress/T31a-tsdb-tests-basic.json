@@ -1,0 +1,88 @@
+{
+  "task_id": "T31a-tsdb-tests-basic",
+  "started_at": "2026-07-13T03:22:10Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 1,
+    "created_at": "2026-07-13T03:22:10Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 141 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only test_fdb_tsdb_deinit and test_fdb_tsl_append",
+        "read": [
+          "tests/fdb_tsdb_tc.c:101-123"
+        ],
+        "symbols": [
+          "test_fdb_tsdb_deinit",
+          "test_fdb_tsl_append"
+        ],
+        "max_read_lines": 23,
+        "id": "T31a-tsdb-tests-basic.F-test_fdb_tsdb_deinit-test_fdb_tsl_append"
+      },
+      {
+        "title": "Implement only test_fdb_tsl_iter and test_fdb_tsl_iter_by_time",
+        "read": [
+          "tests/fdb_tsdb_tc.c:145-160"
+        ],
+        "symbols": [
+          "test_fdb_tsl_iter",
+          "test_fdb_tsl_iter_by_time"
+        ],
+        "max_read_lines": 16,
+        "id": "T31a-tsdb-tests-basic.F-test_fdb_tsl_iter-test_fdb_tsl_iter_by_time"
+      },
+      {
+        "title": "Implement only test_fdb_tsl_query_count and test_fdb_tsl_set_status",
+        "read": [
+          "tests/fdb_tsdb_tc.c:162-197"
+        ],
+        "symbols": [
+          "test_fdb_tsl_query_count",
+          "test_fdb_tsl_set_status"
+        ],
+        "max_read_lines": 36,
+        "id": "T31a-tsdb-tests-basic.F-test_fdb_tsl_query_count-test_fdb_tsl_set_status"
+      },
+      {
+        "title": "Implement only test_fdb_tsl_clean",
+        "read": [
+          "tests/fdb_tsdb_tc.c:208-223"
+        ],
+        "symbols": [
+          "test_fdb_tsl_clean"
+        ],
+        "max_read_lines": 16,
+        "id": "T31a-tsdb-tests-basic.F-test_fdb_tsl_clean"
+      }
+    ],
+    "active_index": 4,
+    "completed_unit_ids": [
+      "T31a-tsdb-tests-basic.F-test_fdb_tsdb_deinit-test_fdb_tsl_append",
+      "T31a-tsdb-tests-basic.F-test_fdb_tsl_clean",
+      "T31a-tsdb-tests-basic.F-test_fdb_tsl_iter-test_fdb_tsl_iter_by_time",
+      "T31a-tsdb-tests-basic.F-test_fdb_tsl_query_count-test_fdb_tsl_set_status"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/tests/tsdb_test.rs": "71e0688126d5cc8e251bc66253ed195ee556099269e5678850ea59ab4712296e"
+  },
+  "active_started_at": "2026-07-13T03:22:10Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T03:53:13Z",
+  "last_check_log": "log/trace/task_T31a-tsdb-tests-basic_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/tests/tsdb_test.rs": "71e0688126d5cc8e251bc66253ed195ee556099269e5678850ea59ab4712296e"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T03:53:13Z"
+}

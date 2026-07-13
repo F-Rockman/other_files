@@ -1,0 +1,63 @@
+{
+  "task_id": "T20-tsdb-types-read",
+  "started_at": "2026-07-12T10:46:26Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": true,
+    "generation": 1,
+    "created_at": "2026-07-12T10:46:26Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 146 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only struct Tsdb",
+        "read": [
+          "src/fdb_tsdb.c:1-90"
+        ],
+        "symbols": [
+          "struct Tsdb"
+        ],
+        "max_read_lines": 90,
+        "id": "T20-tsdb-types-read.F-struct-Tsdb"
+      },
+      {
+        "title": "Implement only struct Tsl and struct TsdbSecInfo",
+        "read": [
+          "src/fdb_tsdb.c:91-146"
+        ],
+        "symbols": [
+          "struct Tsl",
+          "struct TsdbSecInfo"
+        ],
+        "max_read_lines": 56,
+        "id": "T20-tsdb-types-read.F-struct-Tsl-struct-TsdbSecInfo"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T20-tsdb-types-read.F-struct-Tsdb"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/tsdb.rs": "246b5e23e2585027681192583533f3339cc94ed2564c32050a12f129534e19aa"
+  },
+  "active_started_at": "2026-07-12T10:46:26Z",
+  "read_authorized": true,
+  "read_ranges": [
+    "src/fdb_tsdb.c:91-146"
+  ],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T10:47:35Z",
+  "last_check_log": "log/trace/task_T20-tsdb-types-read_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/tsdb.rs": "246b5e23e2585027681192583533f3339cc94ed2564c32050a12f129534e19aa"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T10:47:35Z"
+}

@@ -1,0 +1,919 @@
+{
+  "generated_at": "2026-07-12T08:37:52Z",
+  "tasks": [
+    {
+      "id": "T00-skeleton",
+      "title": "Create Cargo skeleton and module stubs",
+      "read": [
+        "INSTRUCTION.md:1-140"
+      ],
+      "write": [
+        "flashDB_rust/Cargo.toml",
+        "flashDB_rust/src/lib.rs"
+      ],
+      "done": [
+        "flashDB_rust/Cargo.toml",
+        "flashDB_rust/src/lib.rs"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 140,
+      "is_done": true,
+      "read_line_count": 140,
+      "budget_ok": true
+    },
+    {
+      "id": "T01-error-def-core",
+      "title": "Port error enum and core constants/enums",
+      "read": [
+        "inc/fdb_def.h:80-170"
+      ],
+      "write": [
+        "flashDB_rust/src/error.rs",
+        "flashDB_rust/src/def.rs"
+      ],
+      "symbols": [
+        "FdbError",
+        "DbType",
+        "KvStatus",
+        "TslStatus"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 100,
+      "is_done": false,
+      "read_line_count": 91,
+      "budget_ok": true
+    },
+    {
+      "id": "T02-def-blob-db-structs",
+      "title": "Port remaining shared structs and Blob",
+      "read": [
+        "inc/fdb_def.h:171-332"
+      ],
+      "write": [
+        "flashDB_rust/src/def.rs",
+        "flashDB_rust/src/blob.rs"
+      ],
+      "symbols": [
+        "FdbTime",
+        "GetTimeFn",
+        "struct Blob"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 170,
+      "is_done": false,
+      "read_line_count": 162,
+      "budget_ok": true
+    },
+    {
+      "id": "T03-low-level-status",
+      "title": "Port alignment and status-table helpers",
+      "read": [
+        "inc/fdb_low_lvl.h:1-80",
+        "src/fdb_utils.c:91-180"
+      ],
+      "write": [
+        "flashDB_rust/src/low_lvl.rs"
+      ],
+      "symbols": [
+        "fdb_wg_align",
+        "set_status",
+        "get_status",
+        "write_status_to_flash"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 180,
+      "is_done": false,
+      "read_line_count": 170,
+      "budget_ok": true
+    },
+    {
+      "id": "T04-utils-crc",
+      "title": "Port CRC32 helper",
+      "read": [
+        "src/fdb_utils.c:1-90"
+      ],
+      "write": [
+        "flashDB_rust/src/utils.rs"
+      ],
+      "symbols": [
+        "calc_crc32"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 100,
+      "is_done": false,
+      "read_line_count": 90,
+      "budget_ok": true
+    },
+    {
+      "id": "T05-file-backend-open-read-write",
+      "title": "Port file backend path/open/read/write",
+      "read": [
+        "src/fdb_file.c:1-180"
+      ],
+      "write": [
+        "flashDB_rust/src/file_backend.rs"
+      ],
+      "symbols": [
+        "file_read",
+        "file_write"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 190,
+      "is_done": false,
+      "read_line_count": 180,
+      "budget_ok": true
+    },
+    {
+      "id": "T06-file-erase",
+      "title": "Port file erase helpers",
+      "read": [
+        "src/fdb_file.c:181-315"
+      ],
+      "write": [
+        "flashDB_rust/src/file_backend.rs"
+      ],
+      "symbols": [
+        "file_erase"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 150,
+      "is_done": false,
+      "read_line_count": 135,
+      "budget_ok": true
+    },
+    {
+      "id": "T06a-db-init",
+      "title": "Port base DB init and deinit",
+      "read": [
+        "src/fdb.c:1-117"
+      ],
+      "write": [
+        "flashDB_rust/src/db.rs"
+      ],
+      "symbols": [
+        "db_init",
+        "db_init_finish",
+        "db_deinit"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 130,
+      "is_done": false,
+      "read_line_count": 117,
+      "budget_ok": true
+    },
+    {
+      "id": "T07-kvdb-types-layout",
+      "title": "Create KVDB structs and byte layout helpers",
+      "read": [
+        "src/fdb_kvdb.c:102-146",
+        "inc/fdb_def.h:120-260"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "struct Kvdb",
+        "struct KvNode",
+        "struct KvdbSecInfo",
+        "struct KvHdrData"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 190,
+      "is_done": false,
+      "read_line_count": 186,
+      "budget_ok": true
+    },
+    {
+      "id": "T08-kvdb-read-kv",
+      "title": "Port KV address scan and read_kv",
+      "read": [
+        "src/fdb_kvdb.c:280-415"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "find_next_kv_addr",
+        "get_next_kv_addr",
+        "read_kv"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 150,
+      "is_done": false,
+      "read_line_count": 136,
+      "budget_ok": true
+    },
+    {
+      "id": "T09-kvdb-sector-info",
+      "title": "Port KV sector info and next-sector logic",
+      "read": [
+        "src/fdb_kvdb.c:416-527"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "read_sector_info",
+        "get_next_sector_addr"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 130,
+      "is_done": false,
+      "read_line_count": 112,
+      "budget_ok": true
+    },
+    {
+      "id": "T10-kvdb-cache",
+      "title": "Port KVDB cache helpers",
+      "read": [
+        "src/fdb_kvdb.c:151-279"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "update_sector_cache",
+        "get_sector_from_cache",
+        "update_kv_cache",
+        "get_kv_from_cache"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 140,
+      "is_done": false,
+      "read_line_count": 129,
+      "budget_ok": true
+    },
+    {
+      "id": "T11-kvdb-iterator-find",
+      "title": "Port KV iterator and lookup helpers",
+      "read": [
+        "src/fdb_kvdb.c:528-621"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "kv_iterator",
+        "find_kv_no_cache",
+        "find_kv",
+        "fdb_is_str"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 110,
+      "is_done": false,
+      "read_line_count": 94,
+      "budget_ok": true
+    },
+    {
+      "id": "T12-kvdb-get-blob",
+      "title": "Port KV get/get_blob APIs",
+      "read": [
+        "src/fdb_kvdb.c:622-754"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "get_kv",
+        "fdb_kv_get_obj",
+        "fdb_kv_to_blob",
+        "fdb_kv_get_blob",
+        "fdb_kv_get"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 150,
+      "is_done": false,
+      "read_line_count": 133,
+      "budget_ok": true
+    },
+    {
+      "id": "T13-kvdb-header-write-format",
+      "title": "Port KV header write and sector format",
+      "read": [
+        "src/fdb_kvdb.c:755-828"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "write_kv_hdr",
+        "format_sector"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 90,
+      "is_done": false,
+      "read_line_count": 74,
+      "budget_ok": true
+    },
+    {
+      "id": "T14-kvdb-status-alloc",
+      "title": "Port sector status, sector iteration, and KV allocation",
+      "read": [
+        "src/fdb_kvdb.c:829-939"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "update_sec_status",
+        "sector_iterator",
+        "alloc_kv"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 130,
+      "is_done": false,
+      "read_line_count": 111,
+      "budget_ok": true
+    },
+    {
+      "id": "T15-kvdb-delete-move-new",
+      "title": "Port KV delete, move, and new allocation",
+      "read": [
+        "src/fdb_kvdb.c:940-1097"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "del_kv",
+        "move_kv",
+        "new_kv",
+        "new_kv_ex"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 170,
+      "is_done": false,
+      "read_line_count": 158,
+      "budget_ok": true
+    },
+    {
+      "id": "T16-kvdb-gc",
+      "title": "Port KVDB garbage collection",
+      "read": [
+        "src/fdb_kvdb.c:1098-1183"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "do_gc",
+        "gc_collect_by_free_size",
+        "gc_collect"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 100,
+      "is_done": false,
+      "read_line_count": 86,
+      "budget_ok": true
+    },
+    {
+      "id": "T17-kvdb-public-create-delete",
+      "title": "Port KV create and delete APIs",
+      "read": [
+        "src/fdb_kvdb.c:1184-1294"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "create_kv_blob",
+        "fdb_kv_del"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 130,
+      "is_done": false,
+      "read_line_count": 111,
+      "budget_ok": true
+    },
+    {
+      "id": "T17a-kvdb-public-set-default",
+      "title": "Port KV set/blob/default APIs",
+      "read": [
+        "src/fdb_kvdb.c:1295-1431"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "set_kv",
+        "fdb_kv_set",
+        "fdb_kv_set_blob",
+        "fdb_kv_set_default"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 150,
+      "is_done": false,
+      "read_line_count": 137,
+      "budget_ok": true
+    },
+    {
+      "id": "T18-kvdb-print-auto-update",
+      "title": "Port KVDB print and default auto-update helpers",
+      "read": [
+        "src/fdb_kvdb.c:1432-1545"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "fdb_kv_print",
+        "kv_auto_update"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 130,
+      "is_done": false,
+      "read_line_count": 114,
+      "budget_ok": true
+    },
+    {
+      "id": "T18a-kvdb-load-recovery",
+      "title": "Port KVDB load and recovery callbacks",
+      "read": [
+        "src/fdb_kvdb.c:1546-1663"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "check_oldest_addr_cb",
+        "check_sec_hdr_cb",
+        "check_and_recovery_gc_cb",
+        "check_and_recovery_kv_cb",
+        "_fdb_kv_load"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 130,
+      "is_done": false,
+      "read_line_count": 118,
+      "budget_ok": true
+    },
+    {
+      "id": "T18b-kvdb-control-init-deinit",
+      "title": "Port KVDB control, init, and deinit",
+      "read": [
+        "src/fdb_kvdb.c:1665-1828"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "fdb_kvdb_control",
+        "fdb_kvdb_init",
+        "fdb_kvdb_deinit"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 180,
+      "is_done": false,
+      "read_line_count": 164,
+      "budget_ok": true
+    },
+    {
+      "id": "T19-kvdb-iterator-check",
+      "title": "Port KVDB iterator and integrity check APIs",
+      "read": [
+        "src/fdb_kvdb.c:1831-1944"
+      ],
+      "write": [
+        "flashDB_rust/src/kvdb.rs"
+      ],
+      "symbols": [
+        "fdb_kv_iterator_init",
+        "fdb_kv_iterate",
+        "fdb_kvdb_check"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 130,
+      "is_done": false,
+      "read_line_count": 114,
+      "budget_ok": true
+    },
+    {
+      "id": "T20-tsdb-types-read",
+      "title": "Create TSDB structs and layout constants from TSDB source",
+      "read": [
+        "src/fdb_tsdb.c:1-146"
+      ],
+      "write": [
+        "flashDB_rust/src/tsdb.rs"
+      ],
+      "symbols": [
+        "struct Tsdb",
+        "struct Tsl",
+        "struct TsdbSecInfo"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 160,
+      "is_done": false,
+      "read_line_count": 146,
+      "budget_ok": true
+    },
+    {
+      "id": "T21-tsdb-basic-readers",
+      "title": "Port TSDB basic TSL and address readers",
+      "read": [
+        "src/fdb_tsdb.c:147-241"
+      ],
+      "write": [
+        "flashDB_rust/src/tsdb.rs"
+      ],
+      "symbols": [
+        "read_tsl",
+        "get_next_sector_addr",
+        "get_next_tsl_addr",
+        "get_last_tsl_addr"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 110,
+      "is_done": false,
+      "read_line_count": 95,
+      "budget_ok": true
+    },
+    {
+      "id": "T22-tsdb-sector-format",
+      "title": "Port TSDB sector info, format, and sector iteration",
+      "read": [
+        "src/fdb_tsdb.c:242-349"
+      ],
+      "write": [
+        "flashDB_rust/src/tsdb.rs"
+      ],
+      "symbols": [
+        "read_sector_info",
+        "format_sector",
+        "sector_iterator"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 130,
+      "is_done": false,
+      "read_line_count": 108,
+      "budget_ok": true
+    },
+    {
+      "id": "T23-tsdb-append",
+      "title": "Port TSDB write_tsl, update_sec_status, and append APIs",
+      "read": [
+        "src/fdb_tsdb.c:350-489"
+      ],
+      "write": [
+        "flashDB_rust/src/tsdb.rs"
+      ],
+      "symbols": [
+        "write_tsl",
+        "update_sec_status",
+        "fdb_tsl_append",
+        "fdb_tsl_append_with_ts"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 160,
+      "is_done": false,
+      "read_line_count": 140,
+      "budget_ok": true
+    },
+    {
+      "id": "T24-tsdb-iterate",
+      "title": "Port TSDB forward and reverse iterators",
+      "read": [
+        "src/fdb_tsdb.c:490-620"
+      ],
+      "write": [
+        "flashDB_rust/src/tsdb.rs"
+      ],
+      "symbols": [
+        "fdb_tsl_iter",
+        "fdb_tsl_iter_reverse"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 150,
+      "is_done": false,
+      "read_line_count": 131,
+      "budget_ok": true
+    },
+    {
+      "id": "T25-tsdb-query",
+      "title": "Port TSDB time-range iteration and query count",
+      "read": [
+        "src/fdb_tsdb.c:621-770"
+      ],
+      "write": [
+        "flashDB_rust/src/tsdb.rs"
+      ],
+      "symbols": [
+        "fdb_tsl_iter_by_time",
+        "fdb_tsl_query_count",
+        "fdb_tsl_max_blob_count"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 170,
+      "is_done": false,
+      "read_line_count": 150,
+      "budget_ok": true
+    },
+    {
+      "id": "T26-tsdb-status-clean-control",
+      "title": "Port TSDB set_status, to_blob, clean, and control",
+      "read": [
+        "src/fdb_tsdb.c:771-930"
+      ],
+      "write": [
+        "flashDB_rust/src/tsdb.rs"
+      ],
+      "symbols": [
+        "fdb_tsl_set_status",
+        "fdb_tsl_to_blob",
+        "fdb_tsl_clean",
+        "fdb_tsdb_control"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 180,
+      "is_done": false,
+      "read_line_count": 160,
+      "budget_ok": true
+    },
+    {
+      "id": "T27-tsdb-init-deinit",
+      "title": "Port TSDB init and deinit",
+      "read": [
+        "src/fdb_tsdb.c:931-1117"
+      ],
+      "write": [
+        "flashDB_rust/src/tsdb.rs"
+      ],
+      "symbols": [
+        "fdb_tsdb_init",
+        "fdb_tsdb_deinit"
+      ],
+      "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+      "max_read_lines": 200,
+      "is_done": false,
+      "read_line_count": 187,
+      "budget_ok": true
+    },
+    {
+      "id": "T28-kvdb-tests-harness",
+      "title": "Create KVDB Rust test harness, fixtures, and dynamic value sizing",
+      "read": [
+        "tests/fdb_kvdb_tc.c:1-178"
+      ],
+      "write": [
+        "flashDB_rust/tests/kvdb_test.rs"
+      ],
+      "symbols": [
+        "dir_delete",
+        "kvdb_test_value_len",
+        "init_kvdb_with_sectors"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test --no-run",
+      "max_read_lines": 190,
+      "is_done": false,
+      "read_line_count": 178,
+      "budget_ok": true
+    },
+    {
+      "id": "T28a-kvdb-tests-basic",
+      "title": "Migrate basic KVDB init/blob/string/delete tests",
+      "read": [
+        "tests/fdb_kvdb_tc.c:179-358"
+      ],
+      "write": [
+        "flashDB_rust/tests/kvdb_test.rs"
+      ],
+      "symbols": [
+        "test_fdb_kvdb_init",
+        "test_fdb_kvdb_init_check",
+        "test_fdb_create_kv_blob",
+        "test_fdb_change_kv_blob",
+        "test_fdb_del_kv_blob",
+        "test_fdb_create_kv",
+        "test_fdb_change_kv",
+        "test_fdb_del_kv"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test",
+      "max_read_lines": 190,
+      "is_done": false,
+      "read_line_count": 180,
+      "budget_ok": true
+    },
+    {
+      "id": "T28b-kvdb-tests-iteration-helpers",
+      "title": "Migrate KVDB test iteration and assertion helpers",
+      "read": [
+        "tests/fdb_kvdb_tc.c:359-435"
+      ],
+      "write": [
+        "flashDB_rust/tests/kvdb_test.rs"
+      ],
+      "symbols": [
+        "iter_all_kv",
+        "test_save_fdb_by_kvs",
+        "test_check_fdb_by_kvs",
+        "test_fdb_by_kvs"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test --no-run",
+      "max_read_lines": 90,
+      "is_done": false,
+      "read_line_count": 77,
+      "budget_ok": true
+    },
+    {
+      "id": "T29-kvdb-tests-gc1-prepare",
+      "title": "Migrate first KVDB GC scenario preparation phases",
+      "read": [
+        "tests/fdb_kvdb_tc.c:437-512"
+      ],
+      "write": [
+        "flashDB_rust/tests/kvdb_test.rs"
+      ],
+      "symbols": [
+        "test_fdb_gc_prepare_phases"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test --no-run",
+      "max_read_lines": 90,
+      "is_done": false,
+      "read_line_count": 76,
+      "budget_ok": true
+    },
+    {
+      "id": "T29b-kvdb-tests-gc1-trigger",
+      "title": "Migrate first KVDB GC scenario trigger phases",
+      "read": [
+        "tests/fdb_kvdb_tc.c:513-694"
+      ],
+      "write": [
+        "flashDB_rust/tests/kvdb_test.rs"
+      ],
+      "symbols": [
+        "test_fdb_gc"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test test_fdb_gc -- --exact",
+      "max_read_lines": 200,
+      "is_done": false,
+      "read_line_count": 182,
+      "budget_ok": true
+    },
+    {
+      "id": "T29a-kvdb-tests-gc2",
+      "title": "Migrate second KVDB GC scenario with large values",
+      "read": [
+        "tests/fdb_kvdb_tc.c:695-887"
+      ],
+      "write": [
+        "flashDB_rust/tests/kvdb_test.rs"
+      ],
+      "symbols": [
+        "test_fdb_gc2"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test test_fdb_gc2 -- --exact",
+      "max_read_lines": 200,
+      "is_done": false,
+      "read_line_count": 193,
+      "budget_ok": true
+    },
+    {
+      "id": "T30-kvdb-tests-scale-default",
+      "title": "Migrate KVDB scale-up/default/deinit registration tests",
+      "read": [
+        "tests/fdb_kvdb_tc.c:889-968"
+      ],
+      "write": [
+        "flashDB_rust/tests/kvdb_test.rs"
+      ],
+      "symbols": [
+        "test_fdb_scale_up",
+        "test_fdb_kvdb_set_default",
+        "test_fdb_kvdb_deinit"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test kvdb_test",
+      "max_read_lines": 100,
+      "is_done": false,
+      "read_line_count": 80,
+      "budget_ok": true
+    },
+    {
+      "id": "T31-tsdb-tests-harness",
+      "title": "Create TSDB Rust test harness and dynamic count helpers",
+      "read": [
+        "tests/fdb_tsdb_tc.c:1-82"
+      ],
+      "write": [
+        "flashDB_rust/tests/tsdb_test.rs"
+      ],
+      "symbols": [
+        "get_time",
+        "tsdb_test_count"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test tsdb_test --no-run",
+      "max_read_lines": 100,
+      "is_done": false,
+      "read_line_count": 82,
+      "budget_ok": true
+    },
+    {
+      "id": "T31a-tsdb-tests-basic",
+      "title": "Migrate basic TSDB behavior tests",
+      "read": [
+        "tests/fdb_tsdb_tc.c:83-223"
+      ],
+      "write": [
+        "flashDB_rust/tests/tsdb_test.rs"
+      ],
+      "symbols": [
+        "test_fdb_tsdb_init_ex",
+        "test_fdb_tsdb_deinit",
+        "test_fdb_tsl_clean",
+        "test_fdb_tsl_append",
+        "test_fdb_tsl_iter",
+        "test_fdb_tsl_iter_by_time",
+        "test_fdb_tsl_query_count",
+        "test_fdb_tsl_set_status"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test tsdb_test",
+      "max_read_lines": 160,
+      "is_done": false,
+      "read_line_count": 141,
+      "budget_ok": true
+    },
+    {
+      "id": "T31b-tsdb-tests-time-helpers",
+      "title": "Migrate TSDB time-query helper callbacks",
+      "read": [
+        "tests/fdb_tsdb_tc.c:238-344"
+      ],
+      "write": [
+        "flashDB_rust/tests/tsdb_test.rs"
+      ],
+      "symbols": [
+        "query_cb",
+        "get_sector_info_cb",
+        "test_tsdb_data_by_time"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test tsdb_test --no-run",
+      "max_read_lines": 120,
+      "is_done": false,
+      "read_line_count": 107,
+      "budget_ok": true
+    },
+    {
+      "id": "T32-tsdb-tests-boundary",
+      "title": "Migrate TSDB boundary, deinit, and issue regression tests",
+      "read": [
+        "tests/fdb_tsdb_tc.c:346-515"
+      ],
+      "write": [
+        "flashDB_rust/tests/tsdb_test.rs"
+      ],
+      "symbols": [
+        "test_fdb_tsl_clean_again",
+        "test_fdb_tsl_iter_by_time_1",
+        "test_fdb_tsdb_deinit",
+        "test_fdb_github_issue_249"
+      ],
+      "check": "cargo test --manifest-path flashDB_rust/Cargo.toml --test tsdb_test",
+      "max_read_lines": 190,
+      "is_done": false,
+      "read_line_count": 170,
+      "budget_ok": true
+    },
+    {
+      "id": "T33-final-verify",
+      "title": "Run strict verification and finalize reports",
+      "read": [
+        "work/state/next_actions.md:1-120"
+      ],
+      "write": [
+        "result/output.md",
+        "result/issues/00-summary.md"
+      ],
+      "done": [
+        "result/output.md",
+        "result/issues/00-summary.md"
+      ],
+      "check": "python3 work/scripts/flashdb_pipeline.py verify --strict",
+      "max_read_lines": 120,
+      "is_done": false,
+      "read_line_count": 120,
+      "budget_ok": true
+    }
+  ],
+  "current": {
+    "id": "T01-error-def-core",
+    "title": "Port error enum and core constants/enums",
+    "read": [
+      "inc/fdb_def.h:80-170"
+    ],
+    "write": [
+      "flashDB_rust/src/error.rs",
+      "flashDB_rust/src/def.rs"
+    ],
+    "symbols": [
+      "FdbError",
+      "DbType",
+      "KvStatus",
+      "TslStatus"
+    ],
+    "check": "cargo check --manifest-path flashDB_rust/Cargo.toml",
+    "max_read_lines": 100,
+    "is_done": false,
+    "read_line_count": 91,
+    "budget_ok": true
+  }
+}

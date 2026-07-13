@@ -1,0 +1,85 @@
+{
+  "task_id": "T15-kvdb-delete-move-new",
+  "started_at": "2026-07-12T09:17:04Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 2,
+    "created_at": "2026-07-12T09:37:01Z",
+    "diagnosis": "no-target-change",
+    "reason": "start-task was repeated before any target-file change",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only del_kv",
+        "read": [
+          "src/fdb_kvdb.c:940-1001"
+        ],
+        "symbols": [
+          "del_kv"
+        ],
+        "max_read_lines": 62,
+        "id": "T15-kvdb-delete-move-new.F-del_kv"
+      },
+      {
+        "title": "Implement only move_kv",
+        "read": [
+          "src/fdb_kvdb.c:1003-1067"
+        ],
+        "symbols": [
+          "move_kv"
+        ],
+        "max_read_lines": 65,
+        "id": "T15-kvdb-delete-move-new.F-move_kv"
+      },
+      {
+        "title": "Implement only new_kv",
+        "read": [
+          "src/fdb_kvdb.c:1069-1089"
+        ],
+        "symbols": [
+          "new_kv"
+        ],
+        "max_read_lines": 21,
+        "id": "T15-kvdb-delete-move-new.F-new_kv"
+      },
+      {
+        "title": "Implement only new_kv_ex",
+        "read": [
+          "src/fdb_kvdb.c:1091-1096"
+        ],
+        "symbols": [
+          "new_kv_ex"
+        ],
+        "max_read_lines": 6,
+        "id": "T15-kvdb-delete-move-new.F-new_kv_ex"
+      }
+    ],
+    "active_index": 4,
+    "completed_unit_ids": [
+      "T15-kvdb-delete-move-new.F-del_kv",
+      "T15-kvdb-delete-move-new.F-move_kv",
+      "T15-kvdb-delete-move-new.F-new_kv",
+      "T15-kvdb-delete-move-new.F-new_kv_ex"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "676556e61ec57f88aae193a1d299dfbb746106cad2b7a4a0426b7fc75b3f1007"
+  },
+  "active_started_at": "2026-07-12T09:37:01Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 1,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T10:17:56Z",
+  "last_check_log": "log/trace/task_T15-kvdb-delete-move-new_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "676556e61ec57f88aae193a1d299dfbb746106cad2b7a4a0426b7fc75b3f1007"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T10:17:56Z"
+}

@@ -1,0 +1,25 @@
+{
+  "task_id": "T04-utils-crc",
+  "started_at": "2026-07-12T08:45:56Z",
+  "active_started_at": "2026-07-12T08:45:56Z",
+  "read_ranges": [
+    "src/fdb_utils.c:1-90"
+  ],
+  "write_targets": [
+    "flashDB_rust/src/utils.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/utils.rs": null
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T08:48:02Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T04-utils-crc_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/utils.rs": "1f41f29ecae790f5bdbc49562314daddc4a365fcc3ef0333976be553722036e8"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T08:48:02Z"
+}

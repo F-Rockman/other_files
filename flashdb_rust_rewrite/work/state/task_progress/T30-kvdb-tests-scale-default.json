@@ -1,0 +1,25 @@
+{
+  "task_id": "T30-kvdb-tests-scale-default",
+  "started_at": "2026-07-13T03:01:44Z",
+  "active_started_at": "2026-07-13T03:01:44Z",
+  "read_ranges": [
+    "tests/fdb_kvdb_tc.c:889-968"
+  ],
+  "write_targets": [
+    "flashDB_rust/tests/kvdb_test.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/tests/kvdb_test.rs": "f972c46e6e4656fc064e1d145763c6502ea29e93d462e5968fa284cb7fc1b53c"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T03:11:00Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T30-kvdb-tests-scale-default_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/tests/kvdb_test.rs": "c48aec38bb537e86419a20d42b5257d9a343762045f3fb2bddf6059760ffedce"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T03:11:00Z"
+}

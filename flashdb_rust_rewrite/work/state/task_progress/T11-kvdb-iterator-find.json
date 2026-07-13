@@ -1,0 +1,66 @@
+{
+  "task_id": "T11-kvdb-iterator-find",
+  "started_at": "2026-07-12T09:04:12Z",
+  "active_started_at": "2026-07-12T09:04:40Z",
+  "read_ranges": [],
+  "write_targets": [
+    "flashDB_rust/src/kvdb.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "b57a4815e5a40543b296c02e70274e7928c254aac57b1df336c47b52c9499003"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T09:06:56Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 1,
+    "created_at": "2026-07-12T09:04:40Z",
+    "diagnosis": "no-target-change",
+    "reason": "start-task was repeated before any target-file change",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only kv_iterator and find_kv_no_cache",
+        "read": [
+          "src/fdb_kvdb.c:528-583"
+        ],
+        "symbols": [
+          "kv_iterator",
+          "find_kv_no_cache"
+        ],
+        "max_read_lines": 56,
+        "id": "T11-kvdb-iterator-find.F-kv_iterator-find_kv_no_cache"
+      },
+      {
+        "title": "Implement only find_kv and fdb_is_str",
+        "read": [
+          "src/fdb_kvdb.c:585-620"
+        ],
+        "symbols": [
+          "find_kv",
+          "fdb_is_str"
+        ],
+        "max_read_lines": 36,
+        "id": "T11-kvdb-iterator-find.F-find_kv-fdb_is_str"
+      }
+    ],
+    "active_index": 2,
+    "completed_unit_ids": [
+      "T11-kvdb-iterator-find.F-find_kv-fdb_is_str",
+      "T11-kvdb-iterator-find.F-kv_iterator-find_kv_no_cache"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "no_progress_events": 1,
+  "last_check_log": "log/trace/task_T11-kvdb-iterator-find_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "ed80cbd51ea918df08a6b0816b12e031db8f5f27e278bfbb6cbc89de677418b0"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T09:06:56Z"
+}

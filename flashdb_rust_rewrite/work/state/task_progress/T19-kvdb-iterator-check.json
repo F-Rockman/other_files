@@ -1,0 +1,25 @@
+{
+  "task_id": "T19-kvdb-iterator-check",
+  "started_at": "2026-07-12T10:42:40Z",
+  "active_started_at": "2026-07-12T10:42:40Z",
+  "read_ranges": [
+    "src/fdb_kvdb.c:1831-1944"
+  ],
+  "write_targets": [
+    "flashDB_rust/src/kvdb.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "c473e0a19c7a2019eacad1bd772534bf62b2131b745d62868c0a167fd5ce64a4"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T10:46:26Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T19-kvdb-iterator-check_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "939cf669ba1a5bddaf239e8a8e12d5ccdd572159c2719465dfa24d0d6c5c853b"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T10:46:26Z"
+}

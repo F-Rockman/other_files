@@ -1,0 +1,64 @@
+{
+  "task_id": "T09-kvdb-sector-info",
+  "started_at": "2026-07-12T08:59:44Z",
+  "active_started_at": "2026-07-12T08:59:49Z",
+  "read_ranges": [],
+  "write_targets": [
+    "flashDB_rust/src/kvdb.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "7a6c3b2df70dd491fc22ce2c5a7ab47efa62a919d9ecaef44e4b4226ebcd2740"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T09:04:12Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 1,
+    "created_at": "2026-07-12T08:59:49Z",
+    "diagnosis": "no-target-change",
+    "reason": "start-task was repeated before any target-file change",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only read_sector_info",
+        "read": [
+          "src/fdb_kvdb.c:416-502"
+        ],
+        "symbols": [
+          "read_sector_info"
+        ],
+        "max_read_lines": 87,
+        "id": "T09-kvdb-sector-info.F-read_sector_info"
+      },
+      {
+        "title": "Implement only get_next_sector_addr",
+        "read": [
+          "src/fdb_kvdb.c:504-526"
+        ],
+        "symbols": [
+          "get_next_sector_addr"
+        ],
+        "max_read_lines": 23,
+        "id": "T09-kvdb-sector-info.F-get_next_sector_addr"
+      }
+    ],
+    "active_index": 2,
+    "completed_unit_ids": [
+      "T09-kvdb-sector-info.F-get_next_sector_addr",
+      "T09-kvdb-sector-info.F-read_sector_info"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "no_progress_events": 1,
+  "last_check_log": "log/trace/task_T09-kvdb-sector-info_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "7a6c3b2df70dd491fc22ce2c5a7ab47efa62a919d9ecaef44e4b4226ebcd2740"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T09:04:12Z"
+}

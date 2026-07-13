@@ -1,0 +1,50 @@
+{
+  "task_id": "T05-file-backend-open-read-write",
+  "started_at": "2026-07-12T08:47:32Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 7,
+    "created_at": "2026-07-12T08:49:51Z",
+    "diagnosis": "no-target-change",
+    "reason": "advance repeated before the required target edit",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only file_write",
+        "read": [
+          "src/fdb_file.c:1-90"
+        ],
+        "symbols": [
+          "file_write"
+        ],
+        "max_read_lines": 90,
+        "id": "T05-file-backend-open-read-write.F-file_write"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T05-file-backend-open-read-write.F-file_write"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/file_backend.rs": "26da65780334beb33065f6ebff149f6b8096a6131751b465ab890a275e84a29d"
+  },
+  "active_started_at": "2026-07-12T08:49:51Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 5,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T08:49:58Z",
+  "last_check_log": "log/trace/task_T05-file-backend-open-read-write_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/file_backend.rs": "26da65780334beb33065f6ebff149f6b8096a6131751b465ab890a275e84a29d"
+  },
+  "last_error_fingerprint": null,
+  "incomplete_checks": 1,
+  "completed_at": "2026-07-12T08:50:01Z"
+}

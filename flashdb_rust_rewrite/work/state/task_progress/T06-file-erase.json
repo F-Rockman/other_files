@@ -1,0 +1,52 @@
+{
+  "task_id": "T06-file-erase",
+  "started_at": "2026-07-12T08:49:58Z",
+  "active_started_at": "2026-07-12T08:50:20Z",
+  "read_ranges": [],
+  "write_targets": [
+    "flashDB_rust/src/file_backend.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/file_backend.rs": "e87f496303959e0f187e0f67ee17ff9d551b6ebac62faaf45cd54ff1c81e650b"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T08:50:11Z",
+  "read_authorized": true,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": true,
+    "generation": 2,
+    "created_at": "2026-07-12T08:50:20Z",
+    "diagnosis": "no-target-change",
+    "reason": "check-task was requested before any target-file change",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only file_erase",
+        "read": [
+          "src/fdb_file.c:181-270"
+        ],
+        "symbols": [
+          "file_erase"
+        ],
+        "max_read_lines": 90,
+        "id": "T06-file-erase.F-file_erase"
+      }
+    ],
+    "active_index": 0,
+    "completed_unit_ids": [
+      "T06-file-erase.F-file_erase"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "no_progress_events": 2,
+  "last_check_log": "log/trace/task_T06-file-erase_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/file_backend.rs": "e87f496303959e0f187e0f67ee17ff9d551b6ebac62faaf45cd54ff1c81e650b"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T08:50:22Z"
+}

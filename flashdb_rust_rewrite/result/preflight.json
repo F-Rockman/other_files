@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-07-13T04:10:07Z",
+  "repo": "/Users/Rockman/rep/FlashDB",
+  "checks": [
+    {
+      "name": "root INSTRUCTION.md",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "src/fdb.c",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "src/fdb_file.c",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "src/fdb_utils.c",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "src/fdb_kvdb.c",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "src/fdb_tsdb.c",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "inc/fdb_def.h",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "inc/flashdb.h",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "inc/fdb_low_lvl.h",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "tests/fdb_kvdb_tc.c",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "tests/fdb_tsdb_tc.c",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "python3",
+      "ok": true,
+      "detail": "Python 3.14.6"
+    },
+    {
+      "name": "rustc",
+      "ok": true,
+      "detail": "rustc 1.96.1 (31fca3adb 2026-06-26)"
+    },
+    {
+      "name": "cargo",
+      "ok": true,
+      "detail": "cargo 1.96.1 (356927216 2026-06-26)"
+    }
+  ],
+  "ok": true
+}

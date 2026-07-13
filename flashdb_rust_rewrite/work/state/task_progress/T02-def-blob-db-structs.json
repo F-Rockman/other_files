@@ -1,0 +1,65 @@
+{
+  "task_id": "T02-def-blob-db-structs",
+  "started_at": "2026-07-12T08:39:07Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": true,
+    "generation": 1,
+    "created_at": "2026-07-12T08:39:07Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 162 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only FdbTime",
+        "read": [
+          "inc/fdb_def.h:171-260"
+        ],
+        "symbols": [
+          "FdbTime"
+        ],
+        "max_read_lines": 90,
+        "id": "T02-def-blob-db-structs.F-FdbTime"
+      },
+      {
+        "title": "Implement only GetTimeFn and struct Blob",
+        "read": [
+          "inc/fdb_def.h:261-332"
+        ],
+        "symbols": [
+          "GetTimeFn",
+          "struct Blob"
+        ],
+        "max_read_lines": 72,
+        "id": "T02-def-blob-db-structs.F-GetTimeFn-struct-Blob"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T02-def-blob-db-structs.F-FdbTime"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/def.rs": "6b6d167c624bbd486c91fd6449de569f7e4d278dabd53227b27c2d3a86314b2c",
+    "flashDB_rust/src/blob.rs": "168c56088e43dbcf697c311d52306b7a29b621bd4d28187d31146a3f44903e8f"
+  },
+  "active_started_at": "2026-07-12T08:39:07Z",
+  "read_authorized": true,
+  "read_ranges": [
+    "inc/fdb_def.h:261-332"
+  ],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T08:41:16Z",
+  "last_check_log": "log/trace/task_T02-def-blob-db-structs_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/def.rs": "6b6d167c624bbd486c91fd6449de569f7e4d278dabd53227b27c2d3a86314b2c",
+    "flashDB_rust/src/blob.rs": "168c56088e43dbcf697c311d52306b7a29b621bd4d28187d31146a3f44903e8f"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T08:41:16Z"
+}

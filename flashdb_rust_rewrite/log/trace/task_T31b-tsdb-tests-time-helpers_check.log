@@ -1,0 +1,2 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+  Executable tests/tsdb_test.rs (flashDB_rust/target/debug/deps/tsdb_test-9b479ab2a39d781c)

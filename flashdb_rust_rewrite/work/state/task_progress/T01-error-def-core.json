@@ -1,0 +1,28 @@
+{
+  "task_id": "T01-error-def-core",
+  "started_at": "2026-07-12T08:38:01Z",
+  "active_started_at": "2026-07-12T08:38:01Z",
+  "read_ranges": [
+    "inc/fdb_def.h:80-170"
+  ],
+  "write_targets": [
+    "flashDB_rust/src/error.rs",
+    "flashDB_rust/src/def.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/error.rs": null,
+    "flashDB_rust/src/def.rs": null
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T08:39:07Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T01-error-def-core_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/error.rs": "39ad00aa5f73232454410292d224f5269eb2262e2cd54665b6e835f43190c97a",
+    "flashDB_rust/src/def.rs": "e40a71f51e091961e049096bfdcbb20f6dcd78a1261a0268321555b1963de361"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T08:39:07Z"
+}
