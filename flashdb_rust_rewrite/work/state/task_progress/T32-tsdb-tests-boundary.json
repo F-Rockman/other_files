@@ -1,0 +1,73 @@
+{
+  "task_id": "T32-tsdb-tests-boundary",
+  "started_at": "2026-07-13T04:00:47Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 1,
+    "created_at": "2026-07-13T04:00:47Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 170 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only test_fdb_tsl_clean_again",
+        "read": [
+          "tests/fdb_tsdb_tc.c:346-435"
+        ],
+        "symbols": [
+          "test_fdb_tsl_clean_again"
+        ],
+        "max_read_lines": 90,
+        "id": "T32-tsdb-tests-boundary.F-test_fdb_tsl_clean_again"
+      },
+      {
+        "title": "Implement only test_fdb_tsl_iter_by_time_1",
+        "read": [
+          "tests/fdb_tsdb_tc.c:369-447"
+        ],
+        "symbols": [
+          "test_fdb_tsl_iter_by_time_1"
+        ],
+        "max_read_lines": 79,
+        "id": "T32-tsdb-tests-boundary.F-test_fdb_tsl_iter_by_time_1"
+      },
+      {
+        "title": "Implement only test_fdb_github_issue_249",
+        "read": [
+          "tests/fdb_tsdb_tc.c:449-496"
+        ],
+        "symbols": [
+          "test_fdb_github_issue_249"
+        ],
+        "max_read_lines": 48,
+        "id": "T32-tsdb-tests-boundary.F-test_fdb_github_issue_249"
+      }
+    ],
+    "active_index": 3,
+    "completed_unit_ids": [
+      "T32-tsdb-tests-boundary.F-test_fdb_github_issue_249",
+      "T32-tsdb-tests-boundary.F-test_fdb_tsl_clean_again",
+      "T32-tsdb-tests-boundary.F-test_fdb_tsl_iter_by_time_1"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/tests/tsdb_test.rs": "127b58ee30f60e7e4434a7b5b64c4bddac308e8a1b6a35b6ea3f34bfd00df7e4"
+  },
+  "active_started_at": "2026-07-13T04:00:47Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T04:07:55Z",
+  "last_check_log": "log/trace/task_T32-tsdb-tests-boundary_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/tests/tsdb_test.rs": "127b58ee30f60e7e4434a7b5b64c4bddac308e8a1b6a35b6ea3f34bfd00df7e4"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T04:07:55Z"
+}

@@ -1,0 +1,98 @@
+warning: variable does not need to be mutable
+   --> tests/kvdb_test.rs:175:9
+    |
+175 |     let mut blob = Blob::make(tick.to_le_bytes().to_vec(), std::mem::size_of::<u32>());
+    |         ----^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> tests/kvdb_test.rs:189:9
+    |
+189 |     let mut value_buf = vec![0u8; std::mem::size_of::<u32>()];
+    |         ----^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/kvdb_test.rs:202:9
+    |
+202 |     let mut blob = Blob::make(tick0.to_le_bytes().to_vec(), std::mem::size_of::<u32>());
+    |         ----^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/kvdb_test.rs:216:9
+    |
+216 |     let mut set_blob = Blob::make(tick.to_le_bytes().to_vec(), std::mem::size_of::<u32>());
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: constant `TEST_KV_MAX_NUM` is never used
+  --> tests/kvdb_test.rs:14:7
+   |
+14 | const TEST_KV_MAX_NUM: usize = 8;
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `KV_NAME_MAX` is never used
+  --> tests/kvdb_test.rs:20:7
+   |
+20 | const KV_NAME_MAX: u32 = 64;
+   |       ^^^^^^^^^^^
+
+warning: struct `TestKv` is never constructed
+  --> tests/kvdb_test.rs:35:8
+   |
+35 | struct TestKv {
+   |        ^^^^^^
+
+warning: associated items `new` and `value_len` are never used
+  --> tests/kvdb_test.rs:44:8
+   |
+43 | impl TestKv {
+   | ----------- associated items in this implementation
+44 |     fn new(name: &str, value_len: usize) -> Self {
+   |        ^^^
+...
+58 |     fn value_len(&self) -> usize {
+   |        ^^^^^^^^^
+
+warning: function `dir_delete` is never used
+  --> tests/kvdb_test.rs:93:4
+   |
+93 | fn dir_delete(path: &std::path::Path) {
+   |    ^^^^^^^^^^
+
+warning: function `iter_all_kv` is never used
+   --> tests/kvdb_test.rs:108:4
+    |
+108 | fn iter_all_kv(db: &mut Kvdb) -> Vec<TestKv> {
+    |    ^^^^^^^^^^^
+
+warning: function `test_save_fdb_by_kvs` is never used
+   --> tests/kvdb_test.rs:130:4
+    |
+130 | fn test_save_fdb_by_kvs(db: &mut Kvdb, kv_tbl: &[TestKv]) {
+    |    ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `test_check_fdb_by_kvs` is never used
+   --> tests/kvdb_test.rs:140:4
+    |
+140 | fn test_check_fdb_by_kvs(db: &mut Kvdb, kv_tbl: &[TestKv]) {
+    |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `test_fdb_by_kvs` is never used
+   --> tests/kvdb_test.rs:153:4
+    |
+153 | fn test_fdb_by_kvs(db: &mut Kvdb, kv_tbl: &[TestKv]) {
+    |    ^^^^^^^^^^^^^^^
+
+warning: `flashdb` (test "kvdb_test") generated 13 warnings (run `cargo fix --test "kvdb_test" -p flashdb` to apply 4 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+  Executable tests/kvdb_test.rs (flashDB_rust/target/debug/deps/kvdb_test-a3a52a6ea845c093)

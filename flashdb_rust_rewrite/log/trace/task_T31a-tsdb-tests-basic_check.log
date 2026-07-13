@@ -1,0 +1,15 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+     Running tests/tsdb_test.rs (flashDB_rust/target/debug/deps/tsdb_test-9b479ab2a39d781c)
+
+running 8 tests
+test test_fdb_tsdb_init_ex ... ok
+test test_fdb_tsdb_deinit ... ok
+test test_fdb_tsl_query_count ... ok
+test test_fdb_tsl_iter ... ok
+test test_fdb_tsl_iter_by_time ... ok
+test test_fdb_tsl_append ... ok
+test test_fdb_tsl_clean ... ok
+test test_fdb_tsl_set_status ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.93s
+

@@ -1,0 +1,16 @@
+warning: constant `SECTOR_MAGIC_WORD` is never used
+ --> src/tsdb.rs:6:7
+  |
+6 | const SECTOR_MAGIC_WORD: u32 = 0x304C5354;
+  |       ^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `LOG_IDX_TS_OFFSET` is never used
+ --> src/tsdb.rs:9:7
+  |
+9 | const LOG_IDX_TS_OFFSET: u32 = 8;
+  |       ^^^^^^^^^^^^^^^^^
+
+warning: `flashdb` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.00s

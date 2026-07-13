@@ -1,0 +1,62 @@
+{
+  "task_id": "T24-tsdb-iterate",
+  "started_at": "2026-07-13T01:52:20Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": true,
+    "generation": 1,
+    "created_at": "2026-07-13T01:52:20Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 131 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only fdb_tsl_iter_reverse",
+        "read": [
+          "src/fdb_tsdb.c:490-579"
+        ],
+        "symbols": [
+          "fdb_tsl_iter_reverse"
+        ],
+        "max_read_lines": 90,
+        "id": "T24-tsdb-iterate.F-fdb_tsl_iter_reverse"
+      },
+      {
+        "title": "Implement only fdb_tsl_iter",
+        "read": [
+          "src/fdb_tsdb.c:553-597"
+        ],
+        "symbols": [
+          "fdb_tsl_iter"
+        ],
+        "max_read_lines": 45,
+        "id": "T24-tsdb-iterate.F-fdb_tsl_iter"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T24-tsdb-iterate.F-fdb_tsl_iter_reverse"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/tsdb.rs": "328bc553f98656cf207aa92ed7500796d8ec020f9bfac19cf2ce6ff07cfbb5de"
+  },
+  "active_started_at": "2026-07-13T01:52:20Z",
+  "read_authorized": true,
+  "read_ranges": [
+    "src/fdb_tsdb.c:553-597"
+  ],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T01:53:54Z",
+  "last_check_log": "log/trace/task_T24-tsdb-iterate_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/tsdb.rs": "328bc553f98656cf207aa92ed7500796d8ec020f9bfac19cf2ce6ff07cfbb5de"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T01:53:54Z"
+}

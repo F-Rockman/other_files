@@ -1,0 +1,50 @@
+{
+  "task_id": "T03-low-level-status",
+  "started_at": "2026-07-12T08:41:16Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 5,
+    "created_at": "2026-07-12T08:45:15Z",
+    "diagnosis": "no-target-change",
+    "reason": "advance repeated before the required target edit",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only write_status_to_flash",
+        "read": [
+          "inc/fdb_low_lvl.h:1-80"
+        ],
+        "symbols": [
+          "write_status_to_flash"
+        ],
+        "max_read_lines": 80,
+        "id": "T03-low-level-status.F-write_status_to_flash"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T03-low-level-status.F-write_status_to_flash"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/low_lvl.rs": "57e869d66d969ea63e959da20f9658e30928fc1ffbdb3f031e5aacb59131df2e"
+  },
+  "active_started_at": "2026-07-12T08:45:15Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 3,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T08:47:32Z",
+  "last_check_log": "log/trace/task_T03-low-level-status_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/low_lvl.rs": "1da2d508e5e5336305a0b5673dce0a111cafe89c2d63ace5c353bb4ad1fdcc32"
+  },
+  "last_error_fingerprint": null,
+  "incomplete_checks": 2,
+  "completed_at": "2026-07-12T08:47:32Z"
+}

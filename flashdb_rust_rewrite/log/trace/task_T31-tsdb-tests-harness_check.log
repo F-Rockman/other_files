@@ -1,0 +1,17 @@
+warning: unused imports: `DbType`, `FdbDb`, `TIME_UNUSED`, and `TslStatus`
+ --> tests/tsdb_test.rs:3:20
+  |
+3 | use flashdb::def::{DbType, FdbDb, FdbTime, TslStatus, TIME_UNUSED};
+  |                    ^^^^^^  ^^^^^           ^^^^^^^^^  ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `TsdbSecInfo` and `Tsl`
+ --> tests/tsdb_test.rs:6:43
+  |
+6 | use flashdb::tsdb::{self, Tsdb, TsdbCtrl, Tsl, TsdbSecInfo};
+  |                                           ^^^  ^^^^^^^^^^^
+
+warning: `flashdb` (test "tsdb_test") generated 2 warnings (run `cargo fix --test "tsdb_test" -p flashdb` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+  Executable tests/tsdb_test.rs (flashDB_rust/target/debug/deps/tsdb_test-9b479ab2a39d781c)

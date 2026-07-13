@@ -1,0 +1,537 @@
+{"at": "2026-07-12T08:37:44Z", "event": "preflight", "ok": true}
+{"at": "2026-07-12T08:37:52Z", "event": "continuation-required", "task_id": "T01-error-def-core", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:38:01Z", "event": "task-start", "task_id": "T01-error-def-core", "focus_id": null}
+{"at": "2026-07-12T08:38:01Z", "event": "continuation-required", "task_id": "T01-error-def-core", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:38:01Z", "event": "advance-continue", "task_id": "T01-error-def-core", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:39:07Z", "event": "task-check", "task_id": "T01-error-def-core", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:39:07Z", "event": "continuation-required", "task_id": "T01-error-def-core", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:39:07Z", "event": "task-complete", "task_id": "T01-error-def-core", "next_task": "T02-def-blob-db-structs"}
+{"at": "2026-07-12T08:39:07Z", "event": "continuation-required", "task_id": "T02-def-blob-db-structs", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:39:07Z", "event": "continuation-required", "task_id": "T02-def-blob-db-structs", "focus_id": "T02-def-blob-db-structs.F-FdbTime", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:39:07Z", "event": "self-heal", "task_id": "T02-def-blob-db-structs", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T08:39:07Z", "event": "task-start", "task_id": "T02-def-blob-db-structs", "focus_id": "T02-def-blob-db-structs.F-FdbTime"}
+{"at": "2026-07-12T08:39:07Z", "event": "advance-task", "task_id": "T01-error-def-core", "next_task": "T02-def-blob-db-structs"}
+{"at": "2026-07-12T08:41:16Z", "event": "task-check", "task_id": "T02-def-blob-db-structs", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:41:16Z", "event": "continuation-required", "task_id": "T02-def-blob-db-structs", "focus_id": "T02-def-blob-db-structs.F-GetTimeFn-struct-Blob", "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:41:16Z", "event": "task-complete", "task_id": "T02-def-blob-db-structs", "next_task": "T03-low-level-status"}
+{"at": "2026-07-12T08:41:16Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:41:16Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-fdb_wg_align", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:41:16Z", "event": "self-heal", "task_id": "T03-low-level-status", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T08:41:16Z", "event": "task-start", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-fdb_wg_align"}
+{"at": "2026-07-12T08:41:16Z", "event": "advance-task", "task_id": "T02-def-blob-db-structs", "next_task": "T03-low-level-status"}
+{"at": "2026-07-12T08:41:55Z", "event": "task-check", "task_id": "T03-low-level-status", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:41:55Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-fdb_wg_align", "next_action": "RUN_HEAL"}
+{"at": "2026-07-12T08:41:55Z", "event": "advance-continue", "task_id": "T03-low-level-status", "action": "RUN_HEAL"}
+{"at": "2026-07-12T08:41:59Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-fdb_wg_align", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:41:59Z", "event": "self-heal", "task_id": "T03-low-level-status", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 2}
+{"at": "2026-07-12T08:42:29Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-fdb_wg_align", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:42:29Z", "event": "self-heal", "task_id": "T03-low-level-status", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 3}
+{"at": "2026-07-12T08:42:29Z", "event": "advance-auto-heal", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-fdb_wg_align", "previous_healing_active": true}
+{"at": "2026-07-12T08:43:16Z", "event": "task-check", "task_id": "T03-low-level-status", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:43:16Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-fdb_wg_align", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:43:16Z", "event": "self-heal", "task_id": "T03-low-level-status", "diagnosis": "check-passed-objective-incomplete", "strategy": "symbol-focus", "generation": 4}
+{"at": "2026-07-12T08:43:16Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-fdb_wg_align", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:43:16Z", "event": "advance-continue", "task_id": "T03-low-level-status", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:44:00Z", "event": "task-check", "task_id": "T03-low-level-status", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:44:00Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-set_status", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:44:00Z", "event": "advance-continue", "task_id": "T03-low-level-status", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:45:05Z", "event": "task-check", "task_id": "T03-low-level-status", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:45:05Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-get_status", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:45:05Z", "event": "advance-continue", "task_id": "T03-low-level-status", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:45:15Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-write_status_to_flash", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:45:15Z", "event": "self-heal", "task_id": "T03-low-level-status", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 5}
+{"at": "2026-07-12T08:45:15Z", "event": "advance-auto-heal", "task_id": "T03-low-level-status", "focus_id": "T03-low-level-status.F-write_status_to_flash", "previous_healing_active": true}
+{"at": "2026-07-12T08:45:56Z", "event": "task-check", "task_id": "T03-low-level-status", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:45:56Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:45:56Z", "event": "task-complete", "task_id": "T03-low-level-status", "next_task": "T04-utils-crc"}
+{"at": "2026-07-12T08:45:56Z", "event": "continuation-required", "task_id": "T04-utils-crc", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:45:56Z", "event": "task-start", "task_id": "T04-utils-crc", "focus_id": null}
+{"at": "2026-07-12T08:45:56Z", "event": "continuation-required", "task_id": "T04-utils-crc", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:45:56Z", "event": "advance-task", "task_id": "T03-low-level-status", "next_task": "T04-utils-crc"}
+{"at": "2026-07-12T08:47:32Z", "event": "task-check", "task_id": "T03-low-level-status", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:47:32Z", "event": "continuation-required", "task_id": "T03-low-level-status", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:47:32Z", "event": "task-complete", "task_id": "T03-low-level-status", "next_task": "T05-file-backend-open-read-write"}
+{"at": "2026-07-12T08:47:32Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:47:32Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:47:32Z", "event": "self-heal", "task_id": "T05-file-backend-open-read-write", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T08:47:32Z", "event": "task-start", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read"}
+{"at": "2026-07-12T08:47:32Z", "event": "advance-task", "task_id": "T03-low-level-status", "next_task": "T05-file-backend-open-read-write"}
+{"at": "2026-07-12T08:48:02Z", "event": "task-check", "task_id": "T04-utils-crc", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:48:02Z", "event": "continuation-required", "task_id": "T04-utils-crc", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:48:02Z", "event": "task-complete", "task_id": "T04-utils-crc", "next_task": "T05-file-backend-open-read-write"}
+{"at": "2026-07-12T08:48:02Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:48:02Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:48:02Z", "event": "self-heal", "task_id": "T05-file-backend-open-read-write", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 2}
+{"at": "2026-07-12T08:48:02Z", "event": "advance-task", "task_id": "T04-utils-crc", "next_task": "T05-file-backend-open-read-write"}
+{"at": "2026-07-12T08:48:56Z", "event": "task-check", "task_id": "T05-file-backend-open-read-write", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:48:56Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "RUN_HEAL"}
+{"at": "2026-07-12T08:48:56Z", "event": "advance-continue", "task_id": "T05-file-backend-open-read-write", "action": "RUN_HEAL"}
+{"at": "2026-07-12T08:49:00Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:49:00Z", "event": "self-heal", "task_id": "T05-file-backend-open-read-write", "diagnosis": "check-passed-objective-incomplete", "strategy": "symbol-focus", "generation": 3}
+{"at": "2026-07-12T08:49:04Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:49:04Z", "event": "self-heal", "task_id": "T05-file-backend-open-read-write", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 4}
+{"at": "2026-07-12T08:49:04Z", "event": "advance-auto-heal", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "previous_healing_active": true}
+{"at": "2026-07-12T08:49:12Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:49:12Z", "event": "self-heal", "task_id": "T05-file-backend-open-read-write", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 5}
+{"at": "2026-07-12T08:49:12Z", "event": "advance-auto-heal", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "previous_healing_active": true}
+{"at": "2026-07-12T08:49:25Z", "event": "task-check", "task_id": "T05-file-backend-open-read-write", "exit_code": 101, "failure_count": 1}
+{"at": "2026-07-12T08:49:25Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "FIX_FIRST_ERROR"}
+{"at": "2026-07-12T08:49:25Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "FIX_FIRST_ERROR"}
+{"at": "2026-07-12T08:49:25Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "FIX_FIRST_ERROR"}
+{"at": "2026-07-12T08:49:25Z", "event": "status", "cargo_toml": true, "mapped_cases": 0}
+{"at": "2026-07-12T08:49:30Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_read", "next_action": "FIX_FIRST_ERROR"}
+{"at": "2026-07-12T08:49:30Z", "event": "advance-continue", "task_id": "T05-file-backend-open-read-write", "action": "FIX_FIRST_ERROR"}
+{"at": "2026-07-12T08:49:43Z", "event": "task-check", "task_id": "T05-file-backend-open-read-write", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:49:43Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_write", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:49:43Z", "event": "advance-continue", "task_id": "T05-file-backend-open-read-write", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:49:46Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_write", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:49:46Z", "event": "self-heal", "task_id": "T05-file-backend-open-read-write", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 6}
+{"at": "2026-07-12T08:49:46Z", "event": "advance-auto-heal", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_write", "previous_healing_active": true}
+{"at": "2026-07-12T08:49:51Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_write", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:49:51Z", "event": "self-heal", "task_id": "T05-file-backend-open-read-write", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 7}
+{"at": "2026-07-12T08:49:51Z", "event": "advance-auto-heal", "task_id": "T05-file-backend-open-read-write", "focus_id": "T05-file-backend-open-read-write.F-file_write", "previous_healing_active": true}
+{"at": "2026-07-12T08:49:58Z", "event": "task-check", "task_id": "T05-file-backend-open-read-write", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:49:58Z", "event": "continuation-required", "task_id": "T05-file-backend-open-read-write", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:49:58Z", "event": "task-complete", "task_id": "T05-file-backend-open-read-write", "next_task": "T06-file-erase"}
+{"at": "2026-07-12T08:49:58Z", "event": "continuation-required", "task_id": "T06-file-erase", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:49:58Z", "event": "task-start", "task_id": "T06-file-erase", "focus_id": null}
+{"at": "2026-07-12T08:49:58Z", "event": "continuation-required", "task_id": "T06-file-erase", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:49:58Z", "event": "advance-task", "task_id": "T05-file-backend-open-read-write", "next_task": "T06-file-erase"}
+{"at": "2026-07-12T08:50:01Z", "event": "task-complete", "task_id": "T05-file-backend-open-read-write", "next_task": "T06-file-erase"}
+{"at": "2026-07-12T08:50:01Z", "event": "continuation-required", "task_id": "T06-file-erase", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:50:06Z", "event": "continuation-required", "task_id": "T06-file-erase", "focus_id": "T06-file-erase.F-file_erase", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:50:06Z", "event": "self-heal", "task_id": "T06-file-erase", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T08:50:11Z", "event": "task-check", "task_id": "T06-file-erase", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:50:11Z", "event": "continuation-required", "task_id": "T06-file-erase", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:50:11Z", "event": "task-complete", "task_id": "T06-file-erase", "next_task": "T06a-db-init"}
+{"at": "2026-07-12T08:50:11Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:50:11Z", "event": "task-start", "task_id": "T06a-db-init", "focus_id": null}
+{"at": "2026-07-12T08:50:11Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:50:11Z", "event": "advance-task", "task_id": "T06-file-erase", "next_task": "T06a-db-init"}
+{"at": "2026-07-12T08:50:20Z", "event": "continuation-required", "task_id": "T06-file-erase", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:50:20Z", "event": "self-heal", "task_id": "T06-file-erase", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 2}
+{"at": "2026-07-12T08:50:22Z", "event": "task-complete", "task_id": "T06-file-erase", "next_task": "T06a-db-init"}
+{"at": "2026-07-12T08:50:22Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:50:26Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": "T06a-db-init.F-db_init", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:50:26Z", "event": "self-heal", "task_id": "T06a-db-init", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T08:50:43Z", "event": "task-check", "task_id": "T06a-db-init", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:50:43Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": "T06a-db-init.F-db_init_finish-db_deinit", "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:50:43Z", "event": "task-complete", "task_id": "T06a-db-init", "next_task": "T07-kvdb-types-layout"}
+{"at": "2026-07-12T08:50:43Z", "event": "continuation-required", "task_id": "T07-kvdb-types-layout", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:50:43Z", "event": "continuation-required", "task_id": "T07-kvdb-types-layout", "focus_id": "T07-kvdb-types-layout.F-struct-KvNode", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:50:43Z", "event": "self-heal", "task_id": "T07-kvdb-types-layout", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T08:50:43Z", "event": "task-start", "task_id": "T07-kvdb-types-layout", "focus_id": "T07-kvdb-types-layout.F-struct-KvNode"}
+{"at": "2026-07-12T08:50:43Z", "event": "advance-task", "task_id": "T06a-db-init", "next_task": "T07-kvdb-types-layout"}
+{"at": "2026-07-12T08:51:11Z", "event": "task-check", "task_id": "T07-kvdb-types-layout", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:51:11Z", "event": "continuation-required", "task_id": "T07-kvdb-types-layout", "focus_id": "T07-kvdb-types-layout.F-struct-KvdbSecInfo-struct-KvHdrData", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:51:11Z", "event": "advance-continue", "task_id": "T07-kvdb-types-layout", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:51:59Z", "event": "task-check", "task_id": "T06a-db-init", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:51:59Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": "T06a-db-init.F-db_init_finish-db_deinit", "next_action": "RUN_HEAL"}
+{"at": "2026-07-12T08:52:32Z", "event": "task-check", "task_id": "T06a-db-init", "exit_code": 101, "failure_count": 1}
+{"at": "2026-07-12T08:52:32Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": "T06a-db-init.F-db_init_finish-db_deinit", "next_action": "FIX_FIRST_ERROR"}
+{"at": "2026-07-12T08:52:32Z", "event": "advance-continue", "task_id": "T06a-db-init", "action": "FIX_FIRST_ERROR"}
+{"at": "2026-07-12T08:52:53Z", "event": "task-check", "task_id": "T07-kvdb-types-layout", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:52:53Z", "event": "continuation-required", "task_id": "T07-kvdb-types-layout", "focus_id": "T07-kvdb-types-layout.F-struct-Kvdb", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:52:53Z", "event": "advance-continue", "task_id": "T07-kvdb-types-layout", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:52:54Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": "T06a-db-init.F-db_init_finish-db_deinit", "next_action": "FIX_FIRST_ERROR"}
+{"at": "2026-07-12T08:52:54Z", "event": "advance-continue", "task_id": "T06a-db-init", "action": "FIX_FIRST_ERROR"}
+{"at": "2026-07-12T08:52:59Z", "event": "task-check", "task_id": "T06a-db-init", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:52:59Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": null, "next_action": "RUN_HEAL"}
+{"at": "2026-07-12T08:53:02Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": null, "next_action": "RUN_HEAL"}
+{"at": "2026-07-12T08:53:24Z", "event": "task-check", "task_id": "T07-kvdb-types-layout", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:53:24Z", "event": "continuation-required", "task_id": "T07-kvdb-types-layout", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:53:24Z", "event": "task-complete", "task_id": "T07-kvdb-types-layout", "next_task": "T08-kvdb-read-kv"}
+{"at": "2026-07-12T08:53:24Z", "event": "continuation-required", "task_id": "T08-kvdb-read-kv", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:53:24Z", "event": "continuation-required", "task_id": "T08-kvdb-read-kv", "focus_id": "T08-kvdb-read-kv.F-find_next_kv_addr-get_next_kv_addr", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:53:24Z", "event": "self-heal", "task_id": "T08-kvdb-read-kv", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T08:53:24Z", "event": "task-start", "task_id": "T08-kvdb-read-kv", "focus_id": "T08-kvdb-read-kv.F-find_next_kv_addr-get_next_kv_addr"}
+{"at": "2026-07-12T08:53:24Z", "event": "advance-task", "task_id": "T07-kvdb-types-layout", "next_task": "T08-kvdb-read-kv"}
+{"at": "2026-07-12T08:53:52Z", "event": "task-check", "task_id": "T06a-db-init", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:53:52Z", "event": "continuation-required", "task_id": "T06a-db-init", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:53:52Z", "event": "task-complete", "task_id": "T06a-db-init", "next_task": "T08-kvdb-read-kv"}
+{"at": "2026-07-12T08:53:52Z", "event": "continuation-required", "task_id": "T08-kvdb-read-kv", "focus_id": "T08-kvdb-read-kv.F-find_next_kv_addr-get_next_kv_addr", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:53:52Z", "event": "continuation-required", "task_id": "T08-kvdb-read-kv", "focus_id": "T08-kvdb-read-kv.F-find_next_kv_addr", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:53:52Z", "event": "self-heal", "task_id": "T08-kvdb-read-kv", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 2}
+{"at": "2026-07-12T08:53:52Z", "event": "advance-task", "task_id": "T06a-db-init", "next_task": "T08-kvdb-read-kv"}
+{"at": "2026-07-12T08:56:39Z", "event": "task-check", "task_id": "T08-kvdb-read-kv", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:56:39Z", "event": "continuation-required", "task_id": "T08-kvdb-read-kv", "focus_id": "T08-kvdb-read-kv.F-get_next_kv_addr", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:56:39Z", "event": "advance-continue", "task_id": "T08-kvdb-read-kv", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:57:41Z", "event": "task-check", "task_id": "T08-kvdb-read-kv", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:57:41Z", "event": "continuation-required", "task_id": "T08-kvdb-read-kv", "focus_id": "T08-kvdb-read-kv.F-read_kv", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:57:41Z", "event": "advance-continue", "task_id": "T08-kvdb-read-kv", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:57:58Z", "event": "continuation-required", "task_id": "T08-kvdb-read-kv", "focus_id": "T08-kvdb-read-kv.F-read_kv", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:57:58Z", "event": "self-heal", "task_id": "T08-kvdb-read-kv", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 3}
+{"at": "2026-07-12T08:57:58Z", "event": "advance-auto-heal", "task_id": "T08-kvdb-read-kv", "focus_id": "T08-kvdb-read-kv.F-read_kv", "previous_healing_active": true}
+{"at": "2026-07-12T08:59:44Z", "event": "task-check", "task_id": "T08-kvdb-read-kv", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T08:59:44Z", "event": "continuation-required", "task_id": "T08-kvdb-read-kv", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T08:59:44Z", "event": "task-complete", "task_id": "T08-kvdb-read-kv", "next_task": "T09-kvdb-sector-info"}
+{"at": "2026-07-12T08:59:44Z", "event": "continuation-required", "task_id": "T09-kvdb-sector-info", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T08:59:44Z", "event": "task-start", "task_id": "T09-kvdb-sector-info", "focus_id": null}
+{"at": "2026-07-12T08:59:44Z", "event": "continuation-required", "task_id": "T09-kvdb-sector-info", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:59:44Z", "event": "advance-task", "task_id": "T08-kvdb-read-kv", "next_task": "T09-kvdb-sector-info"}
+{"at": "2026-07-12T08:59:49Z", "event": "task-complete", "task_id": "T08-kvdb-read-kv", "next_task": "T09-kvdb-sector-info"}
+{"at": "2026-07-12T08:59:49Z", "event": "continuation-required", "task_id": "T09-kvdb-sector-info", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:59:49Z", "event": "continuation-required", "task_id": "T09-kvdb-sector-info", "focus_id": "T09-kvdb-sector-info.F-read_sector_info", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T08:59:49Z", "event": "self-heal", "task_id": "T09-kvdb-sector-info", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T08:59:49Z", "event": "advance-task", "task_id": "T08-kvdb-read-kv", "next_task": "T09-kvdb-sector-info"}
+{"at": "2026-07-12T09:02:58Z", "event": "task-check", "task_id": "T09-kvdb-sector-info", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:02:58Z", "event": "continuation-required", "task_id": "T09-kvdb-sector-info", "focus_id": "T09-kvdb-sector-info.F-get_next_sector_addr", "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T09:02:58Z", "event": "task-complete", "task_id": "T09-kvdb-sector-info", "next_task": "T10-kvdb-cache"}
+{"at": "2026-07-12T09:02:58Z", "event": "continuation-required", "task_id": "T10-kvdb-cache", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T09:02:58Z", "event": "continuation-required", "task_id": "T10-kvdb-cache", "focus_id": "T10-kvdb-cache.F-update_kv_cache-get_kv_from_cache", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:02:58Z", "event": "self-heal", "task_id": "T10-kvdb-cache", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T09:02:58Z", "event": "task-start", "task_id": "T10-kvdb-cache", "focus_id": "T10-kvdb-cache.F-update_kv_cache-get_kv_from_cache"}
+{"at": "2026-07-12T09:02:58Z", "event": "advance-task", "task_id": "T09-kvdb-sector-info", "next_task": "T10-kvdb-cache"}
+{"at": "2026-07-12T09:04:12Z", "event": "task-check", "task_id": "T09-kvdb-sector-info", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:04:12Z", "event": "continuation-required", "task_id": "T09-kvdb-sector-info", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T09:04:12Z", "event": "task-complete", "task_id": "T09-kvdb-sector-info", "next_task": "T11-kvdb-iterator-find"}
+{"at": "2026-07-12T09:04:12Z", "event": "continuation-required", "task_id": "T11-kvdb-iterator-find", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T09:04:12Z", "event": "task-start", "task_id": "T11-kvdb-iterator-find", "focus_id": null}
+{"at": "2026-07-12T09:04:12Z", "event": "continuation-required", "task_id": "T11-kvdb-iterator-find", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:04:12Z", "event": "advance-task", "task_id": "T09-kvdb-sector-info", "next_task": "T11-kvdb-iterator-find"}
+{"at": "2026-07-12T09:04:40Z", "event": "task-check", "task_id": "T10-kvdb-cache", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:04:40Z", "event": "continuation-required", "task_id": "T10-kvdb-cache", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T09:04:40Z", "event": "task-complete", "task_id": "T10-kvdb-cache", "next_task": "T11-kvdb-iterator-find"}
+{"at": "2026-07-12T09:04:40Z", "event": "continuation-required", "task_id": "T11-kvdb-iterator-find", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:04:40Z", "event": "continuation-required", "task_id": "T11-kvdb-iterator-find", "focus_id": "T11-kvdb-iterator-find.F-kv_iterator-find_kv_no_cache", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:04:40Z", "event": "self-heal", "task_id": "T11-kvdb-iterator-find", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T09:04:40Z", "event": "advance-task", "task_id": "T10-kvdb-cache", "next_task": "T11-kvdb-iterator-find"}
+{"at": "2026-07-12T09:05:58Z", "event": "task-check", "task_id": "T11-kvdb-iterator-find", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:05:58Z", "event": "continuation-required", "task_id": "T11-kvdb-iterator-find", "focus_id": "T11-kvdb-iterator-find.F-find_kv-fdb_is_str", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:05:58Z", "event": "advance-continue", "task_id": "T11-kvdb-iterator-find", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:06:13Z", "event": "task-check", "task_id": "T11-kvdb-iterator-find", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:06:13Z", "event": "continuation-required", "task_id": "T11-kvdb-iterator-find", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T09:06:13Z", "event": "task-complete", "task_id": "T11-kvdb-iterator-find", "next_task": "T12-kvdb-get-blob"}
+{"at": "2026-07-12T09:06:13Z", "event": "continuation-required", "task_id": "T12-kvdb-get-blob", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T09:06:13Z", "event": "continuation-required", "task_id": "T12-kvdb-get-blob", "focus_id": "T12-kvdb-get-blob.F-get_kv-fdb_kv_get_obj", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:06:13Z", "event": "self-heal", "task_id": "T12-kvdb-get-blob", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T09:06:13Z", "event": "task-start", "task_id": "T12-kvdb-get-blob", "focus_id": "T12-kvdb-get-blob.F-get_kv-fdb_kv_get_obj"}
+{"at": "2026-07-12T09:06:13Z", "event": "advance-task", "task_id": "T11-kvdb-iterator-find", "next_task": "T12-kvdb-get-blob"}
+{"at": "2026-07-12T09:06:40Z", "event": "task-check", "task_id": "T12-kvdb-get-blob", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:06:40Z", "event": "continuation-required", "task_id": "T12-kvdb-get-blob", "focus_id": "T12-kvdb-get-blob.F-fdb_kv_to_blob-fdb_kv_get_blob", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:06:40Z", "event": "advance-continue", "task_id": "T12-kvdb-get-blob", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:06:56Z", "event": "task-check", "task_id": "T11-kvdb-iterator-find", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:06:56Z", "event": "continuation-required", "task_id": "T11-kvdb-iterator-find", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T09:06:56Z", "event": "task-complete", "task_id": "T11-kvdb-iterator-find", "next_task": "T12-kvdb-get-blob"}
+{"at": "2026-07-12T09:06:56Z", "event": "continuation-required", "task_id": "T12-kvdb-get-blob", "focus_id": "T12-kvdb-get-blob.F-fdb_kv_to_blob-fdb_kv_get_blob", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:06:56Z", "event": "continuation-required", "task_id": "T12-kvdb-get-blob", "focus_id": "T12-kvdb-get-blob.F-fdb_kv_to_blob", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:06:56Z", "event": "self-heal", "task_id": "T12-kvdb-get-blob", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 2}
+{"at": "2026-07-12T09:06:56Z", "event": "advance-task", "task_id": "T11-kvdb-iterator-find", "next_task": "T12-kvdb-get-blob"}
+{"at": "2026-07-12T09:07:33Z", "event": "task-check", "task_id": "T12-kvdb-get-blob", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:07:33Z", "event": "continuation-required", "task_id": "T12-kvdb-get-blob", "focus_id": "T12-kvdb-get-blob.F-fdb_kv_get_blob", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:07:33Z", "event": "advance-continue", "task_id": "T12-kvdb-get-blob", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:08:09Z", "event": "task-check", "task_id": "T12-kvdb-get-blob", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:08:09Z", "event": "continuation-required", "task_id": "T12-kvdb-get-blob", "focus_id": "T12-kvdb-get-blob.F-fdb_kv_get", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:08:09Z", "event": "advance-continue", "task_id": "T12-kvdb-get-blob", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:08:13Z", "event": "continuation-required", "task_id": "T12-kvdb-get-blob", "focus_id": "T12-kvdb-get-blob.F-fdb_kv_get", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:08:13Z", "event": "self-heal", "task_id": "T12-kvdb-get-blob", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 3}
+{"at": "2026-07-12T09:08:13Z", "event": "advance-auto-heal", "task_id": "T12-kvdb-get-blob", "focus_id": "T12-kvdb-get-blob.F-fdb_kv_get", "previous_healing_active": true}
+{"at": "2026-07-12T09:08:40Z", "event": "task-check", "task_id": "T12-kvdb-get-blob", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:08:40Z", "event": "continuation-required", "task_id": "T12-kvdb-get-blob", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T09:08:40Z", "event": "task-complete", "task_id": "T12-kvdb-get-blob", "next_task": "T13-kvdb-header-write-format"}
+{"at": "2026-07-12T09:08:40Z", "event": "continuation-required", "task_id": "T13-kvdb-header-write-format", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T09:08:40Z", "event": "task-start", "task_id": "T13-kvdb-header-write-format", "focus_id": null}
+{"at": "2026-07-12T09:08:40Z", "event": "continuation-required", "task_id": "T13-kvdb-header-write-format", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:08:40Z", "event": "advance-task", "task_id": "T12-kvdb-get-blob", "next_task": "T13-kvdb-header-write-format"}
+{"at": "2026-07-12T09:08:53Z", "event": "task-complete", "task_id": "T12-kvdb-get-blob", "next_task": "T13-kvdb-header-write-format"}
+{"at": "2026-07-12T09:08:53Z", "event": "continuation-required", "task_id": "T13-kvdb-header-write-format", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:08:54Z", "event": "continuation-required", "task_id": "T13-kvdb-header-write-format", "focus_id": "T13-kvdb-header-write-format.F-write_kv_hdr-format_sector", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:08:54Z", "event": "self-heal", "task_id": "T13-kvdb-header-write-format", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T09:08:54Z", "event": "advance-task", "task_id": "T12-kvdb-get-blob", "next_task": "T13-kvdb-header-write-format"}
+{"at": "2026-07-12T09:16:16Z", "event": "task-check", "task_id": "T13-kvdb-header-write-format", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:16:16Z", "event": "continuation-required", "task_id": "T13-kvdb-header-write-format", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T09:16:16Z", "event": "task-complete", "task_id": "T13-kvdb-header-write-format", "next_task": "T14-kvdb-status-alloc"}
+{"at": "2026-07-12T09:16:16Z", "event": "continuation-required", "task_id": "T14-kvdb-status-alloc", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T09:16:16Z", "event": "task-start", "task_id": "T14-kvdb-status-alloc", "focus_id": null}
+{"at": "2026-07-12T09:16:16Z", "event": "continuation-required", "task_id": "T14-kvdb-status-alloc", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:16:16Z", "event": "advance-task", "task_id": "T13-kvdb-header-write-format", "next_task": "T14-kvdb-status-alloc"}
+{"at": "2026-07-12T09:17:04Z", "event": "task-check", "task_id": "T14-kvdb-status-alloc", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:17:04Z", "event": "continuation-required", "task_id": "T14-kvdb-status-alloc", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T09:17:04Z", "event": "task-complete", "task_id": "T14-kvdb-status-alloc", "next_task": "T15-kvdb-delete-move-new"}
+{"at": "2026-07-12T09:17:04Z", "event": "continuation-required", "task_id": "T15-kvdb-delete-move-new", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T09:17:04Z", "event": "continuation-required", "task_id": "T15-kvdb-delete-move-new", "focus_id": "T15-kvdb-delete-move-new.F-del_kv", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:17:04Z", "event": "self-heal", "task_id": "T15-kvdb-delete-move-new", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T09:17:04Z", "event": "task-start", "task_id": "T15-kvdb-delete-move-new", "focus_id": "T15-kvdb-delete-move-new.F-del_kv"}
+{"at": "2026-07-12T09:17:04Z", "event": "advance-task", "task_id": "T14-kvdb-status-alloc", "next_task": "T15-kvdb-delete-move-new"}
+{"at": "2026-07-12T09:37:01Z", "event": "task-check", "task_id": "T13-kvdb-header-write-format", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T09:37:01Z", "event": "continuation-required", "task_id": "T13-kvdb-header-write-format", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T09:37:01Z", "event": "task-complete", "task_id": "T13-kvdb-header-write-format", "next_task": "T15-kvdb-delete-move-new"}
+{"at": "2026-07-12T09:37:01Z", "event": "continuation-required", "task_id": "T15-kvdb-delete-move-new", "focus_id": "T15-kvdb-delete-move-new.F-del_kv", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:37:01Z", "event": "continuation-required", "task_id": "T15-kvdb-delete-move-new", "focus_id": "T15-kvdb-delete-move-new.F-del_kv", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T09:37:01Z", "event": "self-heal", "task_id": "T15-kvdb-delete-move-new", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 2}
+{"at": "2026-07-12T09:37:01Z", "event": "advance-task", "task_id": "T13-kvdb-header-write-format", "next_task": "T15-kvdb-delete-move-new"}
+{"at": "2026-07-12T10:12:20Z", "event": "task-check", "task_id": "T15-kvdb-delete-move-new", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:12:20Z", "event": "continuation-required", "task_id": "T15-kvdb-delete-move-new", "focus_id": "T15-kvdb-delete-move-new.F-move_kv", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:12:20Z", "event": "advance-continue", "task_id": "T15-kvdb-delete-move-new", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:16:27Z", "event": "task-check", "task_id": "T15-kvdb-delete-move-new", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:16:27Z", "event": "continuation-required", "task_id": "T15-kvdb-delete-move-new", "focus_id": "T15-kvdb-delete-move-new.F-new_kv", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:16:27Z", "event": "advance-continue", "task_id": "T15-kvdb-delete-move-new", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:17:38Z", "event": "task-check", "task_id": "T15-kvdb-delete-move-new", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:17:38Z", "event": "continuation-required", "task_id": "T15-kvdb-delete-move-new", "focus_id": "T15-kvdb-delete-move-new.F-new_kv_ex", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:17:38Z", "event": "advance-continue", "task_id": "T15-kvdb-delete-move-new", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:17:56Z", "event": "task-check", "task_id": "T15-kvdb-delete-move-new", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:17:56Z", "event": "continuation-required", "task_id": "T15-kvdb-delete-move-new", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T10:17:56Z", "event": "task-complete", "task_id": "T15-kvdb-delete-move-new", "next_task": "T16-kvdb-gc"}
+{"at": "2026-07-12T10:17:56Z", "event": "continuation-required", "task_id": "T16-kvdb-gc", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T10:17:56Z", "event": "task-start", "task_id": "T16-kvdb-gc", "focus_id": null}
+{"at": "2026-07-12T10:17:56Z", "event": "continuation-required", "task_id": "T16-kvdb-gc", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:17:56Z", "event": "advance-task", "task_id": "T15-kvdb-delete-move-new", "next_task": "T16-kvdb-gc"}
+{"at": "2026-07-12T10:21:50Z", "event": "task-check", "task_id": "T16-kvdb-gc", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:21:50Z", "event": "continuation-required", "task_id": "T16-kvdb-gc", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T10:21:50Z", "event": "task-complete", "task_id": "T16-kvdb-gc", "next_task": "T17-kvdb-public-create-delete"}
+{"at": "2026-07-12T10:21:50Z", "event": "continuation-required", "task_id": "T17-kvdb-public-create-delete", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T10:21:50Z", "event": "task-start", "task_id": "T17-kvdb-public-create-delete", "focus_id": null}
+{"at": "2026-07-12T10:21:50Z", "event": "continuation-required", "task_id": "T17-kvdb-public-create-delete", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:21:50Z", "event": "advance-task", "task_id": "T16-kvdb-gc", "next_task": "T17-kvdb-public-create-delete"}
+{"at": "2026-07-12T10:23:01Z", "event": "task-check", "task_id": "T17-kvdb-public-create-delete", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:23:01Z", "event": "continuation-required", "task_id": "T17-kvdb-public-create-delete", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T10:23:01Z", "event": "task-complete", "task_id": "T17-kvdb-public-create-delete", "next_task": "T17a-kvdb-public-set-default"}
+{"at": "2026-07-12T10:23:01Z", "event": "continuation-required", "task_id": "T17a-kvdb-public-set-default", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T10:23:01Z", "event": "continuation-required", "task_id": "T17a-kvdb-public-set-default", "focus_id": "T17a-kvdb-public-set-default.F-set_kv-fdb_kv_set_blob", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:23:01Z", "event": "self-heal", "task_id": "T17a-kvdb-public-set-default", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T10:23:01Z", "event": "task-start", "task_id": "T17a-kvdb-public-set-default", "focus_id": "T17a-kvdb-public-set-default.F-set_kv-fdb_kv_set_blob"}
+{"at": "2026-07-12T10:23:01Z", "event": "advance-task", "task_id": "T17-kvdb-public-create-delete", "next_task": "T17a-kvdb-public-set-default"}
+{"at": "2026-07-12T10:35:27Z", "event": "task-check", "task_id": "T17a-kvdb-public-set-default", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:35:27Z", "event": "continuation-required", "task_id": "T17a-kvdb-public-set-default", "focus_id": "T17a-kvdb-public-set-default.F-fdb_kv_set-fdb_kv_set_default", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:35:27Z", "event": "advance-continue", "task_id": "T17a-kvdb-public-set-default", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:36:03Z", "event": "task-check", "task_id": "T17a-kvdb-public-set-default", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:36:03Z", "event": "continuation-required", "task_id": "T17a-kvdb-public-set-default", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T10:36:03Z", "event": "task-complete", "task_id": "T17a-kvdb-public-set-default", "next_task": "T18-kvdb-print-auto-update"}
+{"at": "2026-07-12T10:36:03Z", "event": "continuation-required", "task_id": "T18-kvdb-print-auto-update", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T10:36:03Z", "event": "task-start", "task_id": "T18-kvdb-print-auto-update", "focus_id": null}
+{"at": "2026-07-12T10:36:03Z", "event": "continuation-required", "task_id": "T18-kvdb-print-auto-update", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:36:03Z", "event": "advance-task", "task_id": "T17a-kvdb-public-set-default", "next_task": "T18-kvdb-print-auto-update"}
+{"at": "2026-07-12T10:38:13Z", "event": "task-check", "task_id": "T18-kvdb-print-auto-update", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:38:13Z", "event": "continuation-required", "task_id": "T18-kvdb-print-auto-update", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T10:38:13Z", "event": "task-complete", "task_id": "T18-kvdb-print-auto-update", "next_task": "T18a-kvdb-load-recovery"}
+{"at": "2026-07-12T10:38:13Z", "event": "continuation-required", "task_id": "T18a-kvdb-load-recovery", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T10:38:13Z", "event": "task-start", "task_id": "T18a-kvdb-load-recovery", "focus_id": null}
+{"at": "2026-07-12T10:38:13Z", "event": "continuation-required", "task_id": "T18a-kvdb-load-recovery", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:38:13Z", "event": "advance-task", "task_id": "T18-kvdb-print-auto-update", "next_task": "T18a-kvdb-load-recovery"}
+{"at": "2026-07-12T10:39:14Z", "event": "task-check", "task_id": "T18a-kvdb-load-recovery", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:39:14Z", "event": "continuation-required", "task_id": "T18a-kvdb-load-recovery", "focus_id": null, "next_action": "RUN_CHECK_TASK"}
+{"at": "2026-07-12T10:39:14Z", "event": "advance-continue", "task_id": "T18a-kvdb-load-recovery", "action": "RUN_CHECK_TASK"}
+{"at": "2026-07-12T10:40:14Z", "event": "task-check", "task_id": "T18a-kvdb-load-recovery", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:40:14Z", "event": "continuation-required", "task_id": "T18a-kvdb-load-recovery", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T10:40:14Z", "event": "task-complete", "task_id": "T18a-kvdb-load-recovery", "next_task": "T18b-kvdb-control-init-deinit"}
+{"at": "2026-07-12T10:40:14Z", "event": "continuation-required", "task_id": "T18b-kvdb-control-init-deinit", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T10:40:14Z", "event": "continuation-required", "task_id": "T18b-kvdb-control-init-deinit", "focus_id": "T18b-kvdb-control-init-deinit.F-fdb_kvdb_control", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:40:14Z", "event": "self-heal", "task_id": "T18b-kvdb-control-init-deinit", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T10:40:14Z", "event": "task-start", "task_id": "T18b-kvdb-control-init-deinit", "focus_id": "T18b-kvdb-control-init-deinit.F-fdb_kvdb_control"}
+{"at": "2026-07-12T10:40:14Z", "event": "advance-task", "task_id": "T18a-kvdb-load-recovery", "next_task": "T18b-kvdb-control-init-deinit"}
+{"at": "2026-07-12T10:41:16Z", "event": "task-check", "task_id": "T18b-kvdb-control-init-deinit", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:41:16Z", "event": "continuation-required", "task_id": "T18b-kvdb-control-init-deinit", "focus_id": "T18b-kvdb-control-init-deinit.F-fdb_kvdb_init", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:41:16Z", "event": "advance-continue", "task_id": "T18b-kvdb-control-init-deinit", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:42:14Z", "event": "task-check", "task_id": "T18b-kvdb-control-init-deinit", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:42:14Z", "event": "continuation-required", "task_id": "T18b-kvdb-control-init-deinit", "focus_id": "T18b-kvdb-control-init-deinit.F-fdb_kvdb_deinit", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:42:14Z", "event": "advance-continue", "task_id": "T18b-kvdb-control-init-deinit", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:42:40Z", "event": "task-check", "task_id": "T18b-kvdb-control-init-deinit", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:42:40Z", "event": "continuation-required", "task_id": "T18b-kvdb-control-init-deinit", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T10:42:40Z", "event": "task-complete", "task_id": "T18b-kvdb-control-init-deinit", "next_task": "T19-kvdb-iterator-check"}
+{"at": "2026-07-12T10:42:40Z", "event": "continuation-required", "task_id": "T19-kvdb-iterator-check", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T10:42:40Z", "event": "task-start", "task_id": "T19-kvdb-iterator-check", "focus_id": null}
+{"at": "2026-07-12T10:42:40Z", "event": "continuation-required", "task_id": "T19-kvdb-iterator-check", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:42:40Z", "event": "advance-task", "task_id": "T18b-kvdb-control-init-deinit", "next_task": "T19-kvdb-iterator-check"}
+{"at": "2026-07-12T10:46:26Z", "event": "task-check", "task_id": "T19-kvdb-iterator-check", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:46:26Z", "event": "continuation-required", "task_id": "T19-kvdb-iterator-check", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T10:46:26Z", "event": "task-complete", "task_id": "T19-kvdb-iterator-check", "next_task": "T20-tsdb-types-read"}
+{"at": "2026-07-12T10:46:26Z", "event": "continuation-required", "task_id": "T20-tsdb-types-read", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T10:46:26Z", "event": "continuation-required", "task_id": "T20-tsdb-types-read", "focus_id": "T20-tsdb-types-read.F-struct-Tsdb", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:46:26Z", "event": "self-heal", "task_id": "T20-tsdb-types-read", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-12T10:46:26Z", "event": "task-start", "task_id": "T20-tsdb-types-read", "focus_id": "T20-tsdb-types-read.F-struct-Tsdb"}
+{"at": "2026-07-12T10:46:26Z", "event": "advance-task", "task_id": "T19-kvdb-iterator-check", "next_task": "T20-tsdb-types-read"}
+{"at": "2026-07-12T10:47:35Z", "event": "task-check", "task_id": "T20-tsdb-types-read", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T10:47:35Z", "event": "continuation-required", "task_id": "T20-tsdb-types-read", "focus_id": "T20-tsdb-types-read.F-struct-Tsl-struct-TsdbSecInfo", "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T10:47:35Z", "event": "task-complete", "task_id": "T20-tsdb-types-read", "next_task": "T21-tsdb-basic-readers"}
+{"at": "2026-07-12T10:47:35Z", "event": "continuation-required", "task_id": "T21-tsdb-basic-readers", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T10:47:35Z", "event": "task-start", "task_id": "T21-tsdb-basic-readers", "focus_id": null}
+{"at": "2026-07-12T10:47:35Z", "event": "continuation-required", "task_id": "T21-tsdb-basic-readers", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T10:47:35Z", "event": "advance-task", "task_id": "T20-tsdb-types-read", "next_task": "T21-tsdb-basic-readers"}
+{"at": "2026-07-12T11:02:57Z", "event": "task-check", "task_id": "T21-tsdb-basic-readers", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-12T11:02:57Z", "event": "continuation-required", "task_id": "T21-tsdb-basic-readers", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-12T11:02:57Z", "event": "task-complete", "task_id": "T21-tsdb-basic-readers", "next_task": "T22-tsdb-sector-format"}
+{"at": "2026-07-12T11:02:57Z", "event": "continuation-required", "task_id": "T22-tsdb-sector-format", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-12T11:02:57Z", "event": "task-start", "task_id": "T22-tsdb-sector-format", "focus_id": null}
+{"at": "2026-07-12T11:02:57Z", "event": "continuation-required", "task_id": "T22-tsdb-sector-format", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-12T11:02:57Z", "event": "advance-task", "task_id": "T21-tsdb-basic-readers", "next_task": "T22-tsdb-sector-format"}
+{"at": "2026-07-13T01:39:55Z", "event": "task-check", "task_id": "T22-tsdb-sector-format", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T01:39:55Z", "event": "continuation-required", "task_id": "T22-tsdb-sector-format", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T01:39:55Z", "event": "task-complete", "task_id": "T22-tsdb-sector-format", "next_task": "T23-tsdb-append"}
+{"at": "2026-07-13T01:39:55Z", "event": "continuation-required", "task_id": "T23-tsdb-append", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T01:39:55Z", "event": "continuation-required", "task_id": "T23-tsdb-append", "focus_id": "T23-tsdb-append.F-write_tsl", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:39:55Z", "event": "self-heal", "task_id": "T23-tsdb-append", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-13T01:39:55Z", "event": "task-start", "task_id": "T23-tsdb-append", "focus_id": "T23-tsdb-append.F-write_tsl"}
+{"at": "2026-07-13T01:39:55Z", "event": "advance-task", "task_id": "T22-tsdb-sector-format", "next_task": "T23-tsdb-append"}
+{"at": "2026-07-13T01:44:36Z", "event": "task-check", "task_id": "T23-tsdb-append", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T01:44:36Z", "event": "continuation-required", "task_id": "T23-tsdb-append", "focus_id": "T23-tsdb-append.F-fdb_tsl_append", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:44:36Z", "event": "advance-continue", "task_id": "T23-tsdb-append", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:52:20Z", "event": "task-check", "task_id": "T23-tsdb-append", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T01:52:20Z", "event": "continuation-required", "task_id": "T23-tsdb-append", "focus_id": "T23-tsdb-append.F-update_sec_status", "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T01:52:20Z", "event": "task-complete", "task_id": "T23-tsdb-append", "next_task": "T24-tsdb-iterate"}
+{"at": "2026-07-13T01:52:20Z", "event": "continuation-required", "task_id": "T24-tsdb-iterate", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T01:52:20Z", "event": "continuation-required", "task_id": "T24-tsdb-iterate", "focus_id": "T24-tsdb-iterate.F-fdb_tsl_iter_reverse", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:52:20Z", "event": "self-heal", "task_id": "T24-tsdb-iterate", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-13T01:52:20Z", "event": "task-start", "task_id": "T24-tsdb-iterate", "focus_id": "T24-tsdb-iterate.F-fdb_tsl_iter_reverse"}
+{"at": "2026-07-13T01:52:20Z", "event": "advance-task", "task_id": "T23-tsdb-append", "next_task": "T24-tsdb-iterate"}
+{"at": "2026-07-13T01:53:54Z", "event": "task-check", "task_id": "T24-tsdb-iterate", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T01:53:54Z", "event": "continuation-required", "task_id": "T24-tsdb-iterate", "focus_id": "T24-tsdb-iterate.F-fdb_tsl_iter", "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T01:53:54Z", "event": "task-complete", "task_id": "T24-tsdb-iterate", "next_task": "T25-tsdb-query"}
+{"at": "2026-07-13T01:53:54Z", "event": "continuation-required", "task_id": "T25-tsdb-query", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T01:53:54Z", "event": "continuation-required", "task_id": "T25-tsdb-query", "focus_id": "T25-tsdb-query.F-fdb_tsl_query_count", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:53:54Z", "event": "self-heal", "task_id": "T25-tsdb-query", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-13T01:53:54Z", "event": "task-start", "task_id": "T25-tsdb-query", "focus_id": "T25-tsdb-query.F-fdb_tsl_query_count"}
+{"at": "2026-07-13T01:53:54Z", "event": "advance-task", "task_id": "T24-tsdb-iterate", "next_task": "T25-tsdb-query"}
+{"at": "2026-07-13T01:55:19Z", "event": "task-check", "task_id": "T25-tsdb-query", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T01:55:19Z", "event": "continuation-required", "task_id": "T25-tsdb-query", "focus_id": "T25-tsdb-query.F-fdb_tsl_iter_by_time", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:55:19Z", "event": "advance-continue", "task_id": "T25-tsdb-query", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:55:25Z", "event": "continuation-required", "task_id": "T25-tsdb-query", "focus_id": "T25-tsdb-query.F-fdb_tsl_max_blob_count", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:55:25Z", "event": "self-heal", "task_id": "T25-tsdb-query", "diagnosis": "no-target-change", "strategy": "symbol-focus", "generation": 2}
+{"at": "2026-07-13T01:55:25Z", "event": "advance-auto-heal", "task_id": "T25-tsdb-query", "focus_id": "T25-tsdb-query.F-fdb_tsl_max_blob_count", "previous_healing_active": true}
+{"at": "2026-07-13T01:55:53Z", "event": "task-check", "task_id": "T25-tsdb-query", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T01:55:53Z", "event": "continuation-required", "task_id": "T25-tsdb-query", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T01:55:53Z", "event": "task-complete", "task_id": "T25-tsdb-query", "next_task": "T26-tsdb-status-clean-control"}
+{"at": "2026-07-13T01:55:53Z", "event": "continuation-required", "task_id": "T26-tsdb-status-clean-control", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T01:55:53Z", "event": "continuation-required", "task_id": "T26-tsdb-status-clean-control", "focus_id": "T26-tsdb-status-clean-control.F-fdb_tsdb_control-fdb_tsl_set_status", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:55:53Z", "event": "self-heal", "task_id": "T26-tsdb-status-clean-control", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-13T01:55:53Z", "event": "task-start", "task_id": "T26-tsdb-status-clean-control", "focus_id": "T26-tsdb-status-clean-control.F-fdb_tsdb_control-fdb_tsl_set_status"}
+{"at": "2026-07-13T01:55:53Z", "event": "advance-task", "task_id": "T25-tsdb-query", "next_task": "T26-tsdb-status-clean-control"}
+{"at": "2026-07-13T01:58:25Z", "event": "task-check", "task_id": "T26-tsdb-status-clean-control", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T01:58:25Z", "event": "continuation-required", "task_id": "T26-tsdb-status-clean-control", "focus_id": "T26-tsdb-status-clean-control.F-fdb_tsl_to_blob-fdb_tsl_clean", "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T01:58:25Z", "event": "task-complete", "task_id": "T26-tsdb-status-clean-control", "next_task": "T27-tsdb-init-deinit"}
+{"at": "2026-07-13T01:58:25Z", "event": "continuation-required", "task_id": "T27-tsdb-init-deinit", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T01:58:25Z", "event": "continuation-required", "task_id": "T27-tsdb-init-deinit", "focus_id": "T27-tsdb-init-deinit.F-fdb_tsdb_init", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T01:58:25Z", "event": "self-heal", "task_id": "T27-tsdb-init-deinit", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-13T01:58:25Z", "event": "task-start", "task_id": "T27-tsdb-init-deinit", "focus_id": "T27-tsdb-init-deinit.F-fdb_tsdb_init"}
+{"at": "2026-07-13T01:58:25Z", "event": "advance-task", "task_id": "T26-tsdb-status-clean-control", "next_task": "T27-tsdb-init-deinit"}
+{"at": "2026-07-13T02:04:29Z", "event": "task-check", "task_id": "T27-tsdb-init-deinit", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:04:29Z", "event": "continuation-required", "task_id": "T27-tsdb-init-deinit", "focus_id": "T27-tsdb-init-deinit.F-fdb_tsdb_deinit", "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T02:04:29Z", "event": "task-complete", "task_id": "T27-tsdb-init-deinit", "next_task": "T28-kvdb-tests-harness"}
+{"at": "2026-07-13T02:04:29Z", "event": "continuation-required", "task_id": "T28-kvdb-tests-harness", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T02:04:29Z", "event": "continuation-required", "task_id": "T28-kvdb-tests-harness", "focus_id": "T28-kvdb-tests-harness.F-kvdb_test_value_len", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:04:29Z", "event": "self-heal", "task_id": "T28-kvdb-tests-harness", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-13T02:04:29Z", "event": "task-start", "task_id": "T28-kvdb-tests-harness", "focus_id": "T28-kvdb-tests-harness.F-kvdb_test_value_len"}
+{"at": "2026-07-13T02:04:29Z", "event": "advance-task", "task_id": "T27-tsdb-init-deinit", "next_task": "T28-kvdb-tests-harness"}
+{"at": "2026-07-13T02:08:18Z", "event": "task-check", "task_id": "T28-kvdb-tests-harness", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:08:18Z", "event": "continuation-required", "task_id": "T28-kvdb-tests-harness", "focus_id": "T28-kvdb-tests-harness.F-init_kvdb_with_sectors", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:08:18Z", "event": "advance-continue", "task_id": "T28-kvdb-tests-harness", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:10:35Z", "event": "task-check", "task_id": "T28-kvdb-tests-harness", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:10:35Z", "event": "continuation-required", "task_id": "T28-kvdb-tests-harness", "focus_id": "T28-kvdb-tests-harness.F-dir_delete", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:10:35Z", "event": "advance-continue", "task_id": "T28-kvdb-tests-harness", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:10:53Z", "event": "task-check", "task_id": "T28-kvdb-tests-harness", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:10:53Z", "event": "continuation-required", "task_id": "T28-kvdb-tests-harness", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T02:10:53Z", "event": "task-complete", "task_id": "T28-kvdb-tests-harness", "next_task": "T28a-kvdb-tests-basic"}
+{"at": "2026-07-13T02:10:53Z", "event": "continuation-required", "task_id": "T28a-kvdb-tests-basic", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T02:10:53Z", "event": "continuation-required", "task_id": "T28a-kvdb-tests-basic", "focus_id": "T28a-kvdb-tests-basic.F-test_fdb_kvdb_init-test_fdb_kvdb_init_check", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:10:53Z", "event": "self-heal", "task_id": "T28a-kvdb-tests-basic", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-13T02:10:53Z", "event": "task-start", "task_id": "T28a-kvdb-tests-basic", "focus_id": "T28a-kvdb-tests-basic.F-test_fdb_kvdb_init-test_fdb_kvdb_init_check"}
+{"at": "2026-07-13T02:10:53Z", "event": "advance-task", "task_id": "T28-kvdb-tests-harness", "next_task": "T28a-kvdb-tests-basic"}
+{"at": "2026-07-13T02:11:18Z", "event": "task-check", "task_id": "T28a-kvdb-tests-basic", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:11:18Z", "event": "continuation-required", "task_id": "T28a-kvdb-tests-basic", "focus_id": "T28a-kvdb-tests-basic.F-test_fdb_create_kv_blob-test_fdb_change_kv_blob", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:11:18Z", "event": "advance-continue", "task_id": "T28a-kvdb-tests-basic", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:27:18Z", "event": "task-check", "task_id": "T28a-kvdb-tests-basic", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:27:18Z", "event": "continuation-required", "task_id": "T28a-kvdb-tests-basic", "focus_id": "T28a-kvdb-tests-basic.F-test_fdb_del_kv_blob-test_fdb_create_kv", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:27:18Z", "event": "advance-continue", "task_id": "T28a-kvdb-tests-basic", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:29:05Z", "event": "task-check", "task_id": "T28a-kvdb-tests-basic", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:29:05Z", "event": "continuation-required", "task_id": "T28a-kvdb-tests-basic", "focus_id": "T28a-kvdb-tests-basic.F-test_fdb_change_kv-test_fdb_del_kv", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:29:05Z", "event": "advance-continue", "task_id": "T28a-kvdb-tests-basic", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:29:55Z", "event": "task-check", "task_id": "T28a-kvdb-tests-basic", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:29:55Z", "event": "continuation-required", "task_id": "T28a-kvdb-tests-basic", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T02:29:55Z", "event": "task-complete", "task_id": "T28a-kvdb-tests-basic", "next_task": "T28b-kvdb-tests-iteration-helpers"}
+{"at": "2026-07-13T02:29:55Z", "event": "continuation-required", "task_id": "T28b-kvdb-tests-iteration-helpers", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T02:29:55Z", "event": "task-start", "task_id": "T28b-kvdb-tests-iteration-helpers", "focus_id": null}
+{"at": "2026-07-13T02:29:55Z", "event": "continuation-required", "task_id": "T28b-kvdb-tests-iteration-helpers", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:29:55Z", "event": "advance-task", "task_id": "T28a-kvdb-tests-basic", "next_task": "T28b-kvdb-tests-iteration-helpers"}
+{"at": "2026-07-13T02:47:11Z", "event": "task-check", "task_id": "T28b-kvdb-tests-iteration-helpers", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:47:11Z", "event": "continuation-required", "task_id": "T28b-kvdb-tests-iteration-helpers", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T02:47:11Z", "event": "task-complete", "task_id": "T28b-kvdb-tests-iteration-helpers", "next_task": "T29-kvdb-tests-gc1-prepare"}
+{"at": "2026-07-13T02:47:11Z", "event": "continuation-required", "task_id": "T29-kvdb-tests-gc1-prepare", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T02:47:11Z", "event": "task-start", "task_id": "T29-kvdb-tests-gc1-prepare", "focus_id": null}
+{"at": "2026-07-13T02:47:11Z", "event": "continuation-required", "task_id": "T29-kvdb-tests-gc1-prepare", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:47:11Z", "event": "advance-task", "task_id": "T28b-kvdb-tests-iteration-helpers", "next_task": "T29-kvdb-tests-gc1-prepare"}
+{"at": "2026-07-13T02:50:39Z", "event": "task-check", "task_id": "T29-kvdb-tests-gc1-prepare", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:50:39Z", "event": "continuation-required", "task_id": "T29-kvdb-tests-gc1-prepare", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T02:50:39Z", "event": "task-complete", "task_id": "T29-kvdb-tests-gc1-prepare", "next_task": "T29b-kvdb-tests-gc1-trigger"}
+{"at": "2026-07-13T02:50:39Z", "event": "continuation-required", "task_id": "T29b-kvdb-tests-gc1-trigger", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T02:50:39Z", "event": "task-start", "task_id": "T29b-kvdb-tests-gc1-trigger", "focus_id": null}
+{"at": "2026-07-13T02:50:39Z", "event": "continuation-required", "task_id": "T29b-kvdb-tests-gc1-trigger", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:50:39Z", "event": "advance-task", "task_id": "T29-kvdb-tests-gc1-prepare", "next_task": "T29b-kvdb-tests-gc1-trigger"}
+{"at": "2026-07-13T02:58:20Z", "event": "task-check", "task_id": "T29b-kvdb-tests-gc1-trigger", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T02:58:20Z", "event": "continuation-required", "task_id": "T29b-kvdb-tests-gc1-trigger", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T02:58:20Z", "event": "task-complete", "task_id": "T29b-kvdb-tests-gc1-trigger", "next_task": "T29a-kvdb-tests-gc2"}
+{"at": "2026-07-13T02:58:20Z", "event": "continuation-required", "task_id": "T29a-kvdb-tests-gc2", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T02:58:20Z", "event": "task-start", "task_id": "T29a-kvdb-tests-gc2", "focus_id": null}
+{"at": "2026-07-13T02:58:20Z", "event": "continuation-required", "task_id": "T29a-kvdb-tests-gc2", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T02:58:20Z", "event": "advance-task", "task_id": "T29b-kvdb-tests-gc1-trigger", "next_task": "T29a-kvdb-tests-gc2"}
+{"at": "2026-07-13T03:01:44Z", "event": "task-check", "task_id": "T29a-kvdb-tests-gc2", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T03:01:44Z", "event": "continuation-required", "task_id": "T29a-kvdb-tests-gc2", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T03:01:44Z", "event": "task-complete", "task_id": "T29a-kvdb-tests-gc2", "next_task": "T30-kvdb-tests-scale-default"}
+{"at": "2026-07-13T03:01:44Z", "event": "continuation-required", "task_id": "T30-kvdb-tests-scale-default", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T03:01:44Z", "event": "task-start", "task_id": "T30-kvdb-tests-scale-default", "focus_id": null}
+{"at": "2026-07-13T03:01:44Z", "event": "continuation-required", "task_id": "T30-kvdb-tests-scale-default", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:01:44Z", "event": "advance-task", "task_id": "T29a-kvdb-tests-gc2", "next_task": "T30-kvdb-tests-scale-default"}
+{"at": "2026-07-13T03:11:00Z", "event": "task-check", "task_id": "T30-kvdb-tests-scale-default", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T03:11:00Z", "event": "continuation-required", "task_id": "T30-kvdb-tests-scale-default", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T03:11:00Z", "event": "task-complete", "task_id": "T30-kvdb-tests-scale-default", "next_task": "T31-tsdb-tests-harness"}
+{"at": "2026-07-13T03:11:00Z", "event": "continuation-required", "task_id": "T31-tsdb-tests-harness", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T03:11:00Z", "event": "task-start", "task_id": "T31-tsdb-tests-harness", "focus_id": null}
+{"at": "2026-07-13T03:11:00Z", "event": "continuation-required", "task_id": "T31-tsdb-tests-harness", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:11:00Z", "event": "advance-task", "task_id": "T30-kvdb-tests-scale-default", "next_task": "T31-tsdb-tests-harness"}
+{"at": "2026-07-13T03:22:10Z", "event": "task-check", "task_id": "T31-tsdb-tests-harness", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T03:22:10Z", "event": "continuation-required", "task_id": "T31-tsdb-tests-harness", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T03:22:10Z", "event": "task-complete", "task_id": "T31-tsdb-tests-harness", "next_task": "T31a-tsdb-tests-basic"}
+{"at": "2026-07-13T03:22:10Z", "event": "continuation-required", "task_id": "T31a-tsdb-tests-basic", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T03:22:10Z", "event": "continuation-required", "task_id": "T31a-tsdb-tests-basic", "focus_id": "T31a-tsdb-tests-basic.F-test_fdb_tsdb_deinit-test_fdb_tsl_append", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:22:10Z", "event": "self-heal", "task_id": "T31a-tsdb-tests-basic", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-13T03:22:10Z", "event": "task-start", "task_id": "T31a-tsdb-tests-basic", "focus_id": "T31a-tsdb-tests-basic.F-test_fdb_tsdb_deinit-test_fdb_tsl_append"}
+{"at": "2026-07-13T03:22:10Z", "event": "advance-task", "task_id": "T31-tsdb-tests-harness", "next_task": "T31a-tsdb-tests-basic"}
+{"at": "2026-07-13T03:30:35Z", "event": "task-check", "task_id": "T31a-tsdb-tests-basic", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T03:30:35Z", "event": "continuation-required", "task_id": "T31a-tsdb-tests-basic", "focus_id": "T31a-tsdb-tests-basic.F-test_fdb_tsl_iter-test_fdb_tsl_iter_by_time", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:30:35Z", "event": "advance-continue", "task_id": "T31a-tsdb-tests-basic", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:50:29Z", "event": "task-check", "task_id": "T31a-tsdb-tests-basic", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T03:50:29Z", "event": "continuation-required", "task_id": "T31a-tsdb-tests-basic", "focus_id": "T31a-tsdb-tests-basic.F-test_fdb_tsl_query_count-test_fdb_tsl_set_status", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:50:29Z", "event": "advance-continue", "task_id": "T31a-tsdb-tests-basic", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:52:31Z", "event": "task-check", "task_id": "T31a-tsdb-tests-basic", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T03:52:31Z", "event": "continuation-required", "task_id": "T31a-tsdb-tests-basic", "focus_id": "T31a-tsdb-tests-basic.F-test_fdb_tsl_clean", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:52:31Z", "event": "advance-continue", "task_id": "T31a-tsdb-tests-basic", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:53:13Z", "event": "task-check", "task_id": "T31a-tsdb-tests-basic", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T03:53:13Z", "event": "continuation-required", "task_id": "T31a-tsdb-tests-basic", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T03:53:13Z", "event": "task-complete", "task_id": "T31a-tsdb-tests-basic", "next_task": "T31b-tsdb-tests-time-helpers"}
+{"at": "2026-07-13T03:53:13Z", "event": "continuation-required", "task_id": "T31b-tsdb-tests-time-helpers", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T03:53:13Z", "event": "task-start", "task_id": "T31b-tsdb-tests-time-helpers", "focus_id": null}
+{"at": "2026-07-13T03:53:13Z", "event": "continuation-required", "task_id": "T31b-tsdb-tests-time-helpers", "focus_id": null, "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T03:53:13Z", "event": "advance-task", "task_id": "T31a-tsdb-tests-basic", "next_task": "T31b-tsdb-tests-time-helpers"}
+{"at": "2026-07-13T04:00:47Z", "event": "task-check", "task_id": "T31b-tsdb-tests-time-helpers", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T04:00:47Z", "event": "continuation-required", "task_id": "T31b-tsdb-tests-time-helpers", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T04:00:47Z", "event": "task-complete", "task_id": "T31b-tsdb-tests-time-helpers", "next_task": "T32-tsdb-tests-boundary"}
+{"at": "2026-07-13T04:00:47Z", "event": "continuation-required", "task_id": "T32-tsdb-tests-boundary", "focus_id": null, "next_action": "START_TASK"}
+{"at": "2026-07-13T04:00:47Z", "event": "continuation-required", "task_id": "T32-tsdb-tests-boundary", "focus_id": "T32-tsdb-tests-boundary.F-test_fdb_tsl_clean_again", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T04:00:47Z", "event": "self-heal", "task_id": "T32-tsdb-tests-boundary", "diagnosis": "proactive-context-guard", "strategy": "symbol-focus", "generation": 1}
+{"at": "2026-07-13T04:00:47Z", "event": "task-start", "task_id": "T32-tsdb-tests-boundary", "focus_id": "T32-tsdb-tests-boundary.F-test_fdb_tsl_clean_again"}
+{"at": "2026-07-13T04:00:47Z", "event": "advance-task", "task_id": "T31b-tsdb-tests-time-helpers", "next_task": "T32-tsdb-tests-boundary"}
+{"at": "2026-07-13T04:02:04Z", "event": "task-check", "task_id": "T32-tsdb-tests-boundary", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T04:02:04Z", "event": "continuation-required", "task_id": "T32-tsdb-tests-boundary", "focus_id": "T32-tsdb-tests-boundary.F-test_fdb_tsl_iter_by_time_1", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T04:02:04Z", "event": "advance-continue", "task_id": "T32-tsdb-tests-boundary", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T04:06:37Z", "event": "task-check", "task_id": "T32-tsdb-tests-boundary", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T04:06:37Z", "event": "continuation-required", "task_id": "T32-tsdb-tests-boundary", "focus_id": "T32-tsdb-tests-boundary.F-test_fdb_github_issue_249", "next_action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T04:06:37Z", "event": "advance-continue", "task_id": "T32-tsdb-tests-boundary", "action": "READ_FOCUS_THEN_EDIT"}
+{"at": "2026-07-13T04:07:55Z", "event": "task-check", "task_id": "T32-tsdb-tests-boundary", "exit_code": 0, "failure_count": 0}
+{"at": "2026-07-13T04:07:55Z", "event": "continuation-required", "task_id": "T32-tsdb-tests-boundary", "focus_id": null, "next_action": "COMPLETE_TASK"}
+{"at": "2026-07-13T04:07:55Z", "event": "task-complete", "task_id": "T32-tsdb-tests-boundary", "next_task": "T33-final-verify"}
+{"at": "2026-07-13T04:07:55Z", "event": "continuation-required", "task_id": "T33-final-verify", "focus_id": null, "next_action": "RUN_FINAL_VERIFY"}
+{"at": "2026-07-13T04:07:55Z", "event": "advance-task", "task_id": "T32-tsdb-tests-boundary", "next_task": "T33-final-verify"}
+{"at": "2026-07-13T04:08:15Z", "event": "continuation-required", "task_id": "T33-final-verify", "focus_id": null, "next_action": "RUN_FINAL_VERIFY"}
+{"at": "2026-07-13T04:08:15Z", "event": "verify", "strict": true, "ok": false}
+{"at": "2026-07-13T04:08:31Z", "event": "continuation-required", "task_id": "T33-final-verify", "focus_id": null, "next_action": "RUN_FINAL_VERIFY"}
+{"at": "2026-07-13T04:08:31Z", "event": "verify", "strict": true, "ok": false}
+{"at": "2026-07-13T04:08:31Z", "event": "advance-continue", "task_id": "T33-final-verify", "action": "FIX_FINAL_VERIFY"}
+{"at": "2026-07-13T04:09:01Z", "event": "continuation-cleared", "reason": "strict verification passed"}
+{"at": "2026-07-13T04:09:01Z", "event": "verify", "strict": true, "ok": true}
+{"at": "2026-07-13T04:09:17Z", "event": "continuation-cleared", "reason": "strict verification passed"}
+{"at": "2026-07-13T04:09:17Z", "event": "verify", "strict": true, "ok": true}
+{"at": "2026-07-13T04:09:17Z", "event": "advance-complete", "task_id": "T33-final-verify"}
+{"at": "2026-07-13T04:09:34Z", "event": "continuation-cleared", "reason": "strict verification passed"}
+{"at": "2026-07-13T04:09:34Z", "event": "verify", "strict": true, "ok": true}
+{"at": "2026-07-13T04:09:34Z", "event": "advance-complete", "task_id": "T33-final-verify"}
+{"at": "2026-07-13T04:10:00Z", "event": "status", "cargo_toml": true, "mapped_cases": 24}
+{"at": "2026-07-13T04:10:19Z", "event": "continuation-cleared", "reason": "strict verification passed"}
+{"at": "2026-07-13T04:10:19Z", "event": "verify", "strict": true, "ok": true}

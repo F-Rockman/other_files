@@ -1,0 +1,182 @@
+warning: variable does not need to be mutable
+   --> tests/kvdb_test.rs:204:9
+    |
+204 |     let mut blob = Blob::make(tick.to_le_bytes().to_vec(), std::mem::size_of::<u32>());
+    |         ----^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> tests/kvdb_test.rs:218:9
+    |
+218 |     let mut value_buf = vec![0u8; std::mem::size_of::<u32>()];
+    |         ----^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/kvdb_test.rs:231:9
+    |
+231 |     let mut blob = Blob::make(tick0.to_le_bytes().to_vec(), std::mem::size_of::<u32>());
+    |         ----^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/kvdb_test.rs:245:9
+    |
+245 |     let mut set_blob = Blob::make(tick.to_le_bytes().to_vec(), std::mem::size_of::<u32>());
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: constant `TEST_KV_MAX_NUM` is never used
+  --> tests/kvdb_test.rs:14:7
+   |
+14 | const TEST_KV_MAX_NUM: usize = 8;
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `KV_NAME_MAX` is never used
+  --> tests/kvdb_test.rs:20:7
+   |
+20 | const KV_NAME_MAX: u32 = 64;
+   |       ^^^^^^^^^^^
+
+warning: field `saved_data_size` is never read
+  --> tests/kvdb_test.rs:39:5
+   |
+35 | struct TestKv {
+   |        ------ field in this struct
+...
+39 |     saved_data_size: u32,
+   |     ^^^^^^^^^^^^^^^
+
+warning: associated function `new` is never used
+  --> tests/kvdb_test.rs:44:8
+   |
+43 | impl TestKv {
+   | ----------- associated function in this implementation
+44 |     fn new(name: &str, value_len: usize) -> Self {
+   |        ^^^
+
+warning: function `dir_delete` is never used
+   --> tests/kvdb_test.rs:122:4
+    |
+122 | fn dir_delete(path: &std::path::Path) {
+    |    ^^^^^^^^^^
+
+warning: `flashdb` (test "kvdb_test") generated 9 warnings (run `cargo fix --test "kvdb_test" -p flashdb` to apply 4 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+     Running unittests src/lib.rs (target/debug/deps/flashdb-8cd6c5c9137815d1)
+
+running 58 tests
+test blob::tests::data_mut_allows_in_place_write ... ok
+test blob::tests::make_sets_size_and_owns_buffer ... ok
+test blob::tests::reset_saved_clears_metadata ... ok
+test blob::tests::with_capacity_starts_empty ... ok
+test blob::tests::resize_grows_and_updates_len ... ok
+test db::tests::db_deinit_clears_init_ok ... ok
+test db::tests::db_init_fails_for_empty_path_in_file_mode ... ok
+test db::tests::db_init_finish_sets_init_ok_on_success ... ok
+test db::tests::db_init_finish_does_not_set_init_ok_on_failure ... ok
+test def::tests::db_type_values_match_c_enum ... ok
+test def::tests::kv_status_round_trips_through_byte ... ok
+test def::tests::tsl_status_round_trips_through_byte ... ok
+test def::tests::write_statuses_are_readable ... ok
+test db::tests::db_init_fails_for_non_power_of_two_sec_size ... ok
+test db::tests::db_init_fails_for_zero_sec_size_in_file_mode ... ok
+test db::tests::db_init_fails_when_max_not_multiple_of_sec ... ok
+test db::tests::db_init_fails_when_already_initialized ... ok
+test db::tests::db_init_fails_with_fewer_than_two_sectors ... ok
+test error::tests::failures_map_to_err_result ... ok
+test error::tests::no_err_is_zero_and_ok ... ok
+test error::tests::values_match_c_enum ... ok
+test db::tests::db_init_succeeds_with_valid_config ... ok
+test db::tests::db_path_returns_dir ... ok
+test kvdb::tests::kv_node_default_is_unused ... ok
+test kvdb::tests::kv_node_name_truncated_to_max ... ok
+test kvdb::tests::kv_node_set_and_read_name ... ok
+test low_lvl::tests::align_down_round_trips ... ok
+test low_lvl::tests::align_up_round_trips ... ok
+test low_lvl::tests::byte_constants_match_c ... ok
+test low_lvl::tests::get_status_all_erased_returns_zero ... ok
+test low_lvl::tests::get_status_six_states_round_trip ... ok
+test low_lvl::tests::set_and_get_status_round_trip_four_states ... ok
+test low_lvl::tests::set_status_one_clears_msb ... ok
+test low_lvl::tests::set_status_three_clears_third_bit ... ok
+test low_lvl::tests::set_status_two_clears_next_bit ... ok
+test low_lvl::tests::set_status_zero_returns_max_and_all_erased ... ok
+test low_lvl::tests::status_table_size_for_default_gran ... ok
+test low_lvl::tests::wg_align_default_gran_is_identity_for_aligned_sizes ... ok
+test low_lvl::tests::wg_align_down_rounds_down_to_granularity ... ok
+test low_lvl::tests::write_status_to_flash_invokes_write_for_nonzero ... ok
+test file_backend::tests::file_path_aligns_down_to_sector ... ok
+test low_lvl::tests::write_status_to_flash_propagates_write_error ... ok
+test low_lvl::tests::write_status_to_flash_skips_write_for_status_zero ... ok
+test tsdb::tests::tsdb_default_rollover_true ... ok
+test tsdb::tests::tsdb_sec_info_default ... ok
+test tsdb::tests::tsl_default_is_unused ... ok
+test utils::tests::crc32_check_value_for_123456789 ... ok
+test file_backend::tests::file_path_uses_sector_index ... ok
+test utils::tests::crc32_empty_with_zero_init_is_zero ... ok
+test utils::tests::crc32_incremental_matches_single_call ... ok
+test file_backend::tests::read_nonexistent_file_returns_read_err ... ok
+test file_backend::tests::erase_writes_exact_size ... ok
+test file_backend::tests::sync_flag_does_not_error ... ok
+test file_backend::tests::write_then_read_round_trips ... ok
+test file_backend::tests::write_aligned_pads_to_granularity ... ok
+test file_backend::tests::write_at_offset_within_sector ... ok
+test file_backend::tests::erase_fills_with_0xff ... ok
+test file_backend::tests::write_across_sectors_uses_different_files ... ok
+
+test result: ok. 58 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/kvdb_test.rs (target/debug/deps/kvdb_test-a3a52a6ea845c093)
+
+running 16 tests
+test kvdb_test_value_len_exactly_3_kvs_per_sector ... ok
+test kvdb_test_value_len_meets_gc_constraint ... ok
+test test_fdb_kvdb_init ... ok
+test test_fdb_del_kv_blob ... ok
+test test_fdb_create_kv ... ok
+test test_fdb_create_kv_blob ... ok
+test test_fdb_change_kv ... ok
+test test_fdb_kvdb_deinit ... ok
+test test_fdb_kvdb_init_check ... ok
+test test_fdb_del_kv ... ok
+test test_fdb_change_kv_blob ... ok
+test test_fdb_gc_prepare_phases ... ok
+test test_fdb_kvdb_set_default ... ok
+test test_fdb_gc ... ok
+test test_fdb_scale_up ... ok
+test test_fdb_gc2 ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.64s
+
+     Running tests/tsdb_test.rs (target/debug/deps/tsdb_test-9b479ab2a39d781c)
+
+running 11 tests
+test test_fdb_tsdb_init_ex ... ok
+test test_fdb_tsdb_deinit ... ok
+test test_fdb_tsl_iter ... ok
+test test_fdb_tsl_append ... ok
+test test_fdb_tsl_query_count ... ok
+test test_fdb_tsl_iter_by_time ... ok
+test test_fdb_tsl_set_status ... ok
+test test_fdb_tsl_clean ... ok
+test test_fdb_tsl_clean_again ... ok
+test test_fdb_github_issue_249 ... ok
+test test_fdb_tsl_iter_by_time_1 ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.25s
+
+   Doc-tests flashdb
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -1,0 +1,25 @@
+{
+  "task_id": "T29a-kvdb-tests-gc2",
+  "started_at": "2026-07-13T02:58:20Z",
+  "active_started_at": "2026-07-13T02:58:20Z",
+  "read_ranges": [
+    "tests/fdb_kvdb_tc.c:695-887"
+  ],
+  "write_targets": [
+    "flashDB_rust/tests/kvdb_test.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/tests/kvdb_test.rs": "08671946cea963a344c11847bbbf6420d266a648f252db1e6bbaa365a36376dc"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T03:01:44Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T29a-kvdb-tests-gc2_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/tests/kvdb_test.rs": "f972c46e6e4656fc064e1d145763c6502ea29e93d462e5968fa284cb7fc1b53c"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T03:01:44Z"
+}

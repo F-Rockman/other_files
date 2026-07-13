@@ -1,0 +1,53 @@
+{
+  "task_id": "T13-kvdb-header-write-format",
+  "started_at": "2026-07-12T09:08:40Z",
+  "active_started_at": "2026-07-12T09:08:54Z",
+  "read_ranges": [],
+  "write_targets": [
+    "flashDB_rust/src/kvdb.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "bf397440e2237741f8c36935c74ebcc8188be7737c4a92135d2fb8bebdaaeafc"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T09:37:01Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 1,
+    "created_at": "2026-07-12T09:08:54Z",
+    "diagnosis": "no-target-change",
+    "reason": "start-task was repeated before any target-file change",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only write_kv_hdr and format_sector",
+        "read": [
+          "src/fdb_kvdb.c:755-827"
+        ],
+        "symbols": [
+          "write_kv_hdr",
+          "format_sector"
+        ],
+        "max_read_lines": 73,
+        "id": "T13-kvdb-header-write-format.F-write_kv_hdr-format_sector"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T13-kvdb-header-write-format.F-write_kv_hdr-format_sector"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "no_progress_events": 1,
+  "last_check_log": "log/trace/task_T13-kvdb-header-write-format_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "fb9d7697bbc4b4ab59c91f875aac710c65dea76d29561483386de43b327f9fc9"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T09:37:01Z"
+}

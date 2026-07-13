@@ -1,0 +1,64 @@
+{
+  "task_id": "T26-tsdb-status-clean-control",
+  "started_at": "2026-07-13T01:55:53Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": true,
+    "generation": 1,
+    "created_at": "2026-07-13T01:55:53Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 160 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only fdb_tsdb_control and fdb_tsl_set_status",
+        "read": [
+          "src/fdb_tsdb.c:771-847"
+        ],
+        "symbols": [
+          "fdb_tsdb_control",
+          "fdb_tsl_set_status"
+        ],
+        "max_read_lines": 77,
+        "id": "T26-tsdb-status-clean-control.F-fdb_tsdb_control-fdb_tsl_set_status"
+      },
+      {
+        "title": "Implement only fdb_tsl_to_blob and fdb_tsl_clean",
+        "read": [
+          "src/fdb_tsdb.c:854-929"
+        ],
+        "symbols": [
+          "fdb_tsl_to_blob",
+          "fdb_tsl_clean"
+        ],
+        "max_read_lines": 76,
+        "id": "T26-tsdb-status-clean-control.F-fdb_tsl_to_blob-fdb_tsl_clean"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T26-tsdb-status-clean-control.F-fdb_tsdb_control-fdb_tsl_set_status"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/tsdb.rs": "ecbe1fed2ff6bbd53de9f44b023d830e79af74403d6e6059970d327b8dd5cb40"
+  },
+  "active_started_at": "2026-07-13T01:55:53Z",
+  "read_authorized": true,
+  "read_ranges": [
+    "src/fdb_tsdb.c:854-929"
+  ],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T01:58:25Z",
+  "last_check_log": "log/trace/task_T26-tsdb-status-clean-control_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/tsdb.rs": "ecbe1fed2ff6bbd53de9f44b023d830e79af74403d6e6059970d327b8dd5cb40"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T01:58:25Z"
+}

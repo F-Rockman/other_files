@@ -1,0 +1,62 @@
+{
+  "task_id": "T27-tsdb-init-deinit",
+  "started_at": "2026-07-13T01:58:25Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": true,
+    "generation": 1,
+    "created_at": "2026-07-13T01:58:25Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 187 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only fdb_tsdb_init",
+        "read": [
+          "src/fdb_tsdb.c:1015-1102"
+        ],
+        "symbols": [
+          "fdb_tsdb_init"
+        ],
+        "max_read_lines": 88,
+        "id": "T27-tsdb-init-deinit.F-fdb_tsdb_init"
+      },
+      {
+        "title": "Implement only fdb_tsdb_deinit",
+        "read": [
+          "src/fdb_tsdb.c:1108-1116"
+        ],
+        "symbols": [
+          "fdb_tsdb_deinit"
+        ],
+        "max_read_lines": 9,
+        "id": "T27-tsdb-init-deinit.F-fdb_tsdb_deinit"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T27-tsdb-init-deinit.F-fdb_tsdb_init"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/tsdb.rs": "d7609b5313a17de563de0beea781f17c5dcb6b0a0c0d7933ddb5e3dc63ee09d7"
+  },
+  "active_started_at": "2026-07-13T01:58:25Z",
+  "read_authorized": true,
+  "read_ranges": [
+    "src/fdb_tsdb.c:1108-1116"
+  ],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T02:04:29Z",
+  "last_check_log": "log/trace/task_T27-tsdb-init-deinit_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/tsdb.rs": "d7609b5313a17de563de0beea781f17c5dcb6b0a0c0d7933ddb5e3dc63ee09d7"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T02:04:29Z"
+}

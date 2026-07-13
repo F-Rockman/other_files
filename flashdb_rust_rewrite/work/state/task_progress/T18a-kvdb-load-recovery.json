@@ -1,0 +1,25 @@
+{
+  "task_id": "T18a-kvdb-load-recovery",
+  "started_at": "2026-07-12T10:38:13Z",
+  "active_started_at": "2026-07-12T10:38:13Z",
+  "read_ranges": [
+    "src/fdb_kvdb.c:1546-1663"
+  ],
+  "write_targets": [
+    "flashDB_rust/src/kvdb.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "00949c576e8438359e9ce292d06288b56fad6705b116a197741618a963a8a57e"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T10:40:14Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T18a-kvdb-load-recovery_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "141bd7664e4c9f82da256dadfc331e9ca717e5ec6ff9aef6e1df6d078718111f"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T10:40:14Z"
+}

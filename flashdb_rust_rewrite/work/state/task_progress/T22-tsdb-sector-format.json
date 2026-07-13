@@ -1,0 +1,25 @@
+{
+  "task_id": "T22-tsdb-sector-format",
+  "started_at": "2026-07-12T11:02:57Z",
+  "active_started_at": "2026-07-12T11:02:57Z",
+  "read_ranges": [
+    "src/fdb_tsdb.c:242-349"
+  ],
+  "write_targets": [
+    "flashDB_rust/src/tsdb.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/src/tsdb.rs": "e4c3d78f2082ce5d191f9ff267a515eb42c9dee0aeb5d8f533d7cb84aa3b6d8a"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T01:39:55Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T22-tsdb-sector-format_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/tsdb.rs": "36e3dc9032efec942c36a5d1a82f00fa17cf9c819b00259922c00a4ce0b153a5"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T01:39:55Z"
+}

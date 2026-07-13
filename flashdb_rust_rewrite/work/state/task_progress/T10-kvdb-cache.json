@@ -1,0 +1,50 @@
+{
+  "task_id": "T10-kvdb-cache",
+  "started_at": "2026-07-12T09:02:58Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 1,
+    "created_at": "2026-07-12T09:02:58Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 129 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only update_kv_cache and get_kv_from_cache",
+        "read": [
+          "src/fdb_kvdb.c:207-274"
+        ],
+        "symbols": [
+          "update_kv_cache",
+          "get_kv_from_cache"
+        ],
+        "max_read_lines": 68,
+        "id": "T10-kvdb-cache.F-update_kv_cache-get_kv_from_cache"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T10-kvdb-cache.F-update_kv_cache-get_kv_from_cache"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "7a6c3b2df70dd491fc22ce2c5a7ab47efa62a919d9ecaef44e4b4226ebcd2740"
+  },
+  "active_started_at": "2026-07-12T09:02:58Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T09:04:40Z",
+  "last_check_log": "log/trace/task_T10-kvdb-cache_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "7a6c3b2df70dd491fc22ce2c5a7ab47efa62a919d9ecaef44e4b4226ebcd2740"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T09:04:40Z"
+}

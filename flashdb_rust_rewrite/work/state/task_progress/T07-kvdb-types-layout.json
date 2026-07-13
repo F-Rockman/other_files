@@ -1,0 +1,74 @@
+{
+  "task_id": "T07-kvdb-types-layout",
+  "started_at": "2026-07-12T08:50:43Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 1,
+    "created_at": "2026-07-12T08:50:43Z",
+    "diagnosis": "proactive-context-guard",
+    "reason": "task has 186 source lines and multiple completion symbols",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only struct KvNode",
+        "read": [
+          "inc/fdb_def.h:120-209"
+        ],
+        "symbols": [
+          "struct KvNode"
+        ],
+        "max_read_lines": 90,
+        "id": "T07-kvdb-types-layout.F-struct-KvNode"
+      },
+      {
+        "title": "Implement only struct KvdbSecInfo and struct KvHdrData",
+        "read": [
+          "inc/fdb_def.h:210-260"
+        ],
+        "symbols": [
+          "struct KvdbSecInfo",
+          "struct KvHdrData"
+        ],
+        "max_read_lines": 51,
+        "id": "T07-kvdb-types-layout.F-struct-KvdbSecInfo-struct-KvHdrData"
+      },
+      {
+        "title": "Implement only struct Kvdb",
+        "read": [
+          "src/fdb_kvdb.c:102-146"
+        ],
+        "symbols": [
+          "struct Kvdb"
+        ],
+        "max_read_lines": 45,
+        "id": "T07-kvdb-types-layout.F-struct-Kvdb"
+      }
+    ],
+    "active_index": 3,
+    "completed_unit_ids": [
+      "T07-kvdb-types-layout.F-struct-KvNode",
+      "T07-kvdb-types-layout.F-struct-Kvdb",
+      "T07-kvdb-types-layout.F-struct-KvdbSecInfo-struct-KvHdrData"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "ec54377ad31eca5e4b457ce099892235600fe90bca0a5798171cbf389de6143c"
+  },
+  "active_started_at": "2026-07-12T08:50:43Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T08:53:24Z",
+  "last_check_log": "log/trace/task_T07-kvdb-types-layout_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "ec54377ad31eca5e4b457ce099892235600fe90bca0a5798171cbf389de6143c"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T08:53:24Z"
+}

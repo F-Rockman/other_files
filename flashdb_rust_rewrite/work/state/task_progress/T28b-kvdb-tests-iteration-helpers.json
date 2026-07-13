@@ -1,0 +1,25 @@
+{
+  "task_id": "T28b-kvdb-tests-iteration-helpers",
+  "started_at": "2026-07-13T02:29:55Z",
+  "active_started_at": "2026-07-13T02:29:55Z",
+  "read_ranges": [
+    "tests/fdb_kvdb_tc.c:359-435"
+  ],
+  "write_targets": [
+    "flashDB_rust/tests/kvdb_test.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/tests/kvdb_test.rs": "8ff3d2ad4a9c4421bba1630b2ed7249a58022db36a07cd68ada440e38210fa41"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T02:47:11Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T28b-kvdb-tests-iteration-helpers_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/tests/kvdb_test.rs": "0323d303ef1fe8b1966767eb0872d24bb320a20dcba54fcfc4f3fee8843076d6"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T02:47:11Z"
+}

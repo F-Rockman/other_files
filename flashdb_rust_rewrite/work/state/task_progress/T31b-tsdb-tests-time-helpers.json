@@ -1,0 +1,25 @@
+{
+  "task_id": "T31b-tsdb-tests-time-helpers",
+  "started_at": "2026-07-13T03:53:13Z",
+  "active_started_at": "2026-07-13T03:53:13Z",
+  "read_ranges": [
+    "tests/fdb_tsdb_tc.c:238-344"
+  ],
+  "write_targets": [
+    "flashDB_rust/tests/tsdb_test.rs"
+  ],
+  "target_hashes_at_start": {
+    "flashDB_rust/tests/tsdb_test.rs": "71e0688126d5cc8e251bc66253ed195ee556099269e5678850ea59ab4712296e"
+  },
+  "failures": 0,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-13T04:00:47Z",
+  "read_authorized": false,
+  "contains_source_understanding": false,
+  "last_check_log": "log/trace/task_T31b-tsdb-tests-time-helpers_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/tests/tsdb_test.rs": "641b3a369abc57ddbdfdb0c119b92e5e585d972cf3b3a3bcb41a7a9a8e4c6668"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-13T04:00:47Z"
+}

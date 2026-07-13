@@ -1,0 +1,49 @@
+{
+  "task_id": "T12-kvdb-get-blob",
+  "started_at": "2026-07-12T09:06:13Z",
+  "failures": 0,
+  "contains_source_understanding": false,
+  "healing": {
+    "active": false,
+    "generation": 3,
+    "created_at": "2026-07-12T09:08:13Z",
+    "diagnosis": "no-target-change",
+    "reason": "advance repeated before the required target edit",
+    "strategy": "symbol-focus",
+    "units": [
+      {
+        "title": "Implement only fdb_kv_get",
+        "read": [
+          "src/fdb_kvdb.c:729-753"
+        ],
+        "symbols": [
+          "fdb_kv_get"
+        ],
+        "max_read_lines": 25,
+        "id": "T12-kvdb-get-blob.F-fdb_kv_get"
+      }
+    ],
+    "active_index": 1,
+    "completed_unit_ids": [
+      "T12-kvdb-get-blob.F-fdb_kv_get"
+    ],
+    "repair_log": null,
+    "contains_source_understanding": false,
+    "focus_pack_version": 1
+  },
+  "target_hashes_at_start": {
+    "flashDB_rust/src/kvdb.rs": "9bc5a9e7a67fea7bcb3df2d24ca5124bbadd03b3dc0b3db01ee10034d27707f8"
+  },
+  "active_started_at": "2026-07-12T09:08:13Z",
+  "read_authorized": false,
+  "read_ranges": [],
+  "no_progress_events": 2,
+  "last_check_code": 0,
+  "last_check_at": "2026-07-12T09:08:40Z",
+  "last_check_log": "log/trace/task_T12-kvdb-get-blob_check.log",
+  "target_hashes_after_last_check": {
+    "flashDB_rust/src/kvdb.rs": "9bc5a9e7a67fea7bcb3df2d24ca5124bbadd03b3dc0b3db01ee10034d27707f8"
+  },
+  "last_error_fingerprint": null,
+  "completed_at": "2026-07-12T09:08:53Z"
+}
