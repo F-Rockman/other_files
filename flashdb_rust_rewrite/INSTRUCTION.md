@@ -5,6 +5,9 @@
 > `/app/code/judge-assets/02_02_c_to_rust/code/FlashDB`.
 > All commands below also work from any other checkout when run from the
 > repository root. Do not hardcode a local developer path.
+>
+> Maintainer-facing Chinese engineering documentation is available in
+> `ENGINEERING_GUIDE.zh-CN.md`. Evaluator execution does not require reading it.
 
 ## Objective
 
