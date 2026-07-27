@@ -24,7 +24,7 @@
   name: microsecond
   name_cn: 微秒
   standard_conversion_rule: '0.000001'
-  unit_symbol: 'µs'
+  unit_symbol: 'μs'
   unit_type: time
   unit_type_cn: 时间
 

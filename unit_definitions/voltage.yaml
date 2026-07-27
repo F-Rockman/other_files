@@ -14,7 +14,7 @@
   name: microvolt
   name_cn: 微伏
   standard_conversion_rule: '0.000001'
-  unit_symbol: 'µV'
+  unit_symbol: 'μV'
   unit_type: voltage
   unit_type_cn: 电压
 

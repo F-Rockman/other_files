@@ -4,7 +4,7 @@
   name: volt_ampere
   name_cn: 伏安
   standard_conversion_rule: '1'
-  unit_symbol: 'V·A'
+  unit_symbol: 'VA'
   unit_type: apparent_power
   unit_type_cn: 视在功率
 
@@ -14,6 +14,6 @@
   name: kilovolt_ampere
   name_cn: 千伏安
   standard_conversion_rule: '1000'
-  unit_symbol: 'kV·A'
+  unit_symbol: 'kVA'
   unit_type: apparent_power
   unit_type_cn: 视在功率

@@ -24,7 +24,7 @@
   name: micrometre
   name_cn: 微米
   standard_conversion_rule: '0.000001'
-  unit_symbol: 'µm'
+  unit_symbol: 'μm'
   unit_type: length
   unit_type_cn: 长度
 

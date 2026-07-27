@@ -1,9 +1,9 @@
-- description: packet per second is the reference unit of packet rate
-  description_cn: 每秒数据包数是数据包速率的基准单位
+- description: reciprocal second is the coherent SI unit of packet rate
+  description_cn: 秒的负一次方是数据包速率（每秒数据包数）的国际单位制相干单位
   is_standard: 'Y'
-  name: packets_per_second
-  name_cn: 每秒数据包数
+  name: reciprocal_second
+  name_cn: 秒的负一次方
   standard_conversion_rule: '1'
-  unit_symbol: 'packets/s'
+  unit_symbol: 's⁻¹'
   unit_type: packet_rate
   unit_type_cn: 数据包速率

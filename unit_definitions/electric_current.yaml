@@ -14,7 +14,7 @@
   name: microampere
   name_cn: 微安培
   standard_conversion_rule: '0.000001'
-  unit_symbol: 'µA'
+  unit_symbol: 'μA'
   unit_type: electric_current
   unit_type_cn: 电流
 

@@ -27,13 +27,3 @@
   unit_symbol: '‰'
   unit_type: ratio
   unit_type_cn: 比率
-
-- description: part per million is a unit of ratio
-  description_cn: 百万分比是比率的单位
-  is_standard: 'N'
-  name: parts_per_million
-  name_cn: 百万分比
-  standard_conversion_rule: '0.000001'
-  unit_symbol: 'ppm'
-  unit_type: ratio
-  unit_type_cn: 比率

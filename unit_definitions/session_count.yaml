@@ -1,9 +1,9 @@
-- description: session is the reference unit of session count
-  description_cn: 会话是会话计数的基准单位
+- description: one is the SI unit associated with session count
+  description_cn: 一是会话计数对应的国际单位制单位
   is_standard: 'Y'
-  name: session
-  name_cn: 会话
+  name: one
+  name_cn: 一
   standard_conversion_rule: '1'
-  unit_symbol: 'sessions'
+  unit_symbol: '1'
   unit_type: session_count
   unit_type_cn: 会话计数

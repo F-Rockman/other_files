@@ -1,9 +1,9 @@
-- description: record per second is the reference unit of record rate
-  description_cn: 记录每秒是记录速率的基准单位
+- description: reciprocal second is the coherent SI unit of record rate
+  description_cn: 秒的负一次方是记录速率的国际单位制相干单位
   is_standard: 'Y'
-  name: records_per_second
-  name_cn: 记录每秒
+  name: reciprocal_second
+  name_cn: 秒的负一次方
   standard_conversion_rule: '1'
-  unit_symbol: 'records/s'
+  unit_symbol: 's⁻¹'
   unit_type: record_rate
   unit_type_cn: 记录速率

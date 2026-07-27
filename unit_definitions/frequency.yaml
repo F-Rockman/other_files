@@ -1,5 +1,5 @@
-- description: hertz is the reference unit of frequency
-  description_cn: 赫兹是频率的基准单位
+- description: hertz is the SI unit of frequency for periodic phenomena
+  description_cn: 赫兹是周期现象频率的国际单位制单位
   is_standard: 'Y'
   name: hertz
   name_cn: 赫兹

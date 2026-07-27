@@ -18,28 +18,28 @@
   unit_type: energy
   unit_type_cn: 能量
 
-- description: watt-hour is a unit of energy
-  description_cn: 瓦特小时是能量的单位
+- description: watt-hour is an IEC-standardized non-SI unit of energy
+  description_cn: 瓦时是IEC标准化的非国际单位制能量单位
   is_standard: 'N'
   name: watt_hour
   name_cn: 瓦特小时
   standard_conversion_rule: '3600'
-  unit_symbol: 'W·h'
+  unit_symbol: 'Wh'
   unit_type: energy
   unit_type_cn: 能量
 
-- description: kilowatt-hour is a unit of energy
-  description_cn: 千瓦时是能量的单位
+- description: kilowatt-hour is an IEC-standardized non-SI unit of energy
+  description_cn: 千瓦时是IEC标准化的非国际单位制能量单位
   is_standard: 'N'
   name: kilowatt_hour
   name_cn: 千瓦时
   standard_conversion_rule: '3600000'
-  unit_symbol: 'kW·h'
+  unit_symbol: 'kWh'
   unit_type: energy
   unit_type_cn: 能量
 
-- description: kilocalorie is a widely used non-SI unit of energy
-  description_cn: 千卡是广泛用于营养和食品领域的非国际单位制能量单位
+- description: nutritional kilocalorie, defined as exactly 4184 joules, is a non-SI unit specified by the Codex Alimentarius nutrition labelling standard
+  description_cn: 营养千卡精确等于4184焦耳，是食品法典营养标签标准规定使用的非国际单位制能量单位
   is_standard: 'N'
   name: kilocalorie
   name_cn: 千卡

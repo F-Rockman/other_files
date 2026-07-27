@@ -14,7 +14,7 @@
   name: microwatt
   name_cn: 微瓦
   standard_conversion_rule: '0.000001'
-  unit_symbol: 'µW'
+  unit_symbol: 'μW'
   unit_type: power
   unit_type_cn: 功率
 

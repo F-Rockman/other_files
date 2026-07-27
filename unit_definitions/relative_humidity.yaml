@@ -4,6 +4,6 @@
   name: percent_relative_humidity
   name_cn: 相对湿度百分比
   standard_conversion_rule: '1'
-  unit_symbol: '%RH'
+  unit_symbol: '%'
   unit_type: relative_humidity
   unit_type_cn: 相对湿度

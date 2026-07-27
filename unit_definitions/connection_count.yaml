@@ -1,9 +1,9 @@
-- description: connection is the reference unit of connection count
-  description_cn: 连接是连接计数的基准单位
+- description: one is the SI unit associated with connection count
+  description_cn: 一是连接计数对应的国际单位制单位
   is_standard: 'Y'
-  name: connection
-  name_cn: 连接
+  name: one
+  name_cn: 一
   standard_conversion_rule: '1'
-  unit_symbol: 'connections'
+  unit_symbol: '1'
   unit_type: connection_count
   unit_type_cn: 连接计数

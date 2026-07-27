@@ -24,7 +24,7 @@
   name: octet
   name_cn: 八位组
   standard_conversion_rule: '1'
-  unit_symbol: 'octet'
+  unit_symbol: 'o'
   unit_type: data_size
   unit_type_cn: 数据量
 
