@@ -1,9 +1,9 @@
 - description: packet per second is the reference unit of packet rate
-  description_cn: 分组每秒是分组速率的基准单位
+  description_cn: 每秒数据包数是数据包速率的基准单位
   is_standard: 'Y'
   name: packets_per_second
-  name_cn: 分组每秒
+  name_cn: 每秒数据包数
   standard_conversion_rule: '1'
   unit_symbol: 'packets/s'
   unit_type: packet_rate
-  unit_type_cn: 分组速率
+  unit_type_cn: 数据包速率
