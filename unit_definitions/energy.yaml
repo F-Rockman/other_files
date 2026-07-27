@@ -37,3 +37,13 @@
   unit_symbol: 'kW·h'
   unit_type: energy
   unit_type_cn: 能量
+
+- description: kilocalorie is a widely used non-SI unit of energy
+  description_cn: 千卡是广泛用于营养和食品领域的非国际单位制能量单位
+  is_standard: 'N'
+  name: kilocalorie
+  name_cn: 千卡
+  standard_conversion_rule: '4184'
+  unit_symbol: 'kcal'
+  unit_type: energy
+  unit_type_cn: 能量
