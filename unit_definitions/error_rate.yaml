@@ -1,0 +1,9 @@
+- description: error per second is the reference unit of error occurrence rate
+  description_cn: 错误每秒是错误发生速率的基准单位
+  is_standard: 'Y'
+  name: errors_per_second
+  name_cn: 错误每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'errors/s'
+  unit_type: error_rate
+  unit_type_cn: 错误发生速率

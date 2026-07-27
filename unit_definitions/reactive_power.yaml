@@ -1,0 +1,19 @@
+- description: var is the reference unit of reactive power
+  description_cn: 乏是无功功率的基准单位
+  is_standard: 'Y'
+  name: var
+  name_cn: 乏
+  standard_conversion_rule: '1'
+  unit_symbol: 'var'
+  unit_type: reactive_power
+  unit_type_cn: 无功功率
+
+- description: kilovar is a unit of reactive power
+  description_cn: 千乏是无功功率的单位
+  is_standard: 'N'
+  name: kilovar
+  name_cn: 千乏
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kvar'
+  unit_type: reactive_power
+  unit_type_cn: 无功功率

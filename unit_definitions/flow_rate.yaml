@@ -1,0 +1,9 @@
+- description: network flow per second is the reference unit of network flow rate
+  description_cn: 网络流每秒是网络流速率的基准单位
+  is_standard: 'Y'
+  name: flows_per_second
+  name_cn: 网络流每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'flows/s'
+  unit_type: flow_rate
+  unit_type_cn: 网络流速率

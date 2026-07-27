@@ -1,0 +1,9 @@
+- description: datagram per second is the reference unit of datagram rate
+  description_cn: 数据报每秒是数据报速率的基准单位
+  is_standard: 'Y'
+  name: datagrams_per_second
+  name_cn: 数据报每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'datagrams/s'
+  unit_type: datagram_rate
+  unit_type_cn: 数据报速率

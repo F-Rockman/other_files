@@ -1,0 +1,9 @@
+- description: request per second is the reference unit of request rate
+  description_cn: 请求每秒是请求速率的基准单位
+  is_standard: 'Y'
+  name: requests_per_second
+  name_cn: 请求每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'requests/s'
+  unit_type: request_rate
+  unit_type_cn: 请求速率

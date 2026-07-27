@@ -1,0 +1,9 @@
+- description: record is the reference unit of record count
+  description_cn: 记录是记录计数的基准单位
+  is_standard: 'Y'
+  name: record
+  name_cn: 记录
+  standard_conversion_rule: '1'
+  unit_symbol: 'records'
+  unit_type: record_count
+  unit_type_cn: 记录计数

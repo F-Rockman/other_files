@@ -1,0 +1,9 @@
+- description: message per second is the reference unit of message rate
+  description_cn: 消息每秒是消息速率的基准单位
+  is_standard: 'Y'
+  name: messages_per_second
+  name_cn: 消息每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'messages/s'
+  unit_type: message_rate
+  unit_type_cn: 消息速率

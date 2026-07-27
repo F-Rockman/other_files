@@ -1,0 +1,49 @@
+- description: bit per second is the reference unit of bit rate
+  description_cn: 比特每秒是比特率的基准单位
+  is_standard: 'Y'
+  name: bits_per_second
+  name_cn: 比特每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'bit/s'
+  unit_type: bit_rate
+  unit_type_cn: 比特率
+
+- description: kilobit per second is a unit of bit rate
+  description_cn: 千比特每秒是比特率的单位
+  is_standard: 'N'
+  name: kilobits_per_second
+  name_cn: 千比特每秒
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kbit/s'
+  unit_type: bit_rate
+  unit_type_cn: 比特率
+
+- description: megabit per second is a unit of bit rate
+  description_cn: 兆比特每秒是比特率的单位
+  is_standard: 'N'
+  name: megabits_per_second
+  name_cn: 兆比特每秒
+  standard_conversion_rule: '1000000'
+  unit_symbol: 'Mbit/s'
+  unit_type: bit_rate
+  unit_type_cn: 比特率
+
+- description: gigabit per second is a unit of bit rate
+  description_cn: 吉比特每秒是比特率的单位
+  is_standard: 'N'
+  name: gigabits_per_second
+  name_cn: 吉比特每秒
+  standard_conversion_rule: '1000000000'
+  unit_symbol: 'Gbit/s'
+  unit_type: bit_rate
+  unit_type_cn: 比特率
+
+- description: terabit per second is a unit of bit rate
+  description_cn: 太比特每秒是比特率的单位
+  is_standard: 'N'
+  name: terabits_per_second
+  name_cn: 太比特每秒
+  standard_conversion_rule: '1000000000000'
+  unit_symbol: 'Tbit/s'
+  unit_type: bit_rate
+  unit_type_cn: 比特率

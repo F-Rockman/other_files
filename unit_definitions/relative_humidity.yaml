@@ -1,0 +1,9 @@
+- description: percent relative humidity is the reference unit of relative humidity
+  description_cn: 相对湿度百分比是相对湿度的基准单位
+  is_standard: 'Y'
+  name: percent_relative_humidity
+  name_cn: 相对湿度百分比
+  standard_conversion_rule: '1'
+  unit_symbol: '%RH'
+  unit_type: relative_humidity
+  unit_type_cn: 相对湿度

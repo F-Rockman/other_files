@@ -1,0 +1,79 @@
+- description: second is the reference unit of time
+  description_cn: 秒是时间的基准单位
+  is_standard: 'Y'
+  name: second
+  name_cn: 秒
+  standard_conversion_rule: '1'
+  unit_symbol: 's'
+  unit_type: time
+  unit_type_cn: 时间
+
+- description: nanosecond is a unit of time
+  description_cn: 纳秒是时间的单位
+  is_standard: 'N'
+  name: nanosecond
+  name_cn: 纳秒
+  standard_conversion_rule: '0.000000001'
+  unit_symbol: 'ns'
+  unit_type: time
+  unit_type_cn: 时间
+
+- description: microsecond is a unit of time
+  description_cn: 微秒是时间的单位
+  is_standard: 'N'
+  name: microsecond
+  name_cn: 微秒
+  standard_conversion_rule: '0.000001'
+  unit_symbol: 'µs'
+  unit_type: time
+  unit_type_cn: 时间
+
+- description: millisecond is a unit of time
+  description_cn: 毫秒是时间的单位
+  is_standard: 'N'
+  name: millisecond
+  name_cn: 毫秒
+  standard_conversion_rule: '0.001'
+  unit_symbol: 'ms'
+  unit_type: time
+  unit_type_cn: 时间
+
+- description: centisecond is a unit of time
+  description_cn: 厘秒是时间的单位
+  is_standard: 'N'
+  name: centisecond
+  name_cn: 厘秒
+  standard_conversion_rule: '0.01'
+  unit_symbol: 'cs'
+  unit_type: time
+  unit_type_cn: 时间
+
+- description: minute is a unit of time
+  description_cn: 分钟是时间的单位
+  is_standard: 'N'
+  name: minute
+  name_cn: 分钟
+  standard_conversion_rule: '60'
+  unit_symbol: 'min'
+  unit_type: time
+  unit_type_cn: 时间
+
+- description: hour is a unit of time
+  description_cn: 小时是时间的单位
+  is_standard: 'N'
+  name: hour
+  name_cn: 小时
+  standard_conversion_rule: '3600'
+  unit_symbol: 'h'
+  unit_type: time
+  unit_type_cn: 时间
+
+- description: day is a unit of time
+  description_cn: 天是时间的单位
+  is_standard: 'N'
+  name: day
+  name_cn: 天
+  standard_conversion_rule: '86400'
+  unit_symbol: 'd'
+  unit_type: time
+  unit_type_cn: 时间

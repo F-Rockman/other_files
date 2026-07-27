@@ -1,0 +1,9 @@
+- description: operation is the reference unit of operation count
+  description_cn: 操作是操作计数的基准单位
+  is_standard: 'Y'
+  name: operation
+  name_cn: 操作
+  standard_conversion_rule: '1'
+  unit_symbol: 'operations'
+  unit_type: operation_count
+  unit_type_cn: 操作计数

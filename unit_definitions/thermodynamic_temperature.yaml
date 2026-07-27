@@ -1,0 +1,19 @@
+- description: kelvin is the reference unit of thermodynamic temperature
+  description_cn: 开尔文是热力学温度的基准单位
+  is_standard: 'Y'
+  name: kelvin
+  name_cn: 开尔文
+  standard_conversion_rule: '1'
+  unit_symbol: 'K'
+  unit_type: thermodynamic_temperature
+  unit_type_cn: 热力学温度
+
+- description: degree Celsius is a unit of thermodynamic temperature
+  description_cn: 摄氏度是热力学温度的单位
+  is_standard: 'N'
+  name: degree_celsius
+  name_cn: 摄氏度
+  standard_conversion_rule: 'value + 273.15'
+  unit_symbol: '°C'
+  unit_type: thermodynamic_temperature
+  unit_type_cn: 热力学温度

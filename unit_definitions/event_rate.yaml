@@ -1,0 +1,9 @@
+- description: event per second is the reference unit of event occurrence rate
+  description_cn: 事件每秒是事件发生速率的基准单位
+  is_standard: 'Y'
+  name: events_per_second
+  name_cn: 事件每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'events/s'
+  unit_type: event_rate
+  unit_type_cn: 事件发生速率

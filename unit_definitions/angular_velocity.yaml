@@ -1,0 +1,19 @@
+- description: radian per second is the reference unit of angular velocity
+  description_cn: 弧度每秒是角速度的基准单位
+  is_standard: 'Y'
+  name: radians_per_second
+  name_cn: 弧度每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'rad/s'
+  unit_type: angular_velocity
+  unit_type_cn: 角速度
+
+- description: degree per second is a unit of angular velocity
+  description_cn: 度每秒是角速度的单位
+  is_standard: 'N'
+  name: degrees_per_second
+  name_cn: 度每秒
+  standard_conversion_rule: '0.017453292519943295'
+  unit_symbol: '°/s'
+  unit_type: angular_velocity
+  unit_type_cn: 角速度

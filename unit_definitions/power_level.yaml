@@ -1,0 +1,19 @@
+- description: decibel-milliwatt is the reference unit of power level
+  description_cn: 分贝毫瓦是功率电平的基准单位
+  is_standard: 'Y'
+  name: decibel_milliwatt
+  name_cn: 分贝毫瓦
+  standard_conversion_rule: '1'
+  unit_symbol: 'dBm'
+  unit_type: power_level
+  unit_type_cn: 功率电平
+
+- description: decibel-watt is a unit of power level
+  description_cn: 分贝瓦是功率电平的单位
+  is_standard: 'N'
+  name: decibel_watt
+  name_cn: 分贝瓦
+  standard_conversion_rule: 'value + 30'
+  unit_symbol: 'dBW'
+  unit_type: power_level
+  unit_type_cn: 功率电平

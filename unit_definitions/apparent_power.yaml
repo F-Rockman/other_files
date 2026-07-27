@@ -1,0 +1,19 @@
+- description: volt-ampere is the reference unit of apparent power
+  description_cn: 伏安是视在功率的基准单位
+  is_standard: 'Y'
+  name: volt_ampere
+  name_cn: 伏安
+  standard_conversion_rule: '1'
+  unit_symbol: 'V·A'
+  unit_type: apparent_power
+  unit_type_cn: 视在功率
+
+- description: kilovolt-ampere is a unit of apparent power
+  description_cn: 千伏安是视在功率的单位
+  is_standard: 'N'
+  name: kilovolt_ampere
+  name_cn: 千伏安
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kV·A'
+  unit_type: apparent_power
+  unit_type_cn: 视在功率

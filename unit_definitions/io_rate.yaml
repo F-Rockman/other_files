@@ -1,0 +1,9 @@
+- description: I/O operation per second is the reference unit of I/O operation rate
+  description_cn: I/O操作每秒是I/O操作速率的基准单位
+  is_standard: 'Y'
+  name: input_output_operations_per_second
+  name_cn: I/O操作每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'IOPS'
+  unit_type: io_rate
+  unit_type_cn: I/O操作速率

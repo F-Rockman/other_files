@@ -1,0 +1,9 @@
+- description: decibel is the reference unit of logarithmic ratio
+  description_cn: 分贝是对数比的基准单位
+  is_standard: 'Y'
+  name: decibel
+  name_cn: 分贝
+  standard_conversion_rule: '1'
+  unit_symbol: 'dB'
+  unit_type: logarithmic_ratio
+  unit_type_cn: 对数比

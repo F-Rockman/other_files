@@ -1,0 +1,9 @@
+- description: transaction per second is the reference unit of transaction rate
+  description_cn: 事务每秒是事务速率的基准单位
+  is_standard: 'Y'
+  name: transactions_per_second
+  name_cn: 事务每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'transactions/s'
+  unit_type: transaction_rate
+  unit_type_cn: 事务速率

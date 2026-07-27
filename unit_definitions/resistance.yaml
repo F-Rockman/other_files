@@ -1,0 +1,29 @@
+- description: ohm is the reference unit of electrical resistance
+  description_cn: 欧姆是电阻的基准单位
+  is_standard: 'Y'
+  name: ohm
+  name_cn: 欧姆
+  standard_conversion_rule: '1'
+  unit_symbol: 'Ω'
+  unit_type: resistance
+  unit_type_cn: 电阻
+
+- description: kiloohm is a unit of electrical resistance
+  description_cn: 千欧姆是电阻的单位
+  is_standard: 'N'
+  name: kiloohm
+  name_cn: 千欧姆
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kΩ'
+  unit_type: resistance
+  unit_type_cn: 电阻
+
+- description: megaohm is a unit of electrical resistance
+  description_cn: 兆欧姆是电阻的单位
+  is_standard: 'N'
+  name: megaohm
+  name_cn: 兆欧姆
+  standard_conversion_rule: '1000000'
+  unit_symbol: 'MΩ'
+  unit_type: resistance
+  unit_type_cn: 电阻

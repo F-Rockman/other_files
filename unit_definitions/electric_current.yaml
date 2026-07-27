@@ -1,0 +1,39 @@
+- description: ampere is the reference unit of electric current
+  description_cn: 安培是电流的基准单位
+  is_standard: 'Y'
+  name: ampere
+  name_cn: 安培
+  standard_conversion_rule: '1'
+  unit_symbol: 'A'
+  unit_type: electric_current
+  unit_type_cn: 电流
+
+- description: microampere is a unit of electric current
+  description_cn: 微安培是电流的单位
+  is_standard: 'N'
+  name: microampere
+  name_cn: 微安培
+  standard_conversion_rule: '0.000001'
+  unit_symbol: 'µA'
+  unit_type: electric_current
+  unit_type_cn: 电流
+
+- description: milliampere is a unit of electric current
+  description_cn: 毫安培是电流的单位
+  is_standard: 'N'
+  name: milliampere
+  name_cn: 毫安培
+  standard_conversion_rule: '0.001'
+  unit_symbol: 'mA'
+  unit_type: electric_current
+  unit_type_cn: 电流
+
+- description: kiloampere is a unit of electric current
+  description_cn: 千安培是电流的单位
+  is_standard: 'N'
+  name: kiloampere
+  name_cn: 千安培
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kA'
+  unit_type: electric_current
+  unit_type_cn: 电流

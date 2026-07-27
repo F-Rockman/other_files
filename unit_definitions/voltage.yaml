@@ -1,0 +1,39 @@
+- description: volt is the reference unit of voltage
+  description_cn: 伏特是电压的基准单位
+  is_standard: 'Y'
+  name: volt
+  name_cn: 伏特
+  standard_conversion_rule: '1'
+  unit_symbol: 'V'
+  unit_type: voltage
+  unit_type_cn: 电压
+
+- description: microvolt is a unit of voltage
+  description_cn: 微伏是电压的单位
+  is_standard: 'N'
+  name: microvolt
+  name_cn: 微伏
+  standard_conversion_rule: '0.000001'
+  unit_symbol: 'µV'
+  unit_type: voltage
+  unit_type_cn: 电压
+
+- description: millivolt is a unit of voltage
+  description_cn: 毫伏是电压的单位
+  is_standard: 'N'
+  name: millivolt
+  name_cn: 毫伏
+  standard_conversion_rule: '0.001'
+  unit_symbol: 'mV'
+  unit_type: voltage
+  unit_type_cn: 电压
+
+- description: kilovolt is a unit of voltage
+  description_cn: 千伏是电压的单位
+  is_standard: 'N'
+  name: kilovolt
+  name_cn: 千伏
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kV'
+  unit_type: voltage
+  unit_type_cn: 电压

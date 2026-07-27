@@ -1,0 +1,9 @@
+- description: record per second is the reference unit of record rate
+  description_cn: 记录每秒是记录速率的基准单位
+  is_standard: 'Y'
+  name: records_per_second
+  name_cn: 记录每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'records/s'
+  unit_type: record_rate
+  unit_type_cn: 记录速率

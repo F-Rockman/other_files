@@ -1,0 +1,9 @@
+- description: operation per second is the reference unit of operation rate
+  description_cn: 操作每秒是操作速率的基准单位
+  is_standard: 'Y'
+  name: operations_per_second
+  name_cn: 操作每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'operations/s'
+  unit_type: operation_rate
+  unit_type_cn: 操作速率

@@ -1,0 +1,19 @@
+- description: revolution per second is the reference unit of rotational frequency
+  description_cn: 转每秒是转动频率的基准单位
+  is_standard: 'Y'
+  name: revolutions_per_second
+  name_cn: 转每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'r/s'
+  unit_type: rotational_frequency
+  unit_type_cn: 转动频率
+
+- description: revolution per minute is a unit of rotational frequency
+  description_cn: 转每分钟是转动频率的单位
+  is_standard: 'N'
+  name: revolutions_per_minute
+  name_cn: 转每分钟
+  standard_conversion_rule: '0.016666666666666667'
+  unit_symbol: 'r/min'
+  unit_type: rotational_frequency
+  unit_type_cn: 转动频率

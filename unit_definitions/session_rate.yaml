@@ -1,0 +1,9 @@
+- description: session per second is the reference unit of session establishment rate
+  description_cn: 会话每秒是会话建立速率的基准单位
+  is_standard: 'Y'
+  name: sessions_per_second
+  name_cn: 会话每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'sessions/s'
+  unit_type: session_rate
+  unit_type_cn: 会话建立速率

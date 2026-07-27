@@ -1,0 +1,49 @@
+- description: hertz is the reference unit of frequency
+  description_cn: 赫兹是频率的基准单位
+  is_standard: 'Y'
+  name: hertz
+  name_cn: 赫兹
+  standard_conversion_rule: '1'
+  unit_symbol: 'Hz'
+  unit_type: frequency
+  unit_type_cn: 频率
+
+- description: kilohertz is a unit of frequency
+  description_cn: 千赫兹是频率的单位
+  is_standard: 'N'
+  name: kilohertz
+  name_cn: 千赫兹
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kHz'
+  unit_type: frequency
+  unit_type_cn: 频率
+
+- description: megahertz is a unit of frequency
+  description_cn: 兆赫兹是频率的单位
+  is_standard: 'N'
+  name: megahertz
+  name_cn: 兆赫兹
+  standard_conversion_rule: '1000000'
+  unit_symbol: 'MHz'
+  unit_type: frequency
+  unit_type_cn: 频率
+
+- description: gigahertz is a unit of frequency
+  description_cn: 吉赫兹是频率的单位
+  is_standard: 'N'
+  name: gigahertz
+  name_cn: 吉赫兹
+  standard_conversion_rule: '1000000000'
+  unit_symbol: 'GHz'
+  unit_type: frequency
+  unit_type_cn: 频率
+
+- description: terahertz is a unit of frequency
+  description_cn: 太赫兹是频率的单位
+  is_standard: 'N'
+  name: terahertz
+  name_cn: 太赫兹
+  standard_conversion_rule: '1000000000000'
+  unit_symbol: 'THz'
+  unit_type: frequency
+  unit_type_cn: 频率

@@ -1,0 +1,39 @@
+- description: baud is the reference unit of symbol rate
+  description_cn: 波特是符号率的基准单位
+  is_standard: 'Y'
+  name: baud
+  name_cn: 波特
+  standard_conversion_rule: '1'
+  unit_symbol: 'Bd'
+  unit_type: symbol_rate
+  unit_type_cn: 符号率
+
+- description: kilobaud is a unit of symbol rate
+  description_cn: 千波特是符号率的单位
+  is_standard: 'N'
+  name: kilobaud
+  name_cn: 千波特
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kBd'
+  unit_type: symbol_rate
+  unit_type_cn: 符号率
+
+- description: megabaud is a unit of symbol rate
+  description_cn: 兆波特是符号率的单位
+  is_standard: 'N'
+  name: megabaud
+  name_cn: 兆波特
+  standard_conversion_rule: '1000000'
+  unit_symbol: 'MBd'
+  unit_type: symbol_rate
+  unit_type_cn: 符号率
+
+- description: gigabaud is a unit of symbol rate
+  description_cn: 吉波特是符号率的单位
+  is_standard: 'N'
+  name: gigabaud
+  name_cn: 吉波特
+  standard_conversion_rule: '1000000000'
+  unit_symbol: 'GBd'
+  unit_type: symbol_rate
+  unit_type_cn: 符号率

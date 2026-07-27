@@ -1,0 +1,59 @@
+- description: metre is the reference unit of length
+  description_cn: 米是长度的基准单位
+  is_standard: 'Y'
+  name: metre
+  name_cn: 米
+  standard_conversion_rule: '1'
+  unit_symbol: 'm'
+  unit_type: length
+  unit_type_cn: 长度
+
+- description: nanometre is a unit of length
+  description_cn: 纳米是长度的单位
+  is_standard: 'N'
+  name: nanometre
+  name_cn: 纳米
+  standard_conversion_rule: '0.000000001'
+  unit_symbol: 'nm'
+  unit_type: length
+  unit_type_cn: 长度
+
+- description: micrometre is a unit of length
+  description_cn: 微米是长度的单位
+  is_standard: 'N'
+  name: micrometre
+  name_cn: 微米
+  standard_conversion_rule: '0.000001'
+  unit_symbol: 'µm'
+  unit_type: length
+  unit_type_cn: 长度
+
+- description: millimetre is a unit of length
+  description_cn: 毫米是长度的单位
+  is_standard: 'N'
+  name: millimetre
+  name_cn: 毫米
+  standard_conversion_rule: '0.001'
+  unit_symbol: 'mm'
+  unit_type: length
+  unit_type_cn: 长度
+
+- description: centimetre is a unit of length
+  description_cn: 厘米是长度的单位
+  is_standard: 'N'
+  name: centimetre
+  name_cn: 厘米
+  standard_conversion_rule: '0.01'
+  unit_symbol: 'cm'
+  unit_type: length
+  unit_type_cn: 长度
+
+- description: kilometre is a unit of length
+  description_cn: 千米是长度的单位
+  is_standard: 'N'
+  name: kilometre
+  name_cn: 千米
+  standard_conversion_rule: '1000'
+  unit_symbol: 'km'
+  unit_type: length
+  unit_type_cn: 长度

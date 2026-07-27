@@ -1,0 +1,29 @@
+- description: cubic metre per second is the reference unit of volume flow rate
+  description_cn: 立方米每秒是体积流量的基准单位
+  is_standard: 'Y'
+  name: cubic_metres_per_second
+  name_cn: 立方米每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'm³/s'
+  unit_type: volume_flow_rate
+  unit_type_cn: 体积流量
+
+- description: cubic metre per minute is a unit of volume flow rate
+  description_cn: 立方米每分钟是体积流量的单位
+  is_standard: 'N'
+  name: cubic_metres_per_minute
+  name_cn: 立方米每分钟
+  standard_conversion_rule: '0.016666666666666667'
+  unit_symbol: 'm³/min'
+  unit_type: volume_flow_rate
+  unit_type_cn: 体积流量
+
+- description: litre per second is a unit of volume flow rate
+  description_cn: 升每秒是体积流量的单位
+  is_standard: 'N'
+  name: litres_per_second
+  name_cn: 升每秒
+  standard_conversion_rule: '0.001'
+  unit_symbol: 'L/s'
+  unit_type: volume_flow_rate
+  unit_type_cn: 体积流量

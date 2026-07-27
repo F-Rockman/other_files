@@ -1,0 +1,39 @@
+- description: one is the reference unit of ratio
+  description_cn: 一是比率的基准单位
+  is_standard: 'Y'
+  name: one
+  name_cn: 一
+  standard_conversion_rule: '1'
+  unit_symbol: '1'
+  unit_type: ratio
+  unit_type_cn: 比率
+
+- description: percent is a unit of ratio
+  description_cn: 百分比是比率的单位
+  is_standard: 'N'
+  name: percent
+  name_cn: 百分比
+  standard_conversion_rule: '0.01'
+  unit_symbol: '%'
+  unit_type: ratio
+  unit_type_cn: 比率
+
+- description: per mille is a unit of ratio
+  description_cn: 千分比是比率的单位
+  is_standard: 'N'
+  name: per_mille
+  name_cn: 千分比
+  standard_conversion_rule: '0.001'
+  unit_symbol: '‰'
+  unit_type: ratio
+  unit_type_cn: 比率
+
+- description: part per million is a unit of ratio
+  description_cn: 百万分比是比率的单位
+  is_standard: 'N'
+  name: parts_per_million
+  name_cn: 百万分比
+  standard_conversion_rule: '0.000001'
+  unit_symbol: 'ppm'
+  unit_type: ratio
+  unit_type_cn: 比率

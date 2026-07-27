@@ -1,0 +1,29 @@
+- description: pascal is the reference unit of pressure
+  description_cn: 帕斯卡是压力的基准单位
+  is_standard: 'Y'
+  name: pascal
+  name_cn: 帕斯卡
+  standard_conversion_rule: '1'
+  unit_symbol: 'Pa'
+  unit_type: pressure
+  unit_type_cn: 压力
+
+- description: hectopascal is a unit of pressure
+  description_cn: 百帕是压力的单位
+  is_standard: 'N'
+  name: hectopascal
+  name_cn: 百帕
+  standard_conversion_rule: '100'
+  unit_symbol: 'hPa'
+  unit_type: pressure
+  unit_type_cn: 压力
+
+- description: kilopascal is a unit of pressure
+  description_cn: 千帕是压力的单位
+  is_standard: 'N'
+  name: kilopascal
+  name_cn: 千帕
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kPa'
+  unit_type: pressure
+  unit_type_cn: 压力

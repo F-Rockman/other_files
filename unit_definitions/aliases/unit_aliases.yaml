@@ -1,0 +1,153 @@
+- alias: 'bps'
+  canonical_name: bits_per_second
+  canonical_symbol: 'bit/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: bit_rate
+
+- alias: 'kbps'
+  canonical_name: kilobits_per_second
+  canonical_symbol: 'kbit/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: bit_rate
+
+- alias: 'Kbps'
+  canonical_name: kilobits_per_second
+  canonical_symbol: 'kbit/s'
+  case_sensitive: 'Y'
+  deprecated: 'Y'
+  unit_type: bit_rate
+
+- alias: 'Mbps'
+  canonical_name: megabits_per_second
+  canonical_symbol: 'Mbit/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: bit_rate
+
+- alias: 'Gbps'
+  canonical_name: gigabits_per_second
+  canonical_symbol: 'Gbit/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: bit_rate
+
+- alias: 'Tbps'
+  canonical_name: terabits_per_second
+  canonical_symbol: 'Tbit/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: bit_rate
+
+- alias: 'Bps'
+  canonical_name: bytes_per_second
+  canonical_symbol: 'B/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: byte_rate
+
+- alias: 'connetions/s'
+  canonical_name: connections_per_second
+  canonical_symbol: 'connections/s'
+  case_sensitive: 'Y'
+  deprecated: 'Y'
+  unit_type: connection_rate
+
+- alias: 'connections/sec'
+  canonical_name: connections_per_second
+  canonical_symbol: 'connections/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: connection_rate
+
+- alias: 'datagrams/sec'
+  canonical_name: datagrams_per_second
+  canonical_symbol: 'datagrams/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: datagram_rate
+
+- alias: 'IO/s'
+  canonical_name: input_output_operations_per_second
+  canonical_symbol: 'IOPS'
+  case_sensitive: 'Y'
+  deprecated: 'Y'
+  unit_type: io_rate
+
+- alias: 'iops'
+  canonical_name: input_output_operations_per_second
+  canonical_symbol: 'IOPS'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: io_rate
+
+- alias: 'ops/s'
+  canonical_name: operations_per_second
+  canonical_symbol: 'operations/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: operation_rate
+
+- alias: 'pps'
+  canonical_name: packets_per_second
+  canonical_symbol: 'packets/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: packet_rate
+
+- alias: 'records/sec'
+  canonical_name: records_per_second
+  canonical_symbol: 'records/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: record_rate
+
+- alias: 'TPS'
+  canonical_name: transactions_per_second
+  canonical_symbol: 'transactions/s'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: transaction_rate
+
+- alias: 'rpm'
+  canonical_name: revolutions_per_minute
+  canonical_symbol: 'r/min'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: rotational_frequency
+
+- alias: 'RPM'
+  canonical_name: revolutions_per_minute
+  canonical_symbol: 'r/min'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: rotational_frequency
+
+- alias: 'RMP'
+  canonical_name: revolutions_per_minute
+  canonical_symbol: 'r/min'
+  case_sensitive: 'Y'
+  deprecated: 'Y'
+  unit_type: rotational_frequency
+
+- alias: 'us'
+  canonical_name: microsecond
+  canonical_symbol: 'µs'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: time
+
+- alias: 'μs'
+  canonical_name: microsecond
+  canonical_symbol: 'µs'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: time
+
+- alias: '℃'
+  canonical_name: degree_celsius
+  canonical_symbol: '°C'
+  case_sensitive: 'Y'
+  deprecated: 'N'
+  unit_type: thermodynamic_temperature

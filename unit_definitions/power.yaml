@@ -1,0 +1,49 @@
+- description: watt is the reference unit of power
+  description_cn: 瓦特是功率的基准单位
+  is_standard: 'Y'
+  name: watt
+  name_cn: 瓦特
+  standard_conversion_rule: '1'
+  unit_symbol: 'W'
+  unit_type: power
+  unit_type_cn: 功率
+
+- description: microwatt is a unit of power
+  description_cn: 微瓦是功率的单位
+  is_standard: 'N'
+  name: microwatt
+  name_cn: 微瓦
+  standard_conversion_rule: '0.000001'
+  unit_symbol: 'µW'
+  unit_type: power
+  unit_type_cn: 功率
+
+- description: milliwatt is a unit of power
+  description_cn: 毫瓦是功率的单位
+  is_standard: 'N'
+  name: milliwatt
+  name_cn: 毫瓦
+  standard_conversion_rule: '0.001'
+  unit_symbol: 'mW'
+  unit_type: power
+  unit_type_cn: 功率
+
+- description: kilowatt is a unit of power
+  description_cn: 千瓦是功率的单位
+  is_standard: 'N'
+  name: kilowatt
+  name_cn: 千瓦
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kW'
+  unit_type: power
+  unit_type_cn: 功率
+
+- description: megawatt is a unit of power
+  description_cn: 兆瓦是功率的单位
+  is_standard: 'N'
+  name: megawatt
+  name_cn: 兆瓦
+  standard_conversion_rule: '1000000'
+  unit_symbol: 'MW'
+  unit_type: power
+  unit_type_cn: 功率

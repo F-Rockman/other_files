@@ -1,0 +1,39 @@
+- description: coulomb is the reference unit of electric charge
+  description_cn: 库仑是电荷量的基准单位
+  is_standard: 'Y'
+  name: coulomb
+  name_cn: 库仑
+  standard_conversion_rule: '1'
+  unit_symbol: 'C'
+  unit_type: electric_charge
+  unit_type_cn: 电荷量
+
+- description: millicoulomb is a unit of electric charge
+  description_cn: 毫库仑是电荷量的单位
+  is_standard: 'N'
+  name: millicoulomb
+  name_cn: 毫库仑
+  standard_conversion_rule: '0.001'
+  unit_symbol: 'mC'
+  unit_type: electric_charge
+  unit_type_cn: 电荷量
+
+- description: ampere-hour is a unit of electric charge
+  description_cn: 安培小时是电荷量的单位
+  is_standard: 'N'
+  name: ampere_hour
+  name_cn: 安培小时
+  standard_conversion_rule: '3600'
+  unit_symbol: 'A·h'
+  unit_type: electric_charge
+  unit_type_cn: 电荷量
+
+- description: milliampere-hour is a unit of electric charge
+  description_cn: 毫安培小时是电荷量的单位
+  is_standard: 'N'
+  name: milliampere_hour
+  name_cn: 毫安培小时
+  standard_conversion_rule: '3.6'
+  unit_symbol: 'mA·h'
+  unit_type: electric_charge
+  unit_type_cn: 电荷量

@@ -1,0 +1,39 @@
+- description: joule is the reference unit of energy
+  description_cn: 焦耳是能量的基准单位
+  is_standard: 'Y'
+  name: joule
+  name_cn: 焦耳
+  standard_conversion_rule: '1'
+  unit_symbol: 'J'
+  unit_type: energy
+  unit_type_cn: 能量
+
+- description: kilojoule is a unit of energy
+  description_cn: 千焦耳是能量的单位
+  is_standard: 'N'
+  name: kilojoule
+  name_cn: 千焦耳
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kJ'
+  unit_type: energy
+  unit_type_cn: 能量
+
+- description: watt-hour is a unit of energy
+  description_cn: 瓦特小时是能量的单位
+  is_standard: 'N'
+  name: watt_hour
+  name_cn: 瓦特小时
+  standard_conversion_rule: '3600'
+  unit_symbol: 'W·h'
+  unit_type: energy
+  unit_type_cn: 能量
+
+- description: kilowatt-hour is a unit of energy
+  description_cn: 千瓦时是能量的单位
+  is_standard: 'N'
+  name: kilowatt_hour
+  name_cn: 千瓦时
+  standard_conversion_rule: '3600000'
+  unit_symbol: 'kW·h'
+  unit_type: energy
+  unit_type_cn: 能量

@@ -1,0 +1,9 @@
+- description: packet is the reference unit of packet count
+  description_cn: 分组是分组计数的基准单位
+  is_standard: 'Y'
+  name: packet
+  name_cn: 分组
+  standard_conversion_rule: '1'
+  unit_symbol: 'packets'
+  unit_type: packet_count
+  unit_type_cn: 分组计数

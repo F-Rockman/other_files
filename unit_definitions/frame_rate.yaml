@@ -1,0 +1,9 @@
+- description: frame per second is the reference unit of frame rate
+  description_cn: 帧每秒是帧速率的基准单位
+  is_standard: 'Y'
+  name: frames_per_second
+  name_cn: 帧每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'frames/s'
+  unit_type: frame_rate
+  unit_type_cn: 帧速率
