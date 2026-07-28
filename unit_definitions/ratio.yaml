@@ -4,7 +4,7 @@
   name: one
   name_cn: 一
   standard_conversion_rule: '1'
-  unit_symbol: '1'
+  unit_symbol: ''
   unit_type: ratio
   unit_type_cn: 比率
 
