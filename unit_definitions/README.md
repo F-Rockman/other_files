@@ -26,7 +26,7 @@
 | `electric_charge` | 电荷量 | `C` | 4 | [electric_charge.unit.yaml](electric_charge.unit.yaml) |
 | `electric_current` | 电流 | `A` | 4 | [electric_current.unit.yaml](electric_current.unit.yaml) |
 | `energy` | 能量 | `J` | 5 | [energy.unit.yaml](energy.unit.yaml) |
-| `entity_count` | 实体数量 | `1` | 1 | [entity_count.unit.yaml](entity_count.unit.yaml) |
+| `entity_count` | 实体数量 | `Count` | 1 | [entity_count.unit.yaml](entity_count.unit.yaml) |
 | `error_rate` | 错误发生速率 | `s⁻¹` | 1 | [error_rate.unit.yaml](error_rate.unit.yaml) |
 | `event_rate` | 事件发生速率 | `s⁻¹` | 1 | [event_rate.unit.yaml](event_rate.unit.yaml) |
 | `flow_rate` | 网络流速率 | `s⁻¹` | 1 | [flow_rate.unit.yaml](flow_rate.unit.yaml) |
@@ -106,7 +106,7 @@
 | 44 | `energy` | 能量 | `watt_hour` | 瓦特小时 | `Wh` | N | `3600` | [energy.unit.yaml](energy.unit.yaml) |
 | 45 | `energy` | 能量 | `kilowatt_hour` | 千瓦时 | `kWh` | N | `3600000` | [energy.unit.yaml](energy.unit.yaml) |
 | 46 | `energy` | 能量 | `kilocalorie` | 千卡 | `kcal` | N | `4184` | [energy.unit.yaml](energy.unit.yaml) |
-| 47 | `entity_count` | 实体数量 | `one` | 一 | `1` | Y | `1` | [entity_count.unit.yaml](entity_count.unit.yaml) |
+| 47 | `entity_count` | 实体数量 | `count` | 计数 | `Count` | Y | `1` | [entity_count.unit.yaml](entity_count.unit.yaml) |
 | 48 | `error_rate` | 错误发生速率 | `reciprocal_second` | 秒的负一次方 | `s⁻¹` | Y | `1` | [error_rate.unit.yaml](error_rate.unit.yaml) |
 | 49 | `event_rate` | 事件发生速率 | `reciprocal_second` | 秒的负一次方 | `s⁻¹` | Y | `1` | [event_rate.unit.yaml](event_rate.unit.yaml) |
 | 50 | `flow_rate` | 网络流速率 | `reciprocal_second` | 秒的负一次方 | `s⁻¹` | Y | `1` | [flow_rate.unit.yaml](flow_rate.unit.yaml) |
