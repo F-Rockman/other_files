@@ -1,0 +1,9 @@
+- description: one is the SI unit for number of entities
+  description_cn: 一是实体数量的国际单位制单位
+  is_standard: 'Y'
+  name: one
+  name_cn: 一
+  standard_conversion_rule: '1'
+  unit_symbol: '1'
+  unit_type: entity_count
+  unit_type_cn: 实体数量
