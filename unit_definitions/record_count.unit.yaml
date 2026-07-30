@@ -1,9 +1,0 @@
-- description: one is the SI unit associated with record count
-  description_cn: 一是记录计数对应的国际单位制单位
-  is_standard: 'Y'
-  name: one
-  name_cn: 一
-  standard_conversion_rule: '1'
-  unit_symbol: '1'
-  unit_type: record_count
-  unit_type_cn: 记录计数
