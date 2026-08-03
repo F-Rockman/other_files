@@ -1,0 +1,49 @@
+- description: byte per second is the reference unit of byte rate using binary prefixes
+  description_cn: 字节每秒是二进制前缀字节率的基准单位
+  is_standard: 'Y'
+  name: bytes_per_second
+  name_cn: 字节每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'B/s'
+  unit_type: binary_byte_rate
+  unit_type_cn: 二进制前缀字节率
+
+- description: kibibyte per second is a unit of byte rate using binary prefixes
+  description_cn: 二进制千字节每秒是二进制前缀字节率的单位
+  is_standard: 'N'
+  name: kibibytes_per_second
+  name_cn: 二进制千字节每秒
+  standard_conversion_rule: '1024'
+  unit_symbol: 'KiB/s'
+  unit_type: binary_byte_rate
+  unit_type_cn: 二进制前缀字节率
+
+- description: mebibyte per second is a unit of byte rate using binary prefixes
+  description_cn: 二进制兆字节每秒是二进制前缀字节率的单位
+  is_standard: 'N'
+  name: mebibytes_per_second
+  name_cn: 二进制兆字节每秒
+  standard_conversion_rule: '1048576'
+  unit_symbol: 'MiB/s'
+  unit_type: binary_byte_rate
+  unit_type_cn: 二进制前缀字节率
+
+- description: gibibyte per second is a unit of byte rate using binary prefixes
+  description_cn: 二进制吉字节每秒是二进制前缀字节率的单位
+  is_standard: 'N'
+  name: gibibytes_per_second
+  name_cn: 二进制吉字节每秒
+  standard_conversion_rule: '1073741824'
+  unit_symbol: 'GiB/s'
+  unit_type: binary_byte_rate
+  unit_type_cn: 二进制前缀字节率
+
+- description: tebibyte per second is a unit of byte rate using binary prefixes
+  description_cn: 二进制太字节每秒是二进制前缀字节率的单位
+  is_standard: 'N'
+  name: tebibytes_per_second
+  name_cn: 二进制太字节每秒
+  standard_conversion_rule: '1099511627776'
+  unit_symbol: 'TiB/s'
+  unit_type: binary_byte_rate
+  unit_type_cn: 二进制前缀字节率

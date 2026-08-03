@@ -1,0 +1,59 @@
+- description: byte is the reference unit of data size using binary prefixes
+  description_cn: 字节是二进制前缀数据量的基准单位
+  is_standard: 'Y'
+  name: byte
+  name_cn: 字节
+  standard_conversion_rule: '1'
+  unit_symbol: 'B'
+  unit_type: binary_data_size
+  unit_type_cn: 二进制前缀数据量
+
+- description: kibibyte is a unit of data size using binary prefixes
+  description_cn: 二进制千字节是二进制前缀数据量的单位
+  is_standard: 'N'
+  name: kibibyte
+  name_cn: 二进制千字节
+  standard_conversion_rule: '1024'
+  unit_symbol: 'KiB'
+  unit_type: binary_data_size
+  unit_type_cn: 二进制前缀数据量
+
+- description: mebibyte is a unit of data size using binary prefixes
+  description_cn: 二进制兆字节是二进制前缀数据量的单位
+  is_standard: 'N'
+  name: mebibyte
+  name_cn: 二进制兆字节
+  standard_conversion_rule: '1048576'
+  unit_symbol: 'MiB'
+  unit_type: binary_data_size
+  unit_type_cn: 二进制前缀数据量
+
+- description: gibibyte is a unit of data size using binary prefixes
+  description_cn: 二进制吉字节是二进制前缀数据量的单位
+  is_standard: 'N'
+  name: gibibyte
+  name_cn: 二进制吉字节
+  standard_conversion_rule: '1073741824'
+  unit_symbol: 'GiB'
+  unit_type: binary_data_size
+  unit_type_cn: 二进制前缀数据量
+
+- description: tebibyte is a unit of data size using binary prefixes
+  description_cn: 二进制太字节是二进制前缀数据量的单位
+  is_standard: 'N'
+  name: tebibyte
+  name_cn: 二进制太字节
+  standard_conversion_rule: '1099511627776'
+  unit_symbol: 'TiB'
+  unit_type: binary_data_size
+  unit_type_cn: 二进制前缀数据量
+
+- description: pebibyte is a unit of data size using binary prefixes
+  description_cn: 二进制拍字节是二进制前缀数据量的单位
+  is_standard: 'N'
+  name: pebibyte
+  name_cn: 二进制拍字节
+  standard_conversion_rule: '1125899906842624'
+  unit_symbol: 'PiB'
+  unit_type: binary_data_size
+  unit_type_cn: 二进制前缀数据量
