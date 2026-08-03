@@ -8,7 +8,7 @@
 - 当前共有 41 条基准定义（`Y`）和 74 条非基准定义（`N`）；`N` 不表示单位不规范。
 - `standard_conversion_rule` 表示当前单位换算到同类型基准单位的规则。纯数字表示 `基准值 = 当前值 × 系数`；含 `value` 的内容表示换算表达式。
 - 查询单位时应同时使用 `unit_type`。建议使用 `(unit_type, name)` 或 `(unit_type, unit_symbol)`，不能假设名称或符号全局唯一。
-- 十进制前缀与二进制前缀分别使用 `decimal_*`、`binary_*` 单位类型；它们属于不同换算域，跨类型换算应通过共同的 `B` 或 `B/s` 基准衔接。
+- `data_size`、`byte_rate` 默认采用十进制前缀；二进制前缀使用 `binary_data_size`、`binary_byte_rate`。它们属于不同换算域，跨类型换算应通过共同的 `B` 或 `B/s` 基准衔接。
 - 单位符号严格区分大小写和 Unicode 字符，例如 `B`、`bit`、`kB`、`MB`、`μ`、`s⁻¹`、`A·h`。
 - `ratio` 的基准符号 `!%` 是项目自定义的无量纲单位“一”标记，不是正式计量符号；普通 `%` 通过系数 `0.01` 换算到该基准。
 - 为保持表格便于速查，完整清单未重复展示 `description` 和 `description_cn`；可通过每行的配置文件链接查看完整定义。
@@ -22,10 +22,10 @@
 | `binary_byte_rate` | 二进制前缀字节率 | `B/s` | 5 | [binary_byte_rate.unit.yaml](binary_byte_rate.unit.yaml) |
 | `binary_data_size` | 二进制前缀数据量 | `B` | 6 | [binary_data_size.unit.yaml](binary_data_size.unit.yaml) |
 | `bit_rate` | 比特率 | `bit/s` | 5 | [bit_rate.unit.yaml](bit_rate.unit.yaml) |
+| `byte_rate` | 字节率 | `B/s` | 5 | [byte_rate.unit.yaml](byte_rate.unit.yaml) |
 | `connection_rate` | 连接建立速率 | `s⁻¹` | 1 | [connection_rate.unit.yaml](connection_rate.unit.yaml) |
+| `data_size` | 数据量 | `B` | 8 | [data_size.unit.yaml](data_size.unit.yaml) |
 | `datagram_rate` | 数据报速率 | `s⁻¹` | 1 | [datagram_rate.unit.yaml](datagram_rate.unit.yaml) |
-| `decimal_byte_rate` | 十进制前缀字节率 | `B/s` | 5 | [decimal_byte_rate.unit.yaml](decimal_byte_rate.unit.yaml) |
-| `decimal_data_size` | 十进制前缀数据量 | `B` | 8 | [decimal_data_size.unit.yaml](decimal_data_size.unit.yaml) |
 | `electric_charge` | 电荷量 | `C` | 4 | [electric_charge.unit.yaml](electric_charge.unit.yaml) |
 | `electric_current` | 电流 | `A` | 4 | [electric_current.unit.yaml](electric_current.unit.yaml) |
 | `energy` | 能量 | `J` | 5 | [energy.unit.yaml](energy.unit.yaml) |
@@ -83,21 +83,21 @@
 | 18 | `bit_rate` | 比特率 | `megabits_per_second` | 兆比特每秒 | `Mbit/s` | N | `1000000` | [bit_rate.unit.yaml](bit_rate.unit.yaml) |
 | 19 | `bit_rate` | 比特率 | `gigabits_per_second` | 吉比特每秒 | `Gbit/s` | N | `1000000000` | [bit_rate.unit.yaml](bit_rate.unit.yaml) |
 | 20 | `bit_rate` | 比特率 | `terabits_per_second` | 太比特每秒 | `Tbit/s` | N | `1000000000000` | [bit_rate.unit.yaml](bit_rate.unit.yaml) |
-| 21 | `connection_rate` | 连接建立速率 | `reciprocal_second` | 秒的负一次方 | `s⁻¹` | Y | `1` | [connection_rate.unit.yaml](connection_rate.unit.yaml) |
-| 22 | `datagram_rate` | 数据报速率 | `reciprocal_second` | 秒的负一次方 | `s⁻¹` | Y | `1` | [datagram_rate.unit.yaml](datagram_rate.unit.yaml) |
-| 23 | `decimal_byte_rate` | 十进制前缀字节率 | `bytes_per_second` | 字节每秒 | `B/s` | Y | `1` | [decimal_byte_rate.unit.yaml](decimal_byte_rate.unit.yaml) |
-| 24 | `decimal_byte_rate` | 十进制前缀字节率 | `kilobytes_per_second` | 千字节每秒 | `kB/s` | N | `1000` | [decimal_byte_rate.unit.yaml](decimal_byte_rate.unit.yaml) |
-| 25 | `decimal_byte_rate` | 十进制前缀字节率 | `megabytes_per_second` | 兆字节每秒 | `MB/s` | N | `1000000` | [decimal_byte_rate.unit.yaml](decimal_byte_rate.unit.yaml) |
-| 26 | `decimal_byte_rate` | 十进制前缀字节率 | `gigabytes_per_second` | 吉字节每秒 | `GB/s` | N | `1000000000` | [decimal_byte_rate.unit.yaml](decimal_byte_rate.unit.yaml) |
-| 27 | `decimal_byte_rate` | 十进制前缀字节率 | `terabytes_per_second` | 太字节每秒 | `TB/s` | N | `1000000000000` | [decimal_byte_rate.unit.yaml](decimal_byte_rate.unit.yaml) |
-| 28 | `decimal_data_size` | 十进制前缀数据量 | `byte` | 字节 | `B` | Y | `1` | [decimal_data_size.unit.yaml](decimal_data_size.unit.yaml) |
-| 29 | `decimal_data_size` | 十进制前缀数据量 | `bit` | 比特 | `bit` | N | `0.125` | [decimal_data_size.unit.yaml](decimal_data_size.unit.yaml) |
-| 30 | `decimal_data_size` | 十进制前缀数据量 | `octet` | 八位组 | `o` | N | `1` | [decimal_data_size.unit.yaml](decimal_data_size.unit.yaml) |
-| 31 | `decimal_data_size` | 十进制前缀数据量 | `kilobyte` | 千字节 | `kB` | N | `1000` | [decimal_data_size.unit.yaml](decimal_data_size.unit.yaml) |
-| 32 | `decimal_data_size` | 十进制前缀数据量 | `megabyte` | 兆字节 | `MB` | N | `1000000` | [decimal_data_size.unit.yaml](decimal_data_size.unit.yaml) |
-| 33 | `decimal_data_size` | 十进制前缀数据量 | `gigabyte` | 吉字节 | `GB` | N | `1000000000` | [decimal_data_size.unit.yaml](decimal_data_size.unit.yaml) |
-| 34 | `decimal_data_size` | 十进制前缀数据量 | `terabyte` | 太字节 | `TB` | N | `1000000000000` | [decimal_data_size.unit.yaml](decimal_data_size.unit.yaml) |
-| 35 | `decimal_data_size` | 十进制前缀数据量 | `petabyte` | 拍字节 | `PB` | N | `1000000000000000` | [decimal_data_size.unit.yaml](decimal_data_size.unit.yaml) |
+| 21 | `byte_rate` | 字节率 | `bytes_per_second` | 字节每秒 | `B/s` | Y | `1` | [byte_rate.unit.yaml](byte_rate.unit.yaml) |
+| 22 | `byte_rate` | 字节率 | `kilobytes_per_second` | 千字节每秒 | `kB/s` | N | `1000` | [byte_rate.unit.yaml](byte_rate.unit.yaml) |
+| 23 | `byte_rate` | 字节率 | `megabytes_per_second` | 兆字节每秒 | `MB/s` | N | `1000000` | [byte_rate.unit.yaml](byte_rate.unit.yaml) |
+| 24 | `byte_rate` | 字节率 | `gigabytes_per_second` | 吉字节每秒 | `GB/s` | N | `1000000000` | [byte_rate.unit.yaml](byte_rate.unit.yaml) |
+| 25 | `byte_rate` | 字节率 | `terabytes_per_second` | 太字节每秒 | `TB/s` | N | `1000000000000` | [byte_rate.unit.yaml](byte_rate.unit.yaml) |
+| 26 | `connection_rate` | 连接建立速率 | `reciprocal_second` | 秒的负一次方 | `s⁻¹` | Y | `1` | [connection_rate.unit.yaml](connection_rate.unit.yaml) |
+| 27 | `data_size` | 数据量 | `byte` | 字节 | `B` | Y | `1` | [data_size.unit.yaml](data_size.unit.yaml) |
+| 28 | `data_size` | 数据量 | `bit` | 比特 | `bit` | N | `0.125` | [data_size.unit.yaml](data_size.unit.yaml) |
+| 29 | `data_size` | 数据量 | `octet` | 八位组 | `o` | N | `1` | [data_size.unit.yaml](data_size.unit.yaml) |
+| 30 | `data_size` | 数据量 | `kilobyte` | 千字节 | `kB` | N | `1000` | [data_size.unit.yaml](data_size.unit.yaml) |
+| 31 | `data_size` | 数据量 | `megabyte` | 兆字节 | `MB` | N | `1000000` | [data_size.unit.yaml](data_size.unit.yaml) |
+| 32 | `data_size` | 数据量 | `gigabyte` | 吉字节 | `GB` | N | `1000000000` | [data_size.unit.yaml](data_size.unit.yaml) |
+| 33 | `data_size` | 数据量 | `terabyte` | 太字节 | `TB` | N | `1000000000000` | [data_size.unit.yaml](data_size.unit.yaml) |
+| 34 | `data_size` | 数据量 | `petabyte` | 拍字节 | `PB` | N | `1000000000000000` | [data_size.unit.yaml](data_size.unit.yaml) |
+| 35 | `datagram_rate` | 数据报速率 | `reciprocal_second` | 秒的负一次方 | `s⁻¹` | Y | `1` | [datagram_rate.unit.yaml](datagram_rate.unit.yaml) |
 | 36 | `electric_charge` | 电荷量 | `coulomb` | 库仑 | `C` | Y | `1` | [electric_charge.unit.yaml](electric_charge.unit.yaml) |
 | 37 | `electric_charge` | 电荷量 | `millicoulomb` | 毫库仑 | `mC` | N | `0.001` | [electric_charge.unit.yaml](electric_charge.unit.yaml) |
 | 38 | `electric_charge` | 电荷量 | `ampere_hour` | 安培小时 | `A·h` | N | `3600` | [electric_charge.unit.yaml](electric_charge.unit.yaml) |

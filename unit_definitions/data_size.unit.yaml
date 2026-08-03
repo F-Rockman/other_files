@@ -1,0 +1,79 @@
+- description: byte is the reference unit of data size
+  description_cn: 字节是数据量的基准单位
+  is_standard: 'Y'
+  name: byte
+  name_cn: 字节
+  standard_conversion_rule: '1'
+  unit_symbol: 'B'
+  unit_type: data_size
+  unit_type_cn: 数据量
+
+- description: bit is a unit of data size
+  description_cn: 比特是数据量的单位
+  is_standard: 'N'
+  name: bit
+  name_cn: 比特
+  standard_conversion_rule: '0.125'
+  unit_symbol: 'bit'
+  unit_type: data_size
+  unit_type_cn: 数据量
+
+- description: octet is a unit of data size
+  description_cn: 八位组是数据量的单位
+  is_standard: 'N'
+  name: octet
+  name_cn: 八位组
+  standard_conversion_rule: '1'
+  unit_symbol: 'o'
+  unit_type: data_size
+  unit_type_cn: 数据量
+
+- description: kilobyte is a unit of data size
+  description_cn: 千字节是数据量的单位
+  is_standard: 'N'
+  name: kilobyte
+  name_cn: 千字节
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kB'
+  unit_type: data_size
+  unit_type_cn: 数据量
+
+- description: megabyte is a unit of data size
+  description_cn: 兆字节是数据量的单位
+  is_standard: 'N'
+  name: megabyte
+  name_cn: 兆字节
+  standard_conversion_rule: '1000000'
+  unit_symbol: 'MB'
+  unit_type: data_size
+  unit_type_cn: 数据量
+
+- description: gigabyte is a unit of data size
+  description_cn: 吉字节是数据量的单位
+  is_standard: 'N'
+  name: gigabyte
+  name_cn: 吉字节
+  standard_conversion_rule: '1000000000'
+  unit_symbol: 'GB'
+  unit_type: data_size
+  unit_type_cn: 数据量
+
+- description: terabyte is a unit of data size
+  description_cn: 太字节是数据量的单位
+  is_standard: 'N'
+  name: terabyte
+  name_cn: 太字节
+  standard_conversion_rule: '1000000000000'
+  unit_symbol: 'TB'
+  unit_type: data_size
+  unit_type_cn: 数据量
+
+- description: petabyte is a unit of data size
+  description_cn: 拍字节是数据量的单位
+  is_standard: 'N'
+  name: petabyte
+  name_cn: 拍字节
+  standard_conversion_rule: '1000000000000000'
+  unit_symbol: 'PB'
+  unit_type: data_size
+  unit_type_cn: 数据量

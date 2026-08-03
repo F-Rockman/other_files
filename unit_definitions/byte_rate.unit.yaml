@@ -1,0 +1,49 @@
+- description: byte per second is the reference unit of byte rate
+  description_cn: 字节每秒是字节率的基准单位
+  is_standard: 'Y'
+  name: bytes_per_second
+  name_cn: 字节每秒
+  standard_conversion_rule: '1'
+  unit_symbol: 'B/s'
+  unit_type: byte_rate
+  unit_type_cn: 字节率
+
+- description: kilobyte per second is a unit of byte rate
+  description_cn: 千字节每秒是字节率的单位
+  is_standard: 'N'
+  name: kilobytes_per_second
+  name_cn: 千字节每秒
+  standard_conversion_rule: '1000'
+  unit_symbol: 'kB/s'
+  unit_type: byte_rate
+  unit_type_cn: 字节率
+
+- description: megabyte per second is a unit of byte rate
+  description_cn: 兆字节每秒是字节率的单位
+  is_standard: 'N'
+  name: megabytes_per_second
+  name_cn: 兆字节每秒
+  standard_conversion_rule: '1000000'
+  unit_symbol: 'MB/s'
+  unit_type: byte_rate
+  unit_type_cn: 字节率
+
+- description: gigabyte per second is a unit of byte rate
+  description_cn: 吉字节每秒是字节率的单位
+  is_standard: 'N'
+  name: gigabytes_per_second
+  name_cn: 吉字节每秒
+  standard_conversion_rule: '1000000000'
+  unit_symbol: 'GB/s'
+  unit_type: byte_rate
+  unit_type_cn: 字节率
+
+- description: terabyte per second is a unit of byte rate
+  description_cn: 太字节每秒是字节率的单位
+  is_standard: 'N'
+  name: terabytes_per_second
+  name_cn: 太字节每秒
+  standard_conversion_rule: '1000000000000'
+  unit_symbol: 'TB/s'
+  unit_type: byte_rate
+  unit_type_cn: 字节率
