@@ -10,7 +10,7 @@
 - 查询单位时应同时使用 `unit_type`。建议使用 `(unit_type, name)` 或 `(unit_type, unit_symbol)`，不能假设名称或符号全局唯一。
 - `data_size`、`byte_rate` 默认采用十进制前缀；二进制前缀使用 `binary_data_size`、`binary_byte_rate`。它们属于不同换算域，跨类型换算应通过共同的 `B` 或 `B/s` 基准衔接。
 - 单位符号严格区分大小写和 Unicode 字符，例如 `B`、`bit`、`kB`、`MB`、`μ`、`s⁻¹`、`A·h`。
-- `ratio` 的基准符号 `!%` 是项目自定义的无量纲单位“一”标记，不是正式计量符号；普通 `%` 通过系数 `0.01` 换算到该基准。
+- `ratio` 的基准单位 `one` 使用符号 `1`；普通 `%` 通过系数 `0.01` 换算到该基准。
 - 为保持表格便于速查，完整清单未重复展示 `description` 和 `description_cn`；可通过每行的配置文件链接查看完整定义。
 
 ## 单位类型索引
@@ -44,7 +44,7 @@
 | `power` | 功率 | `W` | 5 | [power.unit.yaml](power.unit.yaml) |
 | `power_level` | 功率电平 | `dBm` | 2 | [power_level.unit.yaml](power_level.unit.yaml) |
 | `pressure` | 压力 | `Pa` | 3 | [pressure.unit.yaml](pressure.unit.yaml) |
-| `ratio` | 比率 | `!%` | 3 | [ratio.unit.yaml](ratio.unit.yaml) |
+| `ratio` | 比率 | `1` | 3 | [ratio.unit.yaml](ratio.unit.yaml) |
 | `reactive_power` | 无功功率 | `var` | 2 | [reactive_power.unit.yaml](reactive_power.unit.yaml) |
 | `record_rate` | 记录速率 | `s⁻¹` | 1 | [record_rate.unit.yaml](record_rate.unit.yaml) |
 | `relative_humidity` | 相对湿度 | `%` | 1 | [relative_humidity.unit.yaml](relative_humidity.unit.yaml) |
@@ -142,7 +142,7 @@
 | 77 | `pressure` | 压力 | `pascal` | 帕斯卡 | `Pa` | Y | `1` | [pressure.unit.yaml](pressure.unit.yaml) |
 | 78 | `pressure` | 压力 | `hectopascal` | 百帕 | `hPa` | N | `100` | [pressure.unit.yaml](pressure.unit.yaml) |
 | 79 | `pressure` | 压力 | `kilopascal` | 千帕 | `kPa` | N | `1000` | [pressure.unit.yaml](pressure.unit.yaml) |
-| 80 | `ratio` | 比率 | `one` | 一 | `!%` | Y | `1` | [ratio.unit.yaml](ratio.unit.yaml) |
+| 80 | `ratio` | 比率 | `one` | 一 | `1` | Y | `1` | [ratio.unit.yaml](ratio.unit.yaml) |
 | 81 | `ratio` | 比率 | `percent` | 百分比 | `%` | N | `0.01` | [ratio.unit.yaml](ratio.unit.yaml) |
 | 82 | `ratio` | 比率 | `per_mille` | 千分比 | `‰` | N | `0.001` | [ratio.unit.yaml](ratio.unit.yaml) |
 | 83 | `reactive_power` | 无功功率 | `var` | 乏 | `var` | Y | `1` | [reactive_power.unit.yaml](reactive_power.unit.yaml) |
