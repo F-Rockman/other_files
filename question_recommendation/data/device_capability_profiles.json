@@ -1,0 +1,380 @@
+{
+  "device_profiles": [
+    {
+      "profile_id": "network_device",
+      "domain": "网络",
+      "device_types": ["网络设备"],
+      "aliases": ["路由器","交换机","AC","WAC","防火墙"],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","SN","状态","型号","子网","厂商","软件版本"],
+      "metrics": ["CPU利用率","响应时间","带宽利用率"],
+      "subcomponents": [
+        {
+          "types": ["接口"],
+          "aliases": ["端口"],
+          "properties": ["名称","状态","型号","位置","接口名称","端口类型"],
+          "metrics": ["接收速率","发送速率","带宽利用率"],
+          "table_hints": ["网络设备接口","网络设备端口","interface","port"],
+          "examples": ["查询网络设备接口列表","查询网络设备接口数量","查询网络设备接口带宽利用率趋势"],
+          "priority": 8
+        },
+        {
+          "types": ["单板"],
+          "properties": ["名称","状态","型号","位置","温度"],
+          "metrics": ["单板CPU利用率","单板内存利用率","温度"],
+          "table_hints": ["网络设备单板","board"],
+          "examples": ["查询网络设备单板列表","查询网络设备单板CPU利用率趋势"],
+          "priority": 5
+        },
+        {
+          "types": ["光模块"],
+          "properties": ["名称","状态","型号","位置","温度","接收功率","发送功率"],
+          "metrics": ["发送功率","接收功率","温度"],
+          "table_hints": ["网络设备光模块","网络光模块","network_optical_module"],
+          "examples": ["查询网络设备光模块列表","查询网络设备光模块接收功率趋势"],
+          "priority": 10
+        },
+        {
+          "types": ["机框"],
+          "properties": ["名称","状态","型号","位置"],
+          "table_hints": ["网络设备机框","chassis"],
+          "examples": ["查询网络设备机框列表","查询网络设备机框数量"],
+          "priority": 2
+        },
+        {
+          "types": ["远端模块"],
+          "properties": ["名称","状态","型号","位置"],
+          "table_hints": ["网络设备远端模块","remote_module"],
+          "examples": ["查询网络设备远端模块列表"],
+          "priority": 1
+        }
+      ],
+      "table_hints": ["网络设备","network_device"],
+      "examples": ["查询当前网络设备列表","查询网络设备数量","查询网络设备CPU利用率趋势"],
+      "priority": 95
+    },
+    {
+      "profile_id": "fatap",
+      "domain": "网络",
+      "device_types": ["FATAP"],
+      "aliases": [],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","SN","状态","型号","子网","厂商","软件版本"],
+      "metrics": ["CPU利用率","响应时间","带宽利用率"],
+      "subcomponents": [
+        {
+          "types": ["接口"],
+          "aliases": ["端口"],
+          "properties": ["名称","状态","型号","位置","接口名称","端口类型"],
+          "metrics": ["接收速率","发送速率","带宽利用率"],
+          "table_hints": ["FATAP接口","FATAP端口","fatap_interface","fatap_port"],
+          "examples": ["查询FATAP接口列表","查询FATAP接口数量","查询FATAP接口带宽利用率趋势"],
+          "priority": 8
+        },
+        {
+          "types": ["单板"],
+          "properties": ["名称","状态","型号","位置","温度"],
+          "metrics": ["单板CPU利用率","单板内存利用率","温度"],
+          "table_hints": ["FATAP单板","fatap_board"],
+          "examples": ["查询FATAP单板列表","查询FATAP单板CPU利用率趋势"],
+          "priority": 5
+        },
+        {
+          "types": ["光模块"],
+          "properties": ["名称","状态","型号","位置","温度","接收功率","发送功率"],
+          "metrics": ["发送功率","接收功率","温度"],
+          "table_hints": ["FATAP光模块","fatap_optical_module"],
+          "examples": ["查询FATAP光模块列表","查询FATAP光模块接收功率趋势"],
+          "priority": 10
+        },
+        {
+          "types": ["机框"],
+          "properties": ["名称","状态","型号","位置"],
+          "table_hints": ["FATAP机框","fatap_chassis"],
+          "examples": ["查询FATAP机框列表","查询FATAP机框数量"],
+          "priority": 2
+        }
+      ],
+      "table_hints": ["FATAP"],
+      "examples": ["查询当前FATAP列表","查询FATAP数量","查询FATAP CPU利用率趋势"],
+      "priority": 90
+    },
+    {
+      "profile_id": "server",
+      "domain": "服务器",
+      "device_types": ["服务器"],
+      "aliases": ["服务器设备"],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","序列号","型号","厂商","健康状态","运行状态"],
+      "metrics": ["CPU利用率","内存利用率","磁盘利用率","IO响应时间","IOPS","吞吐量","设备功率","进风口温度"],
+      "subcomponents": [
+        {
+          "types": ["处理器"],
+          "properties": ["名称","型号","健康状态","运行状态","温度"],
+          "metrics": ["CPU温度"],
+          "table_hints": ["服务器处理器","processor"],
+          "examples": ["查询服务器处理器列表","查询服务器处理器CPU温度趋势"]
+        },
+        {
+          "types": ["硬盘"],
+          "properties": ["名称","型号","健康状态","运行状态","容量","剩余寿命"],
+          "table_hints": ["服务器硬盘","server_disk"],
+          "examples": ["查询服务器硬盘列表","查询服务器硬盘数量"],
+          "priority": 3
+        },
+        {
+          "types": ["内存"],
+          "properties": ["名称","型号","健康状态","运行状态","容量"],
+          "table_hints": ["服务器内存","server_memory"],
+          "examples": ["查询服务器内存列表","查询服务器内存数量"]
+        },
+        {
+          "types": ["电源"],
+          "properties": ["名称","型号","健康状态","运行状态","功率"],
+          "metrics": ["电源功率"],
+          "table_hints": ["服务器电源","server_power"],
+          "examples": ["查询服务器电源列表","查询服务器电源功率趋势"],
+          "priority": 2
+        },
+        {
+          "types": ["风扇"],
+          "properties": ["名称","型号","健康状态","运行状态","转速"],
+          "metrics": ["风扇转速","风扇转速百分比"],
+          "table_hints": ["服务器风扇","server_fan"],
+          "examples": ["查询服务器风扇列表","查询服务器风扇转速趋势"],
+          "priority": 3
+        },
+        {
+          "types": ["网卡"],
+          "properties": ["名称","型号","健康状态","运行状态","MAC地址","端口状态"],
+          "metrics": ["入流量","出流量","带宽利用率","丢包率","错包率"],
+          "table_hints": ["服务器网卡","server_nic"],
+          "examples": ["查询服务器网卡列表","查询服务器网卡数量","查询服务器网卡入流量趋势"],
+          "priority": 5
+        },
+        {
+          "types": ["光模块"],
+          "properties": ["名称","型号","健康状态","运行状态"],
+          "table_hints": ["服务器光模块","server_optical_module"],
+          "examples": ["查询服务器光模块列表","查询服务器光模块数量"],
+          "priority": 6
+        }
+      ],
+      "table_hints": ["服务器","服务器设备","server"],
+      "examples": ["查询当前服务器列表","查询服务器数量","查询服务器CPU利用率趋势"],
+      "priority": 94
+    },
+    {
+      "profile_id": "storage_device",
+      "domain": "存储",
+      "device_types": ["存储设备"],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","序列号","状态","型号","厂商","子网","健康状态","总容量","已用容量","可用容量","容量利用率"],
+      "metrics": ["CPU利用率","读IOPS","写IOPS","IO响应时间","端口利用率","总容量","已用容量","可用容量","容量利用率"],
+      "subcomponents": [
+        {
+          "types": ["存储池"],
+          "properties": ["名称","健康状态","类型","总容量","已用容量","可用容量","容量利用率","已分配容量"],
+          "metrics": ["容量利用率","读写带宽","读IOPS","写IOPS","IO响应时间"],
+          "table_hints": ["存储池","storage_pool"],
+          "examples": ["查询存储设备存储池列表","查询存储池容量利用率趋势"],
+          "priority": 6
+        },
+        {
+          "types": ["LUN"],
+          "properties": ["名称","健康状态","类型","总容量","已用容量","可用容量","容量利用率","已分配容量"],
+          "metrics": ["容量利用率","读写带宽","读IOPS","写IOPS","IO响应时间"],
+          "table_hints": ["LUN","storage_lun"],
+          "examples": ["查询存储设备LUN列表","查询LUN的IO响应时间趋势"],
+          "priority": 5
+        },
+        {
+          "types": ["文件系统"],
+          "properties": ["名称","健康状态","类型","总容量","已用容量","可用容量","容量利用率","已分配容量"],
+          "metrics": ["容量利用率","读写带宽","读IOPS","写IOPS","IO响应时间"],
+          "table_hints": ["文件系统","file_system"],
+          "examples": ["查询存储设备文件系统列表","查询文件系统容量利用率趋势"],
+          "priority": 5
+        },
+        {
+          "types": ["控制器"],
+          "properties": ["名称","健康状态","运行状态","型号","角色"],
+          "metrics": ["CPU利用率"],
+          "table_hints": ["存储控制器","storage_controller"],
+          "examples": ["查询存储设备控制器列表","查询存储控制器CPU利用率趋势"]
+        },
+        {
+          "types": ["硬盘"],
+          "properties": ["名称","健康状态","运行状态","型号","位置","槽位号","厂商","容量","温度","固件版本","剩余寿命"],
+          "metrics": ["读IOPS","写IOPS","IO响应时间"],
+          "table_hints": ["存储硬盘","storage_disk"],
+          "examples": ["查询存储设备硬盘列表","查询存储硬盘读IOPS趋势"],
+          "priority": 3
+        },
+        {
+          "types": ["硬盘池"],
+          "aliases": ["硬盘域"],
+          "properties": ["名称","健康状态","运行状态","类型","容量"],
+          "table_hints": ["硬盘池","硬盘域","disk_pool"],
+          "examples": ["查询存储设备硬盘池列表"]
+        },
+        {
+          "types": ["机框"],
+          "properties": ["名称","健康状态","运行状态","型号","位置"],
+          "table_hints": ["存储机框","storage_chassis"],
+          "examples": ["查询存储设备机框列表"]
+        },
+        {
+          "types": ["风扇"],
+          "properties": ["名称","健康状态","运行状态","型号","位置","转速"],
+          "table_hints": ["存储风扇","storage_fan"],
+          "examples": ["查询存储设备风扇列表"]
+        },
+        {
+          "types": ["电源"],
+          "properties": ["名称","健康状态","运行状态","型号","位置","功率"],
+          "table_hints": ["存储电源","storage_power"],
+          "examples": ["查询存储设备电源列表"]
+        },
+        {
+          "types": ["端口"],
+          "aliases": ["以太网端口"],
+          "properties": ["名称","健康状态","运行状态","端口类型","MAC地址","位置"],
+          "metrics": ["端口利用率"],
+          "table_hints": ["存储端口","以太网端口","storage_port"],
+          "examples": ["查询存储设备端口列表","查询存储设备端口利用率趋势"],
+          "priority": 2
+        },
+        {
+          "types": ["BBU"],
+          "properties": ["名称","健康状态","运行状态","型号","位置"],
+          "table_hints": ["BBU","storage_bbu"],
+          "examples": ["查询存储设备BBU列表"]
+        }
+      ],
+      "table_hints": ["存储设备","storage_device"],
+      "examples": ["查询当前存储设备列表","查询存储设备数量","查询存储设备容量利用率趋势"],
+      "priority": 95
+    },
+    {
+      "profile_id": "fc_switch",
+      "domain": "存储",
+      "device_types": ["FC交换机"],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","状态","型号","厂商","子网"],
+      "subcomponents": [
+        {
+          "types": ["端口"],
+          "properties": ["名称","状态","端口类型","MAC地址","速率"],
+          "metrics": ["端口利用率","接收速率","发送速率"],
+          "table_hints": ["FC交换机端口","fc_port"],
+          "examples": ["查询FC交换机端口列表","查询FC交换机端口利用率趋势"],
+          "priority": 5
+        }
+      ],
+      "table_hints": ["FC交换机","fc_switch"],
+      "examples": ["查询当前FC交换机列表","查询FC交换机数量"],
+      "priority": 86
+    },
+    {
+      "profile_id": "olt",
+      "domain": "PON",
+      "device_types": ["OLT"],
+      "aliases": ["PON设备"],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","状态","ESN","型号"],
+      "metrics": ["CPU利用率","内存利用率"],
+      "table_hints": ["OLT","PON设备"],
+      "examples": ["查询当前OLT列表","查询OLT数量","查询OLT CPU利用率趋势"],
+      "priority": 89
+    },
+    {
+      "profile_id": "onu",
+      "domain": "PON",
+      "device_types": ["ONU"],
+      "aliases": ["PON设备"],
+      "locators": ["IP","NAME"],
+      "properties": ["名称","IP地址","状态","ESN","型号","所属OLT"],
+      "metrics": ["内存利用率","接收光功率","不可达比率"],
+      "table_hints": ["ONU"],
+      "examples": ["查询当前ONU列表","查询ONU数量","查询ONU接收光功率趋势"],
+      "priority": 88
+    },
+    {
+      "profile_id": "fitap",
+      "domain": "无线",
+      "device_types": ["FITAP"],
+      "aliases": ["AP","无线接入点"],
+      "locators": ["IP","MAC","NAME"],
+      "properties": ["名称","IP地址","MAC地址","状态","软件版本"],
+      "metrics": ["CPU利用率","内存利用率","当前移动终端数"],
+      "table_hints": ["FITAP","AP","无线接入点"],
+      "examples": ["查询当前FITAP列表","查询FITAP数量","查询FITAP当前移动终端数"],
+      "priority": 88
+    },
+    {
+      "profile_id": "terminal",
+      "domain": "终端",
+      "device_types": ["终端设备"],
+      "aliases": ["终端"],
+      "locators": ["IP","MAC","NAME"],
+      "properties": ["名称","IP地址","MAC地址","类型","厂商","状态","接入类型","接入设备","接入端口","接入VLAN","接入位置"],
+      "table_hints": ["终端设备","terminal"],
+      "examples": ["查询当前终端设备列表","查询终端设备数量","查询终端设备接入位置"],
+      "priority": 87
+    }
+  ],
+  "special_capabilities": [
+    {
+      "capability_id": "alarm_query",
+      "capability_type": "alarm_query",
+      "domain": "通用告警",
+      "device_types": ["网络设备","服务器","服务器设备","存储设备","FC交换机","OLT","ONU","PON设备"],
+      "objects": ["告警"],
+      "properties": ["告警名称","告警级别","告警状态"],
+      "table_hints": ["告警","alarm"],
+      "examples": ["查询今天的告警总数","查询近七天各告警级别的告警数量","查询服务器告警列表"],
+      "priority": 92
+    },
+    {
+      "capability_id": "network_link",
+      "capability_type": "link_query",
+      "domain": "网络",
+      "device_types": ["网络设备","服务器","存储设备","FC交换机","OLT","ONU","FITAP","终端设备"],
+      "objects": ["链路"],
+      "trigger_terms": ["对端设备","对端","对端网元"],
+      "properties": ["链路状态","A端网元名称","Z端网元名称"],
+      "table_hints": ["链路","拓扑","link"],
+      "examples": ["查询所有链路的信息","查询链路的状态","查询链路的A端网元名称","查询链路的Z端网元名称","查询网络设备的链路状态","查询网络设备的链路A端网元名称","查询网络设备的链路Z端网元名称","查询网络设备的对端设备"],
+      "priority": 95
+    },
+    {
+      "capability_id": "subnet_resource",
+      "capability_type": "resource_query",
+      "objects": ["子网"],
+      "properties": ["名称","备注"],
+      "table_hints": ["子网","subnet"],
+      "examples": ["查询当前子网列表","查询全部子网数量","查询子网基础信息"],
+      "priority": 90
+    },
+    {
+      "capability_id": "subnet_relation",
+      "capability_type": "relation_query",
+      "device_types": ["网络设备","存储设备","FC交换机","服务器","OLT","ONU","FITAP"],
+      "objects": ["子网"],
+      "table_hints": ["子网","subnet"],
+      "examples": ["查询子网的直接下级子网","查询子网下的网络设备列表","查询子网下的存储设备列表","查询子网下的服务器列表","查询子网下的OLT列表","查询子网下的FITAP列表"],
+      "priority": 88
+    },
+    {
+      "capability_id": "olt_onu_relation",
+      "capability_type": "relation_query",
+      "domain": "PON",
+      "device_types": ["OLT"],
+      "objects": ["ONU"],
+      "table_hints": ["OLT","ONU"],
+      "examples": ["查询OLT下的ONU列表","查询OLT下的ONU数量"],
+      "priority": 92
+    }
+  ]
+}

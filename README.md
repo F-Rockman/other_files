@@ -32,9 +32,19 @@ python_utils/
 │   ├── config.py          # 配置常量
 │   └── tests/
 │       └── test_normalizer.py
-├── question_recommendation/ # 问数推荐问题生成 Prompt
+├── question_recommendation/ # 六类能力规格问数推荐
 │   ├── __init__.py
-│   └── prompt.py          # 推荐问题生成 Prompt 文本
+│   ├── README.md          # 输入字段、必填性、缺失影响和示例
+│   ├── prompt.py          # 推荐问题生成 Prompt 文本
+│   ├── models.py          # 推荐上下文、能力规格、元数据模型
+│   ├── capabilities.py    # 六类查询骨架的确定性召回与排序
+│   ├── data/              # 设备与特殊能力规格
+│   ├── logical_model_reader.py # 根据逻辑表名读取 .logical.yaml
+│   ├── recommender.py     # Chat LLM 调用与 JSON 结构解析
+│   ├── config.py          # 配置常量
+│   ├── requirements.txt   # 推荐模块依赖
+│   └── tests/
+│       └── test_recommender.py
 └── ...                    # 更多工具模块
 ```
 
@@ -288,6 +298,67 @@ async def check_intent_chat(data: QueryRequest):
 
 - 无外部依赖（LLM 客户端由使用者自行提供）
 
+## question_recommendation - 结构化模板问数推荐
+
+用于问数成功或失败后的推荐问题生成。推荐链路采用“最小化推荐上下文 + 内置能力卡 +
+确定性 Top 12 召回 + LLM 自然表达”方案。
+
+完整字段说明、必填性、缺失影响和多设备失败示例见
+[`question_recommendation/README.md`](question_recommendation/README.md)。
+
+仅提供 Chat API 调用方式：**`recommend_questions_chat`**。
+
+### 快速使用
+
+```python
+from query_errors import ErrorCode
+from question_recommendation import build_recommendation_context, recommend_questions_chat
+
+context = build_recommendation_context(
+    {
+        "intention": "查信息",
+        "question": "查询 IP 为 1.1.1.1 的网络设备接口",
+        "devices": [{
+            "device_id": "1.1.1.1",
+            "id_type": "IP",
+            "match_mode": "EXACT",
+            "device_type": "网络设备",
+        }],
+        "subcomponents": [{"subcomponent_type": "接口"}],
+        "tables": ["network_device", "network_interface"],
+    },
+    refuse_info=ErrorCode.INTENT_GUIDE_DEVICE_NOT_FOUND.to_info(),
+    llm_refuse_message="未找到设备 IP 为 1.1.1.1",
+)
+
+def my_llm_chat_client(messages: list[dict]) -> str:
+    return llm_chat_sdk_call(messages)
+
+result = recommend_questions_chat(
+    context,
+    my_llm_chat_client,
+    logical_model_dir="/data/logical-models",
+)
+# {"recommends": [...], "explain": "..."}
+```
+
+### 输入边界
+
+- `RecommendationContext` 只保存推荐真正使用的标准字段，由
+  `build_recommendation_context` 从上一步结构转换。
+- 上游与推荐模块共同使用 `query_errors.ErrorInfo`；恢复策略只由稳定错误 key
+  决定，拒答详情不会参与分类或无效值提取。
+- 推荐器自动加载内置能力卡，确定性过滤并排序 Top 12；召回过程不调用 LLM 或 Embedding。
+- 推荐器根据 `context.tables` 和 `logical_model_dir` 自动读取
+  `{table_name}.logical.yaml`，只提取表名、表描述、列名和列描述。
+- 调用器解析 LLM 返回结构，并删除仍包含确定性 unsupported 字段原文的推荐项；`recommends`
+  输出 1 到 3 条即可，候选不足或质量低时不强行凑满。
+
+### 依赖
+
+- PyYAML（读取 `.logical.yaml`）
+- LLM 客户端由使用者自行提供
+
 ## slang_normalizer - 黑化改写三层管线
 
 将用户输入中的黑化（网络用语/行业俚语）规范化为标准表达，专为中文子串假阳性场景设计（如"备电"不应匹配"设备电源"中的子串）。
@@ -361,6 +432,6 @@ result = normalize_chat("备电系统启动", slang_dict, compound_dict, llm_cha
 ## 运行测试
 
 ```bash
-pip install lxml Pillow pyahocorasick jieba pytest
-pytest svg_security/tests/ image_security/tests/ sql_intent/tests/ slang_normalizer/tests/
+pip install lxml Pillow pyahocorasick jieba PyYAML pytest
+pytest svg_security/tests/ image_security/tests/ sql_intent/tests/ slang_normalizer/tests/ question_recommendation/tests/
 ```

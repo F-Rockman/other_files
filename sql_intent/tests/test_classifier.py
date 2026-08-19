@@ -41,14 +41,15 @@ class TestPromptConstant:
 
     def test_prompt_contains_key_sections(self):
         assert "SQL 生成前置意图判断器" in SQL_INTENT_JUDGMENT_PROMPT
-        assert "accept" in SQL_INTENT_JUDGMENT_PROMPT
-        assert "reject" in SQL_INTENT_JUDGMENT_PROMPT
+        assert "通过" in SQL_INTENT_JUDGMENT_PROMPT
+        assert "拒答" in SQL_INTENT_JUDGMENT_PROMPT
         assert "输出格式" in SQL_INTENT_JUDGMENT_PROMPT
         assert "R1" in SQL_INTENT_JUDGMENT_PROMPT
         assert "R2" in SQL_INTENT_JUDGMENT_PROMPT
         assert "R3" in SQL_INTENT_JUDGMENT_PROMPT
         assert "R4" in SQL_INTENT_JUDGMENT_PROMPT
-        assert "R5" in SQL_INTENT_JUDGMENT_PROMPT
+        assert "信息" in SQL_INTENT_JUDGMENT_PROMPT
+        assert "一行紧凑 JSON" in SQL_INTENT_JUDGMENT_PROMPT
         # SSC qualifying condition
         assert "限定条件" in SQL_INTENT_SYSTEM_PROMPT
         # New R4 sub-rule
@@ -60,22 +61,100 @@ class TestPromptConstant:
         # Future full-period clarification
         assert "当前系统时间" in SQL_INTENT_SYSTEM_PROMPT
         assert "完整自然年" in SQL_INTENT_SYSTEM_PROMPT
-        assert "2026年的销售额" in SQL_INTENT_SYSTEM_PROMPT
-        assert "2026年4月的数据" in SQL_INTENT_SYSTEM_PROMPT
-        assert "2026年5月的数据" in SQL_INTENT_SYSTEM_PROMPT
-        assert "2027年的销售额" in SQL_INTENT_SYSTEM_PROMPT
 
     def test_ssc_qualifying_condition_present(self):
         assert "限定条件：多个指标必须在同一 GROUP BY 结构下可并列输出为 SELECT 的多列" in SQL_INTENT_SYSTEM_PROMPT
         assert "结果行粒度一致" in SQL_INTENT_SYSTEM_PROMPT
         assert "标量 vs 多行时序/明细" in SQL_INTENT_SYSTEM_PROMPT
 
-    def test_having_threshold_filter_rule_present(self):
+    def test_chinese_output_contract_present(self):
+        assert '"intention": "拒答"/"通过"' in SQL_INTENT_SYSTEM_PROMPT
+        assert "如果通过，则不需要reason" in SQL_INTENT_SYSTEM_PROMPT
+        assert "意图被拒答的说明，20字以内" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_latest_single_intent_defaults_present(self):
         assert "聚合过滤/次数阈值" in SQL_INTENT_SYSTEM_PROMPT
         assert "查询CPU利用率大于5的设备，需要过滤出次数大于等于3次的设备" in SQL_INTENT_SYSTEM_PROMPT
-        assert "HAVING 过滤" in SQL_INTENT_SYSTEM_PROMPT
-        assert "不是另一个独立查询结果" in SQL_INTENT_SYSTEM_PROMPT
-        assert "作为 WHERE/HAVING/LIMIT/ORDER BY 的条件、阈值、过滤、排序不算独立意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "次数大于等于3是按设备 GROUP BY 后的 HAVING 过滤" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询设备A的性能指标A" in SQL_INTENT_SYSTEM_PROMPT
+        assert "默认查询两小时" in SQL_INTENT_SYSTEM_PROMPT
+        assert "默认查询趋势" in SQL_INTENT_SYSTEM_PROMPT
+        assert SQL_INTENT_SYSTEM_PROMPT.rstrip().endswith("/no_think")
+
+    def test_time_range_is_optional_for_all_queries(self):
+        assert "时间范围对所有查询均为可选条件" in SQL_INTENT_SYSTEM_PROMPT
+        assert "用户未提供时间范围时，不能仅因缺少时间范围而拒答" in SQL_INTENT_SYSTEM_PROMPT
+        assert "仅当用户明确提供了时间范围时，才执行未来数据校验" in SQL_INTENT_SYSTEM_PROMPT
+        assert "缺少时间范围不能作为条件不完整的拒答理由" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询MAC地址XXXX的终端总数" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询设备A的告警数量" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_specific_entity_identifier_is_optional(self):
+        assert "具体实体标识对所有查询均为可选条件" in SQL_INTENT_SYSTEM_PROMPT
+        assert "默认查询符合已知对象类型和其他条件的全部实体" in SQL_INTENT_SYSTEM_PROMPT
+        assert "未提供具体实体标识" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询交换机的出厂日期" in SQL_INTENT_SYSTEM_PROMPT
+        assert "默认查询全部交换机及其出厂日期" in SQL_INTENT_SYSTEM_PROMPT
+        assert "缺少设备名称、IP、MAC、ID 等具体实体标识不能作为条件不完整的拒答理由" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_entity_attribute_phrase_implies_information_query(self):
+        assert "查询动作对“实体类型+属性”的信息查询为可选表达" in SQL_INTENT_SYSTEM_PROMPT
+        assert "省略查询动作的实体属性短语" in SQL_INTENT_SYSTEM_PROMPT
+        assert '"终端设备IP"' in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询全部终端设备的IP信息" in SQL_INTENT_SYSTEM_PROMPT
+        assert "交换机出厂日期" in SQL_INTENT_SYSTEM_PROMPT
+        assert "服务器操作系统" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不能以缺少指标、属性或查询动作为由拒答" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_causal_terms_can_be_data_filters(self):
+        assert "因果词作为筛选条件" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询导致环路的告警和设备信息" in SQL_INTENT_SYSTEM_PROMPT
+        assert "“导致环路”是告警筛选条件或告警原因字段值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不等于原因分析或根因分析" in SQL_INTENT_SYSTEM_PROMPT
+        assert "关联实体字段扩展" in SQL_INTENT_SYSTEM_PROMPT
+        assert "告警字段和设备字段可通过同一明细查询或 JOIN 同行输出" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不要把“告警和设备信息”误判为两个独立查询目标" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_emotional_expression_does_not_block_query(self):
+        assert "情绪表达不改变查询意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "烦死了，帮我查一下交换机告警" in SQL_INTENT_SYSTEM_PROMPT
+        assert "急死了，查询离线设备数量" in SQL_INTENT_SYSTEM_PROMPT
+        assert "这破系统又出问题了，看看CPU利用率大于90的设备" in SQL_INTENT_SYSTEM_PROMPT
+        assert "情绪词只是语气噪声，不改变问数意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "只有用户要求安慰、情绪疏导、投诉文案、客服回复、评价或建议等非数据查询输出时，才拒答" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_rhetorical_question_does_not_block_query(self):
+        assert "反问语气不改变查询意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "难道没有离线设备吗？" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不是让你查一下交换机告警吗？" in SQL_INTENT_SYSTEM_PROMPT
+        assert "这不就是要看终端设备IP吗？" in SQL_INTENT_SYSTEM_PROMPT
+        assert "反问/反诘语气只是表达方式，不改变问数意图" in SQL_INTENT_SYSTEM_PROMPT
+        assert "只有明确要求为什么/原因/根因/建议/解决方案等非数据输出时，才拒答" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_feedback_terms_can_be_display_actions(self):
+        assert "反馈/立即反馈是查询结果展示动作" in SQL_INTENT_SYSTEM_PROMPT
+        assert "立即反馈离线设备数量" in SQL_INTENT_SYSTEM_PROMPT
+        assert "把交换机告警立即反馈给我" in SQL_INTENT_SYSTEM_PROMPT
+        assert "反馈一下CPU利用率大于90的设备" in SQL_INTENT_SYSTEM_PROMPT
+        assert "反馈、立即反馈、返回、展示、显示、给我看等词表示把查询结果返回/展示给用户" in SQL_INTENT_SYSTEM_PROMPT
+        assert "只有明确要求提交反馈、创建反馈单、客服回复、投诉反馈文案等非数据查询动作或文本输出时，才拒答" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_explicit_condition_operator_requires_value(self):
+        assert "显式条件关系词后必须有明确条件值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "字段名 + 为/等于/是/叫/包含/大于/小于/在" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询名称为的AA服务器信息" in SQL_INTENT_SYSTEM_PROMPT
+        assert "“名称为”后缺少名称值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询领域A状态为的设备数量" in SQL_INTENT_SYSTEM_PROMPT
+        assert "“状态为”后缺少状态值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "名称、状态、类型、区域、领域、厂商、型号、IP、MAC、ID" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不能把后面的“AA服务器信息”“设备数量”等对象或结果描述补成条件值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "不能因为具体实体标识可选而放行" in SQL_INTENT_SYSTEM_PROMPT
+
+    def test_special_character_filter_value_rule_present(self):
+        assert "包含特殊字符的过滤值" in SQL_INTENT_SYSTEM_PROMPT
+        assert "查询设备名称为<script></script>的设备" in SQL_INTENT_SYSTEM_PROMPT
+        assert "字面量过滤值，不是代码生成或动作执行" in SQL_INTENT_SYSTEM_PROMPT
+        assert '"执行<script></script>"才属于动作执行，应拒答' in SQL_INTENT_SYSTEM_PROMPT
 
     def test_multi_intent_sql_structure_rule_present(self):
         assert "同一对象+不同SQL结构类型" in SQL_INTENT_SYSTEM_PROMPT
@@ -90,25 +169,14 @@ class TestPromptConstant:
         assert "IP为A的设备的数量及设备A的性能趋势" in SQL_INTENT_SYSTEM_PROMPT
         assert "设备A的告警数量及告警趋势" in SQL_INTENT_SYSTEM_PROMPT
         assert "最近一周每天的订单量及总订单数" in SQL_INTENT_SYSTEM_PROMPT
-        assert "查询最近一天的CPU利用率" in SQL_INTENT_SYSTEM_PROMPT
+        assert "最近一天设备A的Top3 内存利用率趋势" in SQL_INTENT_SYSTEM_PROMPT
         assert "核心判断方法" in SQL_INTENT_SYSTEM_PROMPT
         assert "标量/明细行/时序行/排名行/对比行" in SQL_INTENT_SYSTEM_PROMPT
 
-    def test_ambiguous_intent_rules_present(self):
-        """R3和R5中的条件不完整和模糊意图规则存在"""
-        # R3: 指标缺少所属对象/实体
-        assert "指标缺少所属对象/实体" in SQL_INTENT_SYSTEM_PROMPT
-        assert "CPU利用率是设备的指标，但未指定哪台设备" in SQL_INTENT_SYSTEM_PROMPT
-        # R5: 指标+对象但未指定展示形式
-        assert "指标+对象但未指定展示形式" in SQL_INTENT_SYSTEM_PROMPT
-
-    def test_display_form_priority_principle_present(self):
-        """展示形式优先原则和排名查询规则存在"""
-        assert "展示形式优先原则" in SQL_INTENT_SYSTEM_PROMPT
-        assert "不应从指标名称额外推断隐含的其他展示形式" in SQL_INTENT_SYSTEM_PROMPT
-        assert "设备A的Top3 CPU利用率" in SQL_INTENT_SYSTEM_PROMPT
-        assert "排名查询" in SQL_INTENT_SYSTEM_PROMPT
-        assert "Top3明确指定了排名展示形式" in SQL_INTENT_SYSTEM_PROMPT
+    def test_ranking_attached_indicator_rule_present(self):
+        assert "排名附带指标" in SQL_INTENT_SYSTEM_PROMPT
+        assert "最近一天Top10城市及其销售额" in SQL_INTENT_SYSTEM_PROMPT
+        assert "隐含对指标取平均值后排名" in SQL_INTENT_SYSTEM_PROMPT
 
 
 # ============ 测试：JSON 解析有效响应 ============
@@ -125,6 +193,18 @@ class TestJSONParsing:
         result = _parse_llm_response(response)
         assert result[INTENTION_FIELD] == DEFAULT_REJECT_INTENTION
         assert result[REASON_FIELD] == "非问数场景"
+
+    def test_parse_chinese_accept_json(self):
+        response = json.dumps({"intention": "通过"})
+        result = _parse_llm_response(response)
+        assert result[INTENTION_FIELD] == DEFAULT_ACCEPT_INTENTION
+        assert result[REASON_FIELD] == DEFAULT_EMPTY_REASON
+
+    def test_parse_chinese_reject_json(self):
+        response = json.dumps({"intention": "拒答", "reason": "条件不完整"})
+        result = _parse_llm_response(response)
+        assert result[INTENTION_FIELD] == DEFAULT_REJECT_INTENTION
+        assert result[REASON_FIELD] == "条件不完整"
 
     def test_parse_json_with_markdown_wrapper(self):
         response = '```json\n{"intention": "accept", "reason": ""}\n```'
@@ -217,10 +297,7 @@ class TestClassifyIntent:
         call_args = mock_client.call_args[0][0]
         assert "当前系统时间：date=2026-05-24" in call_args
         assert "2026年的销售额" in call_args
-        assert "2026年4月的数据" in call_args
-        assert "2026年5月的数据" in call_args
         assert "完整自然年" in call_args
-        assert "2027年的销售额" in call_args
 
     def test_reject_result_with_reason(self):
         """拒答时返回原因"""
@@ -270,6 +347,10 @@ class TestResultValidation:
         assert result[INTENTION_FIELD] == DEFAULT_REJECT_INTENTION
         assert result[REASON_FIELD] == LLM_OUTPUT_FORMAT_ERROR_REASON
 
+    def test_chinese_intentions_normalized(self):
+        assert _validate_result({"intention": "通过"})[INTENTION_FIELD] == DEFAULT_ACCEPT_INTENTION
+        assert _validate_result({"intention": "拒答", "reason": "非问数场景"})[INTENTION_FIELD] == DEFAULT_REJECT_INTENTION
+
     def test_config_constants(self):
         """验证配置常量值"""
         assert DEFAULT_REJECT_INTENTION == "reject"
@@ -290,15 +371,14 @@ class TestSplitPrompts:
         assert len(SQL_INTENT_SYSTEM_PROMPT) > 0
 
     def test_system_prompt_contains_key_rule_sections(self):
-        """SQL_INTENT_SYSTEM_PROMPT 包含 R1-R5、accept 条件、决策优先级"""
+        """SQL_INTENT_SYSTEM_PROMPT 包含 R1-R4、通过条件、决策优先级"""
         assert "SQL 生成前置意图判断器" in SQL_INTENT_SYSTEM_PROMPT
         assert "R1" in SQL_INTENT_SYSTEM_PROMPT
         assert "R2" in SQL_INTENT_SYSTEM_PROMPT
         assert "R3" in SQL_INTENT_SYSTEM_PROMPT
         assert "R4" in SQL_INTENT_SYSTEM_PROMPT
-        assert "R5" in SQL_INTENT_SYSTEM_PROMPT
-        assert "accept" in SQL_INTENT_SYSTEM_PROMPT
-        assert "reject" in SQL_INTENT_SYSTEM_PROMPT
+        assert "通过" in SQL_INTENT_SYSTEM_PROMPT
+        assert "拒答" in SQL_INTENT_SYSTEM_PROMPT
         assert "决策优先级" in SQL_INTENT_SYSTEM_PROMPT
         assert "判断原则" in SQL_INTENT_SYSTEM_PROMPT
 

@@ -182,6 +182,10 @@ def _validate_result(result: dict) -> dict:
         }
 
     intention = result.get(INTENTION_FIELD, DEFAULT_REJECT_INTENTION)
+    intention = {
+        "通过": "accept",
+        "拒答": "reject",
+    }.get(intention, intention)
     reason = result.get(REASON_FIELD, DEFAULT_EMPTY_REASON)
 
     # 验证 intention 值

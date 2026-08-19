@@ -1,18 +1,65 @@
-"""
-问数推荐问题 Prompt。
+"""最小化上下文 + 六类能力规格 + LLM 表达的问数推荐模块。"""
 
-用于根据用户原始问题、推荐场景、失败原因、候选问题、业务支持范围
-以及可用字段信息，生成适合展示给用户的推荐问数问题。
-"""
-
+from .capabilities import (
+    DEVICE_COUNT,
+    DEVICE_INFO,
+    DEVICE_METRIC,
+    SUBCOMPONENT_COUNT,
+    SUBCOMPONENT_INFO,
+    SUBCOMPONENT_METRIC,
+    RankedCapability,
+    load_capability_cards,
+    recommend_capabilities,
+    resolve_primary_capability_type,
+)
+from .context_builder import build_recommendation_context
+from .models import (
+    AlarmCondition,
+    CapabilityCandidate,
+    DeviceCondition,
+    DeviceCapabilityProfile,
+    MetadataColumn,
+    MetadataTable,
+    RecommendationContext,
+    SpecialCapabilitySpec,
+    SubnetScope,
+    SubcomponentCapabilitySpec,
+)
 from .prompt import (
     QUESTION_RECOMMENDATION_PROMPT,
     QUESTION_RECOMMENDATION_SYSTEM_PROMPT,
     QUESTION_RECOMMENDATION_USER_TEMPLATE,
 )
+from .recommender import QuestionRecommendationError, recommend_questions_chat
+from .refusal_rules import RefusalRecoveryRule, get_refusal_recovery_rule
 
 __all__ = [
+    "QUESTION_RECOMMENDATION_PROMPT",
     "QUESTION_RECOMMENDATION_SYSTEM_PROMPT",
     "QUESTION_RECOMMENDATION_USER_TEMPLATE",
-    "QUESTION_RECOMMENDATION_PROMPT",
+    "DeviceCondition",
+    "AlarmCondition",
+    "SubnetScope",
+    "RecommendationContext",
+    "SubcomponentCapabilitySpec",
+    "DeviceCapabilityProfile",
+    "SpecialCapabilitySpec",
+    "CapabilityCandidate",
+    "MetadataColumn",
+    "MetadataTable",
+    "RankedCapability",
+    "build_recommendation_context",
+    "DEVICE_INFO",
+    "DEVICE_COUNT",
+    "DEVICE_METRIC",
+    "SUBCOMPONENT_INFO",
+    "SUBCOMPONENT_COUNT",
+    "SUBCOMPONENT_METRIC",
+    "load_capability_cards",
+    "resolve_primary_capability_type",
+    "recommend_capabilities",
+    "QuestionRecommendationError",
+    "recommend_questions_chat",
+    "RefusalRecoveryRule",
+    "get_refusal_recovery_rule",
 ]
