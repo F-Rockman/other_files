@@ -1,6 +1,6 @@
 ---
 name: sql-semantic-equivalence
-description: Compare two SQL queries for equivalence of core analytical intent and result semantics across dialects and syntactic rewrites, and explain material differences. Use when users ask whether SQL queries mean the same thing; do not use for formatting-only diffs or performance-only tuning.
+description: Compare two SQL queries for equivalence of core analytical intent and result semantics across dialects and syntactic rewrites, then explain material differences in Chinese. Use when users ask whether SQL queries mean the same thing; do not use for formatting-only diffs or performance-only tuning.
 ---
 
 # SQL Semantic Equivalence
@@ -26,7 +26,8 @@ not the same.
 ## Handle inputs
 
 - Accept SQL embedded in prose, files, code fences, or separate dialects.
-- Preserve SQL identifiers verbatim and answer in the user's language.
+- Always write the comparison result in concise Simplified Chinese. Preserve SQL
+  identifiers, literals, and quoted fragments verbatim.
 - Use supplied schemas, key constraints, nullability, dialects, business definitions,
   and sample data. Never invent them.
 - If missing context could change the verdict, proceed with explicit alternatives or
@@ -65,21 +66,19 @@ not the same.
 
 ## Verdicts
 
-Report all three fields:
+Use Chinese display labels in the response. Internally distinguish all three fields:
 
-- **Overall:** `CONSISTENT`, `CONDITIONALLY_CONSISTENT`, `INCONSISTENT`, or
-  `INDETERMINATE`.
-- **Core intent:** `SAME`, `RELATED_BUT_DIFFERENT`, `DIFFERENT`, or `INDETERMINATE`.
-- **Result semantics:** `EQUIVALENT`, `EQUIVALENT_UNDER_ASSUMPTIONS`,
-  `NOT_EQUIVALENT`, or `NOT_ASSESSABLE`.
+- **总体结论:** `一致`, `有条件一致`, `不一致`, or `无法判断`.
+- **核心目的:** `相同`, `相关但不同`, `不同`, or `无法判断`.
+- **结果语义:** `等价`, `满足条件时等价`, `不等价`, or `无法判断`.
 
-Use `CONSISTENT` only when core intent is the same and any result differences are
-non-material under the user's stated objective. Use `CONDITIONALLY_CONSISTENT` when
+Use `一致` only when core intent is the same and any result differences are
+non-material under the user's stated objective. Use `有条件一致` when
 the conclusion depends on schema constraints, data invariants, dialect behavior, or
 an explicit interpretation of the requested purpose. A shared table or metric name
 is never sufficient evidence of shared intent.
 
-Assign confidence `HIGH`, `MEDIUM`, or `LOW`. A concrete counterexample can disprove
+Assign Chinese confidence `高`, `中`, or `低`. A concrete counterexample can disprove
 equivalence; matching sample outputs cannot prove equivalence for all valid data.
 
 ## Verification
@@ -96,15 +95,46 @@ equivalence; matching sample outputs cannot prove equivalence for all valid data
 
 ## Response format
 
-Lead with the verdict and confidence, then provide:
+Use progressive disclosure: give the decision and plain-language reason first, then
+the evidence. Do not place purpose summaries or a large table before the core reason.
 
-1. a one-sentence purpose summary for SQL A and SQL B;
-2. a compact table of material differences with columns `Dimension`, `SQL A`,
-   `SQL B`, and `Impact`;
-3. ignored non-material differences;
-4. assumptions and missing information;
-5. a minimal counterexample when it materially strengthens the explanation.
+Start with this compact Chinese block:
 
-Omit empty sections. Group cosmetic differences instead of listing every textual
-change. Quote the relevant SQL fragments, but do not reproduce long queries unless
-needed to make the reasoning auditable.
+```markdown
+## 比对结论
+
+**结论：** 不一致
+
+**置信度：** 高
+
+### 核心原因
+
+- SQL A 统计订单数，SQL B 统计去重用户数，指标口径不同。
+- SQL A 包含结束日期，SQL B 不包含，时间范围不同。
+```
+
+Apply these rules to the compact block:
+
+- State the conclusion in one line.
+- If inconsistent, list only the 1–3 highest-impact reasons. Each reason must be a
+  short causal statement in the form **difference -> result or business impact**.
+- Use plain business language before SQL terminology. Avoid AST vocabulary, internal
+  verdict codes, long SQL fragments, and speculative edge cases here.
+- If consistent, replace `核心原因` with `一致原因` and state briefly why surface
+  differences do not change the purpose or result.
+- If conditional or indeterminate, name the single most important missing condition
+  or assumption immediately.
+
+Then provide `## 详细对比` with the following content as applicable:
+
+1. `SQL 目的` — one sentence each for SQL A and SQL B;
+2. a compact table with Chinese columns `对比维度`, `SQL A`, `SQL B`, and `影响`;
+3. `忽略的非实质差异` — dialect syntax, aliases, formatting, or proven-safe sugar;
+4. `成立条件与缺失信息` — only assumptions that can change the verdict;
+5. `最小反例` — only when it materially strengthens or demonstrates a mismatch.
+
+Put material differences first in the table. Omit identical dimensions and empty
+sections unless they help justify an equivalence verdict. Group cosmetic differences
+instead of listing every textual change. Quote only the shortest relevant SQL
+fragments; do not reproduce long queries unless needed to make the reasoning
+auditable.
