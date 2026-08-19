@@ -1,0 +1,4 @@
+interface:
+  display_name: "SQL Semantic Equivalence"
+  short_description: "Compare SQL intent and explain semantic differences"
+  default_prompt: "Use $sql-semantic-equivalence to compare these two SQL queries by core intent and explain any material differences."
